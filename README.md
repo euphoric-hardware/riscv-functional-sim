@@ -31,7 +31,7 @@
 - Parser: parse SAIL into some in-memory format
 - Logic generation
 
-### Funtional simulator steps
+### Funtional simulator steps (Ansh, Pramath)
 
 - [Spike](https://github.com/riscv-software-src/riscv-isa-sim)
     - Make sure you can run baremetal binaries in Spike (riscv-tests are a good start)
@@ -40,7 +40,8 @@
     - For the architectural state, start off with: program counter (PC), register file
         - In Spike, this is defined in `state_t` in `riscv/processor.h`
         - The RISC-V specification supports two datapath widths: 32 bits vs 64 bits
-        - The register file (and other following architectural states) must be parameterized to support both bitwidths
+            - The register file (and other following architectural states) must be parameterized to support both bitwidths
+            - However, lets not worry too much about 32 bits at the moment. Get started with 64 bit architecture first
         - The architectural state has to trivally serializable
             - Various use cases: sampled simulation, verification and debug
             - Should use Rust's type class derivation
@@ -105,3 +106,37 @@
 - Critical extensions
     - Support compressed instructions [C extension](https://five-embeddev.com/riscv-user-isa-manual/latest-latex/c.html#compressed)
     - Support atomic instructions [A extension](https://five-embeddev.com/riscv-user-isa-manual/latest-latex/a.html#atomics)
+
+## Rearchitecting FESVR (Safin)
+
+- Front end server (FESVR) background
+    - [Chipyard FESVR documentation](https://chipyard.readthedocs.io/en/latest/Advanced-Concepts/Chip-Communication.html)
+    - FESVR acts as a bridge between the host system (which is running the simulation) and the target system (simulated RISC-V SoC)
+    - FESVR performs tasks such as loading the binary into the target system, handling target system calls, and exchanging data between the host and the target (e.g., print messages)
+        - Program loading
+            - Loads the RISC-V binary into the simulated system
+            - Provides the simulation w/ necessary arguments
+        - System call proxying
+            - [riscv pk](https://github.com/riscv-software-src/riscv-pk)
+            - There are cases when the programming running inside the simulator has to perform syscalls related to IO (e.g. prints, opening network sockets)
+            - This program emulates these syscalls in the host machine
+    - FESVR is shared across a wide range of simulation frameworks: Spike (functional sim), Chipyard sims (RTL sim), FireSim (FPGA Sim)
+    - FESVR architecture
+        - There are two threads when running simulations: the host thread and the target thread
+        - The host thread performs the FESVR functionalities mentioned above: Program loading and syscall proxying
+        - The target thread is responsible for executing the target binary in the simulated system
+        - There is a buffer where each thread reads/writes messages
+        - Example 1: lets say the host wants to write the binary into the target system's memory
+            - Host thread instructs FESVR to write the binary to the target's DRAM address
+            - Once this is done, host threads instructs FESVR to write to the CLINT to indicate that the binary loading is finished
+            - Halt the host thread and switch to the target thread
+            - Target thread starts executing the simulation
+        - Example 2: lets say the target wants to print a message
+            - Target thread performs a `printf`
+            - The `printf` contains instructions that writes to a "magic address" that is connected to a target -> host buffer
+            - Target thread halts and switches to the host thread
+            - Host thread reads the message, emulates the `printf` behavior, and returns the control back to the target thread
+- It would be nice if we can replace the host/target threads as coroutines
+    - Write a custom `sim_t` in `riscv/sim.cc` so that it doesn't inherit `htif_t`, but uses `processor_t`, `mems`, `clint`, `plic` `bus`, etc for instruction execution
+    - Rewrite FESVR in Rust using async libraries such as tokio
+    - Write rust bindings between the rewritten FESVR & the custom `sim_t` and see if we can run RISC-V binaries
