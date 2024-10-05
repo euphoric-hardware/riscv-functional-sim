@@ -139,4 +139,6 @@
 - It would be nice if we can replace the host/target threads as coroutines
     - Write a custom `sim_t` in `riscv/sim.cc` so that it doesn't inherit `htif_t`, but uses `processor_t`, `mems`, `clint`, `plic` `bus`, etc for instruction execution
     - Rewrite FESVR in Rust using async libraries such as tokio
+        - We can use elf reading libraries such as [rust-elf](https://github.com/cole14/rust-elf) or [elfio](https://docs.rs/elfio/latest/elfio/#)
+        - Don't have to think about DTM based HTIF for now. Can just implement the TSI protocol based interface
     - Write rust bindings between the rewritten FESVR & the custom `sim_t` and see if we can run RISC-V binaries
