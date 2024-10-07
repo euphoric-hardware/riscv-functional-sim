@@ -142,3 +142,65 @@
         - We can use elf reading libraries such as [rust-elf](https://github.com/cole14/rust-elf) or [elfio](https://docs.rs/elfio/latest/elfio/#)
         - Don't have to think about DTM based HTIF for now. Can just implement the TSI protocol based interface
     - Write rust bindings between the rewritten FESVR & the custom `sim_t` and see if we can run RISC-V binaries
+
+---
+
+## Specification language
+
+- Generating rust code: we can use the [syn](https://docs.rs/syn/latest/syn/) library to represent arbitrary Rust ASTs for code generation
+- Scala embedded DSL for the specification language
+    - Need a way of interpretting the language to generate code for functional simulation
+        - An add instruction cannot be represented as an Scala add as we must interpret the operation for code gen
+    - Need a clear separation of architectural state and update rules
+        - For unprivileged instructions, this is straightforward
+        - Privileged instructions are where this might become challenging
+            - Virtual memory: this seems quite doable. Need to write rules for SATP & TLB updates
+            - Interrupt & exception handling
+            - Expressing the behaviors of PLIC & CLINT 
+
+### Approach 1: Use Chisel as the frontend, but modify the interpretter (the builder)
+
+- Can reuse a lot of the Chisel constructs like `Vec`, `Bundle`, `UInt`
+- Bridge the in-memory representation of CIRCT into FIRRTL2 and write FIRRTL passes that will emit components for the functional simulation
+    - The compiler can take in the DTS of the SoC that you want to model, and compose the architectural states accordingly
+    - What about undefined behaviors? If we bridge to FIRRTL2 in high FIRRTL, `DontCare`s aren't blasted into zeros so we can reinterpret this
+- Potential downsides
+    - Difficult (or impossible) to utilize the host type system which naturally leads to lower ergonomics
+    - This also means that we have to describe every instruction by hand (as we cannot use type class derivation)
+    - Also, if we were to just use Chisel, we would need to use stuff like annotations which will make the codebase messy and confusing
+- One benefit of this approach is that it may be easier to generate performance models along with the functional model in the future
+    - As we can describe branch predictor structures using existing Chisel, perhaps we can add additional passes in the interpretter to add these models as part of the functional simulator
+    - Can be used for generating embeddings for sampled simulation or high level workload analysis based on traces
+- Logistical thoughts
+    - To get started initially, this might be easier as we can just simply write Chisel in a specific way
+    - Bridging into FIRRTL2 is not fun, but very doable
+    - The time to start writing the interpretter is low (probably less guidance required), but maybe the following progress may not be as fast than approach 2
+
+### Approach 2: DSL for defining the architectural spec
+
+- The interpretter implementation may be a bit more cleaner  as we can use type class derivation
+- A high level sketch may look something like this:
+
+```scala
+case class ProcessorState(
+    pc: UInt,
+    rf: Vec[UInt],
+    ...)
+
+case class Instruction[T <: StateUpdateRule] {
+    // Can use type class derivation to derive the update rule from using scala compiler
+    def updaterule(p: ProcessorState)
+
+    // Type class derivation logic for product types like `Add`
+}
+
+case class Add(rs1: UInt, rs2: UInt, rd: UInt, op: (UInt, UInt) => UInt) derives Instruction
+```
+
+- However, we must redefine basic datatypes such as `UInt`, `Vec`, `Bundle`
+    - I don't think this is such a big deal. This shouldn't take too much time as we only want a limited set of primitives
+    - Defining aggregate types may be a pain. But, do we really need aggregate types like in Chisel? For this particular DSL, I think it is perfectly fine to define aggregate types as a product type (for a HDL, I do think this is problematic due to ergonomics, but it really doesn't matter here)
+    - It is also beneficial in that it is easier to enforce "correct behavior" to the spec writers by using the host language's type system
+- Logistical thoughts
+    - In the long term, I do prefer this than the above approach. Approach 1 just feels like more of an hack on top of Chisel rather than a clean implementation
+    - However, this might feel quite difficult and they can loose motivation unless we guide them aggressively. We may even have to work on the initial implementation to get them going
