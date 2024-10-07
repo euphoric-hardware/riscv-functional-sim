@@ -158,7 +158,7 @@
             - Interrupt & exception handling
             - Expressing the behaviors of PLIC & CLINT 
 
-### Approach 1: Use Chisel as the frontend, but modify the interpretter (the builder)
+### Approach 1: Use Chisel as the frontend, but build a custom interpretter
 
 - Can reuse a lot of the Chisel constructs like `Vec`, `Bundle`, `UInt`
 - Bridge the in-memory representation of CIRCT into FIRRTL2 and write FIRRTL passes that will emit components for the functional simulation
