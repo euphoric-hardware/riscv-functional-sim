@@ -1,6 +1,6 @@
 use object::{
-    elf::{self, SHT_PROGBITS, SHT_SYMTAB},
-    read::elf::{FileHeader, SectionHeader, Sym},
+    elf::{FileHeader64, SHT_PROGBITS},
+    read::elf::{FileHeader, SectionHeader, SectionTable},
     Endianness,
 };
 use std::{error::Error, fs, path::Path, time::Duration};
@@ -39,79 +39,111 @@ impl Syscall {
     }
 }
 
-fn get_symbol_value(
-    symbols: &object::read::elf::SymbolTable<'_, elf::FileHeader64<object::Endianness>>,
-    symbol_name: &str,
-    endian: Endianness,
-) -> u64 {
-    symbols
-        .iter()
-        .find(|s| {
-            s.name(endian, symbols.strings())
-                .map(String::from_utf8_lossy)
-                .map_or(false, |s| s == "fromhost")
-        })
-        .expect(&format!("elf should have {}", symbol_name)) // clean up later
-        .st_value(endian)
-}
-
 trait Htif {
-    const POLL_DELAY_MS: u64;
-
-    // get from_host, to_host addresses
-    fn from_host(&self) -> usize;
-    fn to_host(&self) -> usize;
-
-    fn set_from_host(&self, ptr: usize);
-    fn set_to_host(&self, ptr: usize);
-
     async fn read(&self, ptr: usize, buf: &mut [u8]);
     async fn write(&self, ptr: usize, buf: &[u8]);
+}
 
+// not sure whether to keep this--will discuss later
+// wrapper for object's elf, which is quite annoying
+struct RiscvElf {
+    data: Vec<u8>,
+    inner: FileHeader64<Endianness>, // owned fileheader
+}
+
+impl RiscvElf {
+    fn try_new(data: Vec<u8>) -> object::Result<Self> {
+        Ok(Self {
+            inner: FileHeader64::<object::Endianness>::parse(&*data)?.to_owned(),
+            data,
+        })
+    }
+
+    fn endianness(&self) -> Endianness {
+        self.inner.endian().expect("valid endianness")
+    }
+
+    fn sections(&self) -> object::Result<ElfSectionTable64> {
+        self.inner.sections(self.endianness(), &self.data)
+    }
+
+    fn extract_htif_base(&self) -> Result<usize, Box<dyn Error>> {
+        const HTIF_SECTION_NAME: &str = ".htif";
+        const HTIF_BASE_ADDR: usize = 0x80000000;
+
+        let e = self.endianness(); // maybe make a macro for this lol
+
+        let sections = self.sections()?;
+        let symbols = sections.symbols(e, &*self.data, object::elf::SHT_SYMTAB)?;
+        let htif_section = sections.iter().find(|s| {
+            String::from_utf8_lossy(s.name(e, symbols.strings()).expect("fix later"))
+                == HTIF_SECTION_NAME
+        });
+
+        Ok(htif_section.map_or(HTIF_BASE_ADDR, |hs| hs.sh_addr(e) as usize))
+    }
+}
+
+type ElfSectionTable64<'a> = SectionTable<'a, FileHeader64<Endianness>>;
+
+struct Frontend<H> {
+    htif: H,
+    elf: RiscvElf,
+    to_host: usize, // pointers
+    from_host: usize,
+}
+
+impl<H: Htif> Frontend<H> {
+    const POLL_DELAY_MS: u64 = 500;
+
+    fn try_new(htif: H, elf_path: impl AsRef<Path>) -> Result<Self, Box<dyn Error>> {
+        let elf_data = fs::read(elf_path)?; // add error ctxt later
+        let elf = RiscvElf::try_new(elf_data)?;
+        let htif_base = elf.extract_htif_base()?;
+
+        Ok(Self {
+            htif,
+            elf,
+            to_host: htif_base,
+            from_host: htif_base + size_of::<u64>(),
+        })
+    }
+
+    // write appropriate sections of elf into memory
+    async fn write_elf(&self) -> Result<(), Box<dyn Error>> {
+        let e = self.elf.endianness();
+
+        for section in self.elf.sections()?.iter() {
+            if section.sh_type(e) == SHT_PROGBITS && section.sh_addr(e) > 0 {
+                let data = section.data(e, &*self.elf.data)?;
+
+                // const CHUNK_SIZE: usize = 1024; do .chunks() for progress bar later
+                self.htif.write(section.sh_addr(e) as usize, &data).await;
+            }
+        }
+
+        Ok(())
+    }
+
+    // todo(far): abstract this out
     async fn poll(&self) {
         let delay = Duration::from_millis(Self::POLL_DELAY_MS);
         loop {
             // dummy
             let mut buf = [0; 1];
-            self.read(self.to_host(), &mut buf).await;
+            self.htif.read(self.to_host, &mut buf).await;
 
             if let Ok(syscall) = Syscall::try_from(buf[0]) {
                 let res = syscall.execute();
                 let to_send = res.unwrap_or_else(|e| e as usize).to_ne_bytes(); // not sure if this is intended behavior
 
-                self.write(self.from_host(), &to_send).await;
+                self.htif.write(self.from_host, &to_send).await;
             } else {
                 println!("invalid syscall");
             }
 
             tokio::time::sleep(delay).await;
         }
-    }
-
-    async fn load_elf(&self, path: impl AsRef<Path>) -> Result<(), Box<dyn Error>> {
-        let data = fs::read(path)?;
-        let elf = elf::FileHeader64::<object::Endianness>::parse(&*data)?;
-        let endian = elf.endian()?;
-        let sections = elf.sections(endian, &*data)?;
-
-        for section in sections.iter() {
-            if section.sh_type(endian) == SHT_PROGBITS && section.sh_addr(endian) > 0 {
-                let data = section.data(endian, &*data)?;
-
-                // const CHUNK_SIZE: usize = 1024; do .chunks() for progress bar later
-                self.write(section.sh_addr(endian) as usize, &data).await;
-            }
-        }
-
-        let symbols = sections.symbols(endian, &*data, SHT_SYMTAB)?;
-
-        let from_host_addr = get_symbol_value(&symbols, "fromhost", endian) as usize;
-        let to_host_addr = get_symbol_value(&symbols, "tohost", endian) as usize;
-
-        self.set_from_host(from_host_addr);
-        self.set_from_host(to_host_addr);
-
-        Ok(())
     }
 }
 
