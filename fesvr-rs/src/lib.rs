@@ -46,13 +46,13 @@ trait Htif {
 
 // not sure whether to keep this--will discuss later
 // wrapper for object's elf, which is quite annoying
-struct RiscvElf {
+pub struct RiscvElf {
     data: Vec<u8>,
     inner: FileHeader64<Endianness>, // owned fileheader
 }
 
 impl RiscvElf {
-    fn try_new(data: Vec<u8>) -> object::Result<Self> {
+    pub fn try_new(data: Vec<u8>) -> object::Result<Self> {
         Ok(Self {
             inner: FileHeader64::<object::Endianness>::parse(&*data)?.to_owned(),
             data,
@@ -67,16 +67,15 @@ impl RiscvElf {
         self.inner.sections(self.endianness(), &self.data)
     }
 
-    fn extract_htif_base(&self) -> Result<usize, Box<dyn Error>> {
+    pub fn extract_htif_base(&self) -> Result<usize, Box<dyn Error>> {
         const HTIF_SECTION_NAME: &str = ".htif";
         const HTIF_BASE_ADDR: usize = 0x80000000;
 
         let e = self.endianness(); // maybe make a macro for this lol
-
         let sections = self.sections()?;
-        let symbols = sections.symbols(e, &*self.data, object::elf::SHT_SYMTAB)?;
+
         let htif_section = sections.iter().find(|s| {
-            String::from_utf8_lossy(s.name(e, symbols.strings()).expect("fix later"))
+            String::from_utf8_lossy(sections.section_name(e, s).expect("fix later"))
                 == HTIF_SECTION_NAME
         });
 
@@ -151,5 +150,19 @@ impl<H: Htif> Frontend<H> {
 mod tests {
     use super::*;
 
-    // tests
+    #[test]
+    fn elf_implicit_htif() {
+        let data = fs::read("tests/elf-implicit/elf-implicit").unwrap();
+        let elf = RiscvElf::try_new(data).unwrap();
+        let ptr = elf.extract_htif_base().unwrap();
+        assert_eq!(ptr, 0x80000000);
+    }
+
+    #[test]
+    fn elf_explicit_htif() {
+        let data = fs::read("tests/elf-htif/elf-htif").unwrap();
+        let elf = RiscvElf::try_new(data).unwrap();
+        let ptr = elf.extract_htif_base().unwrap();
+        assert_eq!(ptr, 0x80000100);
+    }
 }
