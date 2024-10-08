@@ -3,45 +3,60 @@ use object::{
     read::elf::{FileHeader, SectionHeader, SectionTable},
     Endianness,
 };
-use std::{error::Error, fs, path::Path, time::Duration};
+use std::{error::Error, fs, mem, os::fd::FromRawFd, path::Path, time::Duration};
+use tokio::{
+    fs::File,
+    io::{AsyncWrite, AsyncWriteExt},
+};
 
-pub enum Syscall {
+#[repr(u64)]
+pub enum SyscallId {
     Write,
     Exit,
 }
 
-impl TryFrom<u8> for Syscall {
+impl TryFrom<u64> for SyscallId {
     type Error = (); // invalid syscall
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
         match value {
-            1 => Ok(Self::Write),
-            2 => Ok(Self::Exit),
+            64 => Ok(Self::Write),
+            93 => Ok(Self::Exit),
             _ => Err(()),
         }
     }
 }
 
 type Errno = i32;
-type SysResult = Result<usize, Errno>;
+type SysResult = Result<u64, Errno>;
+
+#[repr(packed)]
+struct Syscall {
+    syscall_id: SyscallId,
+    arg0: u64,
+    arg1: u64,
+    arg2: u64, // max(args(syscall) for syscalls) = 3 (write)
+}
 
 impl Syscall {
-    fn execute(&self) -> SysResult {
-        match self {
-            Self::Exit => {
-                println!("exit");
-                Ok(1)
-            }
-            Self::Write => {
-                println!("write");
-                Ok(1)
-            }
+    // target system (riscv) little endian?
+    fn from_le_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() < 32 {
+            return None;
         }
+
+        Some(Syscall {
+            syscall_id: SyscallId::try_from(u64::from_le_bytes(bytes[0..8].try_into().ok()?))
+                .ok()?,
+            arg0: u64::from_le_bytes(bytes[8..16].try_into().ok()?),
+            arg1: u64::from_le_bytes(bytes[16..24].try_into().ok()?),
+            arg2: u64::from_le_bytes(bytes[24..32].try_into().ok()?),
+        })
     }
 }
 
-trait Htif {
-    async fn read(&self, ptr: usize, buf: &mut [u8]);
-    async fn write(&self, ptr: usize, buf: &[u8]);
+pub trait Htif {
+    async fn read(&self, ptr: u64, buf: &mut [u8]) -> Result<usize, Box<dyn Error>>;
+    async fn write(&self, ptr: u64, buf: &[u8]) -> Result<usize, Box<dyn Error>>;
 }
 
 // not sure whether to keep this--will discuss later
@@ -67,9 +82,9 @@ impl RiscvElf {
         self.inner.sections(self.endianness(), &self.data)
     }
 
-    pub fn extract_htif_base(&self) -> Result<usize, Box<dyn Error>> {
+    pub fn extract_htif_base(&self) -> Result<u64, Box<dyn Error>> {
         const HTIF_SECTION_NAME: &str = ".htif";
-        const HTIF_BASE_ADDR: usize = 0x80000000;
+        const HTIF_BASE_ADDR: u64 = 0x80000000;
 
         let e = self.endianness(); // maybe make a macro for this lol
         let sections = self.sections()?;
@@ -79,7 +94,7 @@ impl RiscvElf {
                 == HTIF_SECTION_NAME
         });
 
-        Ok(htif_section.map_or(HTIF_BASE_ADDR, |hs| hs.sh_addr(e) as usize))
+        Ok(htif_section.map_or(HTIF_BASE_ADDR, |hs| hs.sh_addr(e) as u64))
     }
 }
 
@@ -88,8 +103,8 @@ type ElfSectionTable64<'a> = SectionTable<'a, FileHeader64<Endianness>>;
 struct Frontend<H> {
     htif: H,
     elf: RiscvElf,
-    to_host: usize, // pointers
-    from_host: usize,
+    to_host: u64, // pointers
+    from_host: u64,
 }
 
 impl<H: Htif> Frontend<H> {
@@ -104,7 +119,7 @@ impl<H: Htif> Frontend<H> {
             htif,
             elf,
             to_host: htif_base,
-            from_host: htif_base + size_of::<u64>(),
+            from_host: htif_base + size_of::<u64>() as u64,
         })
     }
 
@@ -116,8 +131,8 @@ impl<H: Htif> Frontend<H> {
             if section.sh_type(e) == SHT_PROGBITS && section.sh_addr(e) > 0 {
                 let data = section.data(e, &*self.elf.data)?;
 
-                // const CHUNK_SIZE: usize = 1024; do .chunks() for progress bar later
-                self.htif.write(section.sh_addr(e) as usize, &data).await;
+                // const CHUNK_SIZE: u64 = 1024; do .chunks() for progress bar later
+                self.htif.write(section.sh_addr(e) as u64, &data).await?;
             }
         }
 
@@ -125,24 +140,44 @@ impl<H: Htif> Frontend<H> {
     }
 
     // todo(far): abstract this out
-    async fn poll(&self) {
+    async fn poll(&self) -> Result<(), Box<dyn Error>> {
         let delay = Duration::from_millis(Self::POLL_DELAY_MS);
         loop {
-            // dummy
-            let mut buf = [0; 1];
-            self.htif.read(self.to_host, &mut buf).await;
+            let mut buf = [0; size_of::<Syscall>()];
+            self.htif.read(self.to_host, &mut buf).await?;
 
-            if let Ok(syscall) = Syscall::try_from(buf[0]) {
-                let res = syscall.execute();
-                let to_send = res.unwrap_or_else(|e| e as usize).to_ne_bytes(); // not sure if this is intended behavior
+            if let Some(syscall) = Syscall::from_le_bytes(&buf) {
+                self.execute_syscall(syscall).await?;
 
-                self.htif.write(self.from_host, &to_send).await;
+                // "signal chip that syscall processed" (taken from pyuartsi, verbatim)
+                self.htif.write(self.to_host, &[0]).await?;
+                self.htif.write(self.from_host, &[1]).await?;
             } else {
                 println!("invalid syscall");
             }
 
             tokio::time::sleep(delay).await;
         }
+    }
+
+    // execute syscall on host
+    async fn execute_syscall(&self, syscall: Syscall) -> Result<(), Box<dyn Error>> {
+        match syscall.syscall_id {
+            SyscallId::Exit => {
+                println!("exiting...");
+                std::process::exit(0);
+            }
+            SyscallId::Write => {
+                let (fd, ptr, len) = (syscall.arg0, syscall.arg1, syscall.arg2);
+
+                let mut buf = vec![0; len as usize];
+                self.htif.read(ptr, &mut buf).await?;
+
+                let mut f = unsafe { File::from_raw_fd(fd.try_into().expect("valid fd")) };
+                f.write_all(&buf).await?;
+            }
+        }
+        Ok(())
     }
 }
 
