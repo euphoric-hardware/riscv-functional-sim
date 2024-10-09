@@ -3,34 +3,51 @@ use object::{
     read::elf::{FileHeader, SectionHeader, SectionTable},
     Endianness,
 };
-use std::{error::Error, fs, mem, os::fd::FromRawFd, path::Path, time::Duration};
-use tokio::{
-    fs::File,
-    io::{AsyncWrite, AsyncWriteExt},
-};
+use std::{fs, future::Future, io, os::fd::FromRawFd, path::Path, time::Duration};
+use tokio::{fs::File, io::AsyncWriteExt};
 
-#[repr(u64)]
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error("target attempted invalid syscall id: {0}")]
+    InvalidSyscallId(u64),
+
+    #[error("target attempted syscall with invalid param: arg{arg_no}={value}")]
+    InvalidSyscallArg { arg_no: u8, value: u64 },
+
+    #[error("syscall failed on host")]
+    SyscallFailed {
+        io_error: io::Error,
+        syscall: Syscall,
+    },
+
+    #[error("ELF parsing failed")]
+    ElfError(#[from] object::Error),
+
+    #[error("host I/O error")]
+    IoError(#[from] io::Error),
+}
+
+type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Debug)]
 pub enum SyscallId {
     Write,
     Exit,
 }
 
 impl TryFrom<u64> for SyscallId {
-    type Error = (); // invalid syscall
-    fn try_from(value: u64) -> Result<Self, Self::Error> {
+    type Error = crate::Error;
+    fn try_from(value: u64) -> Result<Self> {
         match value {
             64 => Ok(Self::Write),
             93 => Ok(Self::Exit),
-            _ => Err(()),
+            _ => Err(Error::InvalidSyscallId(value)),
         }
     }
 }
 
-type Errno = i32;
-type SysResult = Result<u64, Errno>;
-
-#[repr(packed)]
-struct Syscall {
+#[derive(Debug)]
+pub struct Syscall {
     syscall_id: SyscallId,
     arg0: u64,
     arg1: u64,
@@ -55,11 +72,10 @@ impl Syscall {
 }
 
 pub trait Htif {
-    async fn read(&self, ptr: u64, buf: &mut [u8]) -> Result<usize, Box<dyn Error>>;
-    async fn write(&self, ptr: u64, buf: &[u8]) -> Result<usize, Box<dyn Error>>;
+    fn read(&self, ptr: u64, buf: &mut [u8]) -> impl Future<Output = Result<u64>> + Send;
+    fn write(&self, ptr: u64, buf: &[u8]) -> impl Future<Output = Result<u64>> + Send;
 }
 
-// not sure whether to keep this--will discuss later
 // wrapper for object's elf, which is quite annoying
 pub struct RiscvElf {
     data: Vec<u8>,
@@ -82,7 +98,7 @@ impl RiscvElf {
         self.inner.sections(self.endianness(), &self.data)
     }
 
-    pub fn extract_htif_base(&self) -> Result<u64, Box<dyn Error>> {
+    pub fn extract_htif_base(&self) -> Result<u64> {
         const HTIF_SECTION_NAME: &str = ".htif";
         const HTIF_BASE_ADDR: u64 = 0x80000000;
 
@@ -90,7 +106,7 @@ impl RiscvElf {
         let sections = self.sections()?;
 
         let htif_section = sections.iter().find(|s| {
-            String::from_utf8_lossy(sections.section_name(e, s).expect("fix later"))
+            String::from_utf8_lossy(sections.section_name(e, s).unwrap_or_default())
                 == HTIF_SECTION_NAME
         });
 
@@ -100,7 +116,7 @@ impl RiscvElf {
 
 type ElfSectionTable64<'a> = SectionTable<'a, FileHeader64<Endianness>>;
 
-struct Frontend<H> {
+pub struct Frontend<H> {
     htif: H,
     elf: RiscvElf,
     to_host: u64, // pointers
@@ -108,9 +124,7 @@ struct Frontend<H> {
 }
 
 impl<H: Htif> Frontend<H> {
-    const POLL_DELAY_MS: u64 = 500;
-
-    fn try_new(htif: H, elf_path: impl AsRef<Path>) -> Result<Self, Box<dyn Error>> {
+    pub fn try_new(htif: H, elf_path: impl AsRef<Path>) -> Result<Self> {
         let elf_data = fs::read(elf_path)?; // add error ctxt later
         let elf = RiscvElf::try_new(elf_data)?;
         let htif_base = elf.extract_htif_base()?;
@@ -124,7 +138,7 @@ impl<H: Htif> Frontend<H> {
     }
 
     // write appropriate sections of elf into memory
-    async fn write_elf(&self) -> Result<(), Box<dyn Error>> {
+    pub async fn write_elf(&self) -> Result<()> {
         let e = self.elf.endianness();
 
         for section in self.elf.sections()?.iter() {
@@ -140,8 +154,7 @@ impl<H: Htif> Frontend<H> {
     }
 
     // todo(far): abstract this out
-    async fn poll(&self) -> Result<(), Box<dyn Error>> {
-        let delay = Duration::from_millis(Self::POLL_DELAY_MS);
+    pub async fn poll(&self, delay: Duration) -> Result<()> {
         loop {
             let mut buf = [0; size_of::<Syscall>()];
             self.htif.read(self.to_host, &mut buf).await?;
@@ -161,7 +174,7 @@ impl<H: Htif> Frontend<H> {
     }
 
     // execute syscall on host
-    async fn execute_syscall(&self, syscall: Syscall) -> Result<(), Box<dyn Error>> {
+    async fn execute_syscall(&self, syscall: Syscall) -> Result<()> {
         match syscall.syscall_id {
             SyscallId::Exit => {
                 println!("exiting...");
@@ -173,11 +186,17 @@ impl<H: Htif> Frontend<H> {
                 let mut buf = vec![0; len as usize];
                 self.htif.read(ptr, &mut buf).await?;
 
-                let mut f = unsafe { File::from_raw_fd(fd.try_into().expect("valid fd")) };
-                f.write_all(&buf).await?;
+                let fd = fd.try_into().map_err(|_| Error::InvalidSyscallArg {
+                    arg_no: 0,
+                    value: syscall.arg0,
+                })?;
+                let mut f = unsafe { File::from_raw_fd(fd) };
+
+                f.write_all(&buf)
+                    .await
+                    .map_err(|io_error| Error::SyscallFailed { io_error, syscall })
             }
         }
-        Ok(())
     }
 }
 
