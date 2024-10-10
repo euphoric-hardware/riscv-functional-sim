@@ -40,7 +40,7 @@ impl Rom {
     }
 
     pub fn get_instruction(&self, address: usize) -> u32 {
-        return self.data[address];
+        return self.data[address as usize];
     }
 
 }

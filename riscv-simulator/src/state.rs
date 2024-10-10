@@ -1,13 +1,13 @@
 use crate::regfile::RegFile;
 
-pub struct State {
+pub struct State<'a> {
     pc: u64,                  // program counter
-    register_file: RegFile, // register file
+    register_file: &'a mut RegFile, // register file
 }
 
-impl State {
+impl<'a> State<'a> {
     // constructor
-    pub fn new_state(pc: u64, register_file: RegFile) -> Self {
+    pub fn new_state(pc: u64, register_file: &'a mut RegFile) -> Self {
         State {
             pc: pc,
             register_file: register_file,
@@ -18,8 +18,12 @@ impl State {
         return self.pc;
     }
 
-    pub fn get_regfile(&self) -> &RegFile {
-        return &self.register_file;
+    pub fn get_regfile(&mut self) -> &mut RegFile {
+        return self.register_file;
+    }
+
+    pub fn increment_pc(& mut self) {
+        self.pc += 1;
     }
 
 }
