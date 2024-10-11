@@ -1,4 +1,5 @@
 use crate::Rom;
+use crate::instructions::Immediate;
 pub struct Disassembler<'a> {
     rom: &'a Rom
 }
@@ -8,17 +9,18 @@ impl<'a> Disassembler<'a> {
         return Disassembler {rom: rom}
     }
 
-    fn disassemble_immediate_logic_arithmetic(instruction: u32) -> String {
+    fn disassemble_immediate_logic_arithmetic(instruction_word: u32) -> String {
         // check funct3 field
         let mut result = String::from("");
-        match (instruction >> 12) & 0x7 {
+        let instruction: Immediate = Immediate::from_bytes(instruction_word.to_le_bytes());
+        match instruction.funct3() {
             0x0 => result.push_str("addi"),
             0x1 => result.push_str("slli"),
             0x2 => result.push_str("slti"),
             0x3 => result.push_str("sltiu"),
             0x4 => result.push_str("xori"),
             0x5 => {
-                match (instruction >> 25) {
+                match (instruction.imm() >> 5) & 0x20 {
                     0x00 => result.push_str("srli"),
                     0x20 => result.push_str("srai"),
                     _ => result.push_str("ILLEGAL INSTRUCTION")
@@ -29,10 +31,10 @@ impl<'a> Disassembler<'a> {
             _ => result.push_str("ILLEGAL INSTRUCTION")
         }
 
-        if result.as_str() != "ILLEGAL INSTRUCTION" {
-            let operands = format!(" r{rd}, r{rs}, {imm}", rd = (instruction >> 7) & 0x1f, rs = (instruction >> 15) & 0x1f, imm = (instruction >> 20));
-            result.push_str(&operands);
-        }
+        
+        let operands = format!(" r{rd}, r{rs}, {imm}", rd = (instruction.rd()) as u64, rs = (instruction.rs1()) as u64, imm = instruction.imm() as i32);
+        result.push_str(&operands);
+        
         return result;
     }
 

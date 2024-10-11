@@ -2,10 +2,10 @@ import sys
 import random
 import struct
 
-def generate_immediate_arith_instruction():
+def generate_immediate_arith_instruction(operation=-1):
     op = 0x13 # set opcode to indicate immediate arithmetic operations
     rd = random.randint(0, 31)
-    funct3 = random.randint(0, 7)
+    funct3 = random.randint(0, 7) if operation == -1 else operation
     rs1 = random.randint(0, 31)
 
     if funct3 == 5:

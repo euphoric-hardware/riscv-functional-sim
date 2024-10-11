@@ -13,7 +13,7 @@ use rom::Rom;
 use state::State;
 use processor::Processor;
 
-use std::env;
+use std::{any::Any, env};
 
 fn main() {
     // get command line args
@@ -25,16 +25,17 @@ fn main() {
 
     // create processor components
     let mut instruction_memory:InstructionMemory = InstructionMemory::new_instruction_memory(&rom);
-    let mut register_file:RegFile = RegFile::new_regfile(16);
+    let mut register_file:RegFile = RegFile::new_regfile(32);
     let mut state:State = State::new_state(0, &mut register_file);
     let mut processor:Processor = Processor::new_processor(&mut state, &instruction_memory);
 
     
-
     while (processor.get_state().get_pc() as usize) < rom.get_length() {
-        println!("{:#04x} {}", processor.get_state().get_pc(), disassembler.get_trace(processor.get_state().get_pc() as usize));
+        println!("{trace}", trace = disassembler.get_trace(processor.get_state().get_pc() as usize));
+        processor.step();
         processor.get_state().increment_pc();
     }
 
+    processor.display_state();
 }  
 
