@@ -1,4 +1,3 @@
-use core::num;
 
 pub struct RegFile {
     data: Vec<u64>

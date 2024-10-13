@@ -18,9 +18,49 @@ def generate_immediate_arith_instruction(operation=-1):
     print(hex(instruction))
     return instruction
 
+def generate_immediate_memory_instruction(operation=-1):
+    op = 0x3 # set opcode to indicate load operations
+    rd = random.randint(0, 31)
+
+    funct3 = 3
+    while funct3 == 3:
+        funct3 = random.randint(0, 5)
+    rs1 = random.randint(0, 31)
+
+    imm = random.randint(0, 0xfff)
+    
+    instruction = ((imm << 20) | (rs1 << 15) | (funct3 << 12) | (rd << 7) | op)
+    print(hex(instruction))
+    return instruction
+
+def generate_store_memory_instruction(operation=-1):
+    op = 0x23 # set opcode to indicate store operations
+    imm_lower = random.randint(0, 31)
+
+    funct3 = 4
+    while funct3 == 4:
+        funct3 = random.randint(0, 2)
+    rs1 = random.randint(0, 31)
+    rs2 = random.randint(0, 31)
+
+    imm_upper = random.randint(0, 0x7f)
+    
+    instruction = ((imm_upper << 25) | (rs2 << 20) | (rs1 << 15) | (funct3 << 12) | (imm_lower << 7) | op)
+    print(hex(instruction))
+    return instruction
 
 def generate_instructions(n):
-    return [generate_immediate_arith_instruction() for _ in range(n)]
+    instructions = []
+    for _ in range(n):
+        x = random.randint(0, 2)
+        match x:
+            case 0:
+               instructions.append(generate_immediate_arith_instruction())
+            case 1:
+                instructions.append(generate_immediate_memory_instruction())
+            case 2:
+                instructions.append(generate_store_memory_instruction())
+    return instructions
 
 if __name__ == "__main__":
     instructions = generate_instructions(int(sys.argv[2]))

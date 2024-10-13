@@ -9,7 +9,7 @@ impl InstructionMemory {
         // TODO - implement rom header reading. For now, assume the rom is just instrctions
         let mut data: Vec<u32> = (0..0).collect();
 
-        for address in (0..rom.get_length()) {
+        for address in 0..rom.get_length() {
             data.push(rom.get_instruction(address));
         }
 
