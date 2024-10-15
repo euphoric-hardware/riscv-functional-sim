@@ -1,0 +1,10 @@
+[package]
+name = "sim"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+log = { version = "0.4.22", features = ["release_max_level_off"] }
+
+[dev-dependencies]
+env_logger = "0.11.5"
