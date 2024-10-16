@@ -5,6 +5,7 @@ pub struct Cpu {
     pub dram: Vec<u8>,
 }
 
+#[derive(Clone, Copy)]
 pub struct Insn(pub u64);
 
 impl Insn {
@@ -38,5 +39,53 @@ impl Insn {
 
     pub fn s_imm(&self) -> u64 {
         (self.bit_range_sign_extended(25, 7) << 7) | self.bit_range(0, 5)
+    }
+
+    pub fn imm12(&self) -> u64 {
+        todo!()
+    }
+
+    pub fn imm12hi(&self) -> u64 {
+        todo!()
+    }
+
+    pub fn imm12lo(&self) -> u64 {
+        todo!()
+    }
+
+    pub fn bimm12hi(&self) -> u64 {
+        todo!()
+    }
+
+    pub fn bimm12lo(&self) -> u64 {
+        todo!()
+    }
+
+    pub fn shamtd(&self) -> u64 {
+        todo!()
+    }
+
+    pub fn shamtw(&self) -> u64 {
+        todo!()
+    }
+
+    pub fn jimm20(&self) -> u64 {
+        todo!()
+    }
+
+    pub fn imm20(&self) -> u64 {
+        todo!()
+    }
+
+    pub fn fm(&self) -> u64 {
+        todo!()
+    }
+
+    pub fn pred(&self) -> u64 {
+        todo!()
+    }
+
+    pub fn succ(&self) -> u64 {
+        todo!()
     }
 }

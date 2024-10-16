@@ -1,8 +1,11 @@
+use crate::cpu::{Cpu, Insn};
+
 pub fn addi(insn: Insn, cpu: &mut Cpu) {
-    crate::trace_insn!("addi", rs1 = insn.rs1(), rd = insn.rd(), imm = insn.s_imm());
+    crate::trace_insn!("addi", rd = insn.rd(), rs1 = insn.rs1(), imm12 = insn.imm12());
 
-    let rs1_val = cpu.regs[insn.rs1() as usize];
-    let imm = insn.s_imm();
+    let rd = insn.rd();
+    let rs1 = insn.rs1();
+    let imm12 = insn.imm12();
 
-    cpu.regs[insn.rd() as usize] = rs1_val.wrapping_add(imm);
+    todo!();
 }

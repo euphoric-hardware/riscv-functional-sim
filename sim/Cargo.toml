@@ -8,3 +8,7 @@ log = { version = "0.4.22", features = ["release_max_level_off"] }
 
 [dev-dependencies]
 env_logger = "0.11.5"
+
+[build-dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
