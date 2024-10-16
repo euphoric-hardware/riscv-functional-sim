@@ -1,3 +1,0 @@
-[submodule "sim/riscv-opcodes"]
-	path = sim/riscv-opcodes
-	url = https://github.com/riscv/riscv-opcodes
