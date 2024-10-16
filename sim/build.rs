@@ -4,7 +4,7 @@ use std::{
     collections::BTreeMap,
     env,
     fs::{self, File, OpenOptions},
-    io::Write,
+    io::{self, Write},
     path::Path,
     process::Command,
 };
@@ -116,6 +116,41 @@ impl Cpu {
     writeln!(handle, "{}", end).expect("write");
 }
 
+fn generate_insn_arg_luts<T: io::Read>(out_dir: &Path, csv_reader: &mut csv::Reader<T>) {
+    let insn_arg_luts = out_dir
+        .join("src")
+        .join("generated")
+        .join("insn_arg_luts.rs");
+    if fs::exists(&insn_arg_luts).unwrap_or(true) {
+        fs::remove_file(&insn_arg_luts).expect("remove insn_arg_luts");
+    }
+    let mut handle = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(&insn_arg_luts)
+        .expect("insn_arg_luts.rs");
+
+    let raw = r#"use crate::cpu::Insn;
+
+impl Insn {"#;
+
+    writeln!(handle, "{}", raw).expect("write");
+
+    for line in csv_reader.records() {
+        let line = line.expect("csv parse failed");
+        let insn = &line[0];
+        let offset = line[2].trim().parse::<u64>().expect("invalid offset");
+        let len = line[1].trim().parse::<u64>().expect("invalid end") - offset + 1;
+
+        writeln!(
+            handle,
+            "    pub fn {insn}(&self) -> u64 {{ self.bit_range({offset}, {len}) }}"
+        )
+        .expect("write");
+    }
+    writeln!(handle, "}}").expect("write");
+}
+
 fn main() {
     let out_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let out_dir = Path::new(&out_dir);
@@ -127,18 +162,23 @@ fn main() {
         .output()
         .expect("running make failed");
     // commented out because of my intellisense/pyenv shenanigans
-    if !cmd.status.success() {
-        panic!(
-            "make failed with output: {}",
-            String::from_utf8_lossy(&cmd.stderr)
-        );
-    }
+    // if !cmd.status.success() {
+    //     panic!(
+    //         "make failed with output: {}",
+    //         String::from_utf8_lossy(&cmd.stderr)
+    //     );
+    // }
 
     let config: BTreeMap<String, ParsedInsn> = serde_yaml::from_reader(
         File::open(&spec_dir.join("instr_dict.yaml")).expect("instr_dict.yaml not found"),
     )
     .expect("yaml deserialize");
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .from_path(&spec_dir.join("arg_lut.csv"))
+        .expect("arg_lut.csv not found");
 
     generate_instruction_files(&out_dir, &config);
     generate_cpu_execute_arms(&out_dir, &config);
+    generate_insn_arg_luts(&out_dir, &mut rdr);
 }
