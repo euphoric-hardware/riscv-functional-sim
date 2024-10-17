@@ -17,6 +17,10 @@ impl<'a> State<'a> {
     pub fn get_pc(&self) -> u64 {
         return self.pc;
     }
+    
+    pub fn set_pc(&mut self, value: u64) {
+        self.pc = value;
+    }
 
     pub fn get_regfile(&mut self) -> &mut RegFile {
         return self.register_file;

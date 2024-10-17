@@ -15,7 +15,7 @@ use state::State;
 use memory::Memory;
 use processor::Processor;
 
-use std::env;
+use std::{cmp::max, env, mem};
 
 fn main() {
     // get command line args
@@ -29,7 +29,7 @@ fn main() {
     let instruction_memory:InstructionMemory = InstructionMemory::new_instruction_memory(&rom);
     let mut register_file:RegFile = RegFile::new_regfile(32);
     let mut state:State = State::new_state(0, &mut register_file);
-    let mut memory:Memory = Memory::new_memory(0x100000000);
+    let mut memory:Memory = Memory::new_memory(0xffffffff);
     let mut processor:Processor = Processor::new_processor(&mut state, &instruction_memory, &mut memory);
     
     while (processor.get_state().get_pc() as usize) < rom.get_length() {

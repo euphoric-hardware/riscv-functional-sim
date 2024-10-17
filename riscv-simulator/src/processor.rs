@@ -1,6 +1,6 @@
 use crate::{
     instruction_memory::InstructionMemory,
-    instructions::{IType, RType, SType},
+    instructions::{BType, IType, RType, SType},
     memory::Memory,
     state::State,
 };
@@ -112,6 +112,20 @@ impl<'a> Processor<'a> {
                 }
             }
 
+            /* BRANCHES */
+            0x63 => {
+                let instruction: BType = BType::from_bytes(instruction_word.to_le_bytes());
+                match instruction.funct3() {
+                    0x0 => self.bge(instruction),
+                    0x1 => self.bne(instruction),
+                    0x4 => self.blt(instruction),
+                    0x5 => self.bge(instruction),
+                    0x6 => self.bltu(instruction),
+                    0x7 => self.bgeu(instruction),
+                    _ => println!("ILLEGAL INSTRUCTION"),
+                }
+            }
+
             _ => println!("ILLEGAL INSTRUCTION"),
         }
 
@@ -127,7 +141,7 @@ impl<'a> Processor<'a> {
             .read(instruction.rs1() as usize);
         self.get_state().get_regfile().write(
             instruction.rd() as usize,
-            ((rs1 as i64).wrapping_add(Self::sign_extend_itype(instruction.imm()))) as u64,
+            (rs1 as i64 + instruction.imm() as i64) as u64,
         );
     }
 
@@ -237,7 +251,8 @@ impl<'a> Processor<'a> {
 
     /* LOAD OPERATIONS */
     fn lb(&mut self, instruction: IType) {
-        let address: usize = (instruction.rs1() as u64 + instruction.imm() as u64) as usize;
+        let address: usize =
+            (instruction.rs1() as u64).wrapping_add(instruction.imm() as u64) as usize;
         let value = (self.memory.read(address) as i64) as u64;
         self.get_state()
             .get_regfile()
@@ -245,7 +260,8 @@ impl<'a> Processor<'a> {
     }
 
     fn lh(&mut self, instruction: IType) {
-        let address: usize = (instruction.rs1() as u64 + instruction.imm() as u64) as usize;
+        let address: usize =
+            (instruction.rs1() as u64).wrapping_add(instruction.imm() as u64) as usize;
         let value =
             (((self.memory.read(address + 1) << 8) | self.memory.read(address)) as i64) as u64;
         self.get_state()
@@ -254,7 +270,8 @@ impl<'a> Processor<'a> {
     }
 
     fn lw(&mut self, instruction: IType) {
-        let address: usize = (instruction.rs1() as u64 + instruction.imm() as u64) as usize;
+        let address: usize =
+            (instruction.rs1() as u64).wrapping_add(instruction.imm() as u64) as usize;
         let value = (((self.memory.read(address + 3) << 24)
             | (self.memory.read(address + 2) << 16)
             | (self.memory.read(address + 1) << 8)
@@ -265,7 +282,8 @@ impl<'a> Processor<'a> {
     }
 
     fn lbu(&mut self, instruction: IType) {
-        let address: usize = (instruction.rs1() as u64 + instruction.imm() as u64) as usize;
+        let address: usize =
+            (instruction.rs1() as u64).wrapping_add(instruction.imm() as u64) as usize;
         let value = self.memory.read(address) as u64;
         self.get_state()
             .get_regfile()
@@ -273,8 +291,10 @@ impl<'a> Processor<'a> {
     }
 
     fn lhu(&mut self, instruction: IType) {
-        let address: usize = (instruction.rs1() as u64 + instruction.imm() as u64) as usize;
-        let value = ((self.memory.read(address + 1) << 8) | self.memory.read(address)) as u64;
+        let address: usize =
+            (instruction.rs1() as u64).wrapping_add(instruction.imm() as u64) as usize;
+        let value =
+            ((self.memory.read(address.wrapping_add(1)) << 8) | self.memory.read(address)) as u64;
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, value);
@@ -433,32 +453,89 @@ impl<'a> Processor<'a> {
 
     /* STORE OPERATIONS */
     fn sb(&mut self, instruction: SType) {
-        let address: usize = (instruction.rs1() as u64
-            + (instruction.imm_upper() << 5 | instruction.imm_lower()) as u64)
+        let address: usize = (instruction.rs1() as u64)
+            .wrapping_add((instruction.imm_upper() << 5 | instruction.imm_lower()) as u64)
             as usize;
         self.memory.write(address, (instruction.rs2() & 0xff) as u8);
     }
 
     fn sh(&mut self, instruction: SType) {
-        let address: usize = (instruction.rs1() as u64
-            + (instruction.imm_upper() << 5 | instruction.imm_lower()) as u64)
+        let address: usize = (instruction.rs1() as u64)
+            .wrapping_add((instruction.imm_upper() << 5 | instruction.imm_lower()) as u64)
             as usize;
         self.memory.write(address, (instruction.rs2() & 0xff) as u8);
-        self.memory
-            .write(address + 1, (((instruction.rs2() as u64) >> 8) & 0xff) as u8);
+        self.memory.write(
+            address + 1,
+            (((instruction.rs2() as u64) >> 8) & 0xff) as u8,
+        );
     }
 
     fn sw(&mut self, instruction: SType) {
-        let address: usize = (instruction.rs1() as u64
-            + (instruction.imm_upper() << 5 | instruction.imm_lower()) as u64)
+        let address: usize = (instruction.rs1() as u64)
+            .wrapping_add((instruction.imm_upper() << 5 | instruction.imm_lower()) as u64)
             as usize;
         self.memory.write(address, (instruction.rs2() & 0xff) as u8);
-        self.memory
-            .write(address + 1, (((instruction.rs2() as u64) >> 8) & 0xff) as u8);
-        self.memory
-            .write(address + 2, (((instruction.rs2() as u64) >> 16) & 0xff) as u8);
-        self.memory
-            .write(address + 3, (((instruction.rs2() as u64) >> 24) & 0xff) as u8);
+        self.memory.write(
+            address + 1,
+            (((instruction.rs2() as u64) >> 8) & 0xff) as u8,
+        );
+        self.memory.write(
+            address + 2,
+            (((instruction.rs2() as u64) >> 16) & 0xff) as u8,
+        );
+        self.memory.write(
+            address + 3,
+            (((instruction.rs2() as u64) >> 24) & 0xff) as u8,
+        );
+    }
+
+    /* BRANCH OPERATIONS */
+    fn beq(&mut self, instruction: BType) {
+        if (instruction.rs1() as i64) == (instruction.rs2() as i64) {
+            let imm: i32 = (((instruction.imm_upper() as u32) & 0x40 << 12) | (((instruction.imm_lower() as u32) & 0x1 << 11)) | (((instruction.imm_upper() as u32) & 0x3f) << 5) | (instruction.imm_lower() as u32) & 0x1e) as i32;
+            let result = self.get_state().get_pc() + imm as u64;
+            self.get_state().set_pc(result);
+        }
+    }
+
+    fn bne(&mut self, instruction: BType) {
+        if (instruction.rs1() as i64) != (instruction.rs2() as i64) {
+            let imm: i32 = (((instruction.imm_upper() as u32) & 0x40 << 12) | (((instruction.imm_lower() as u32) & 0x1 << 11)) | (((instruction.imm_upper() as u32) & 0x3f) << 5) | (instruction.imm_lower() as u32) & 0x1e) as i32;
+            let result = self.get_state().get_pc() + imm as u64;
+            self.get_state().set_pc(result);
+        }
+    }
+
+    fn blt(&mut self, instruction: BType) {
+        if (instruction.rs1() as i64) < (instruction.rs2() as i64) {
+            let imm: i32 = (((instruction.imm_upper() as u32) & 0x40 << 12) | (((instruction.imm_lower() as u32) & 0x1 << 11)) | (((instruction.imm_upper() as u32) & 0x3f) << 5) | (instruction.imm_lower() as u32) & 0x1e) as i32;
+            let result = self.get_state().get_pc() + imm as u64;
+            self.get_state().set_pc(result);
+        }
+    }
+
+    fn bge(&mut self, instruction: BType) {
+        if (instruction.rs1() as i64) >= (instruction.rs2() as i64) {
+            let imm: i32 = (((instruction.imm_upper() as u32) & 0x40 << 12) | (((instruction.imm_lower() as u32) & 0x1 << 11)) | (((instruction.imm_upper() as u32) & 0x3f) << 5) | (instruction.imm_lower() as u32) & 0x1e) as i32;
+            let result = self.get_state().get_pc() + imm as u64;
+            self.get_state().set_pc(result);
+        }
+    }
+
+    fn bltu(&mut self, instruction: BType) {
+        if instruction.rs1() >= instruction.rs2() {
+            let imm: i32 = (((instruction.imm_upper() as u32) & 0x40 << 12) | (((instruction.imm_lower() as u32) & 0x1 << 11)) | (((instruction.imm_upper() as u32) & 0x3f) << 5) | (instruction.imm_lower() as u32) & 0x1e) as i32;
+            let result = self.get_state().get_pc() + imm as u64;
+            self.get_state().set_pc(result);
+        }
+    }
+
+    fn bgeu(&mut self, instruction: BType) {
+        if instruction.rs1() >= instruction.rs2() {
+            let imm: i32 = (((instruction.imm_upper() as u32) & 0x40 << 12) | (((instruction.imm_lower() as u32) & 0x1 << 11)) | (((instruction.imm_upper() as u32) & 0x3f) << 5) | (instruction.imm_lower() as u32) & 0x1e) as i32;
+            let result = self.get_state().get_pc() + imm as u64;
+            self.get_state().set_pc(result);
+        }
     }
 
     fn sign_extend_itype(imm: u16) -> i64 {

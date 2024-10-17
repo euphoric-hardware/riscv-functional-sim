@@ -49,10 +49,26 @@ def generate_store_memory_instruction(operation=-1):
     print(hex(instruction))
     return instruction
 
+def generate_branch_instruction(operation=-1):
+    op = 0x63 # set opcode to indicate store operations
+    imm_lower = random.randint(2, 31)
+
+    funct3 = 2
+    while funct3 in (2, 3):
+        funct3 = random.randint(0, 7)
+    rs1 = random.randint(0, 31)
+    rs2 = random.randint(0, 31)
+
+    imm_upper = random.randint(0, 0x7f)
+    
+    instruction = ((imm_upper << 25) | (rs2 << 20) | (rs1 << 15) | (funct3 << 12) | (imm_lower << 7) | op)
+    print(hex(instruction))
+    return instruction
+
 def generate_instructions(n):
     instructions = []
     for _ in range(n):
-        x = random.randint(0, 2)
+        x = random.randint(0, 0)
         match x:
             case 0:
                instructions.append(generate_immediate_arith_instruction())
@@ -60,6 +76,8 @@ def generate_instructions(n):
                 instructions.append(generate_immediate_memory_instruction())
             case 2:
                 instructions.append(generate_store_memory_instruction())
+            case 3:
+                instructions.append(generate_branch_instruction())
     return instructions
 
 if __name__ == "__main__":
