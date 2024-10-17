@@ -28,3 +28,13 @@ pub struct SType {
     pub rs2: B5,
     pub imm_upper: B7
 }
+
+#[bitfield]
+pub struct BType {
+    pub opcode: B7,
+    pub imm_lower: B5,
+    pub funct3: B3,
+    pub rs1: B5,
+    pub rs2: B5,
+    pub imm_upper:B7
+}

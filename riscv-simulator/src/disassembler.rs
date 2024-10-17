@@ -1,5 +1,5 @@
 use crate::Rom;
-use crate::instructions::{IType, RType, SType};
+use crate::instructions::{IType, RType, SType, BType};
 pub struct Disassembler<'a> {
     rom: &'a Rom
 }
@@ -124,7 +124,27 @@ impl<'a> Disassembler<'a> {
             _ => return String::from("ILLEGAL INSTRUCTION") 
         }
 
-        let operands = format!(" x{rs2}, {imm}(x{rs}),", rs2 = (instruction.rs2() as u64), rs = (instruction.rs1() as u64), imm = (instruction.imm_upper() << 5 | instruction.imm_lower()) as i32);
+        let operands = format!(" x{rs2}, {imm}(x{rs1}),", rs2 = (instruction.rs2() as u64), rs1 = (instruction.rs1() as u64), imm = (instruction.imm_upper() << 5 | instruction.imm_lower()) as i32);
+        result.push_str(&operands);
+        return result
+    }
+
+    fn disassemble_b_type(instruction_word: u32) -> String {
+        let mut result = String::from("");
+        let instruction: BType = BType::from_bytes(instruction_word.to_le_bytes());
+
+        match instruction.funct3() {
+            0x0 => result.push_str("beq"),
+            0x1 => result.push_str("bne"),
+            0x4 => result.push_str("blt"),
+            0x5 => result.push_str("bge"),
+            0x6 => result.push_str("bltu"),
+            0x7 => result.push_str("bgeu"), 
+            _ => return String::from("ILLEGAL INSTRUCTION") 
+        }
+
+        let imm: i32 = (((instruction.imm_upper() as u32) & 0x40 << 12) | (((instruction.imm_lower() as u32) & 0x1 << 11)) | (((instruction.imm_upper() as u32) & 0x3f) << 5) | (instruction.imm_lower() as u32) & 0x1e) as i32;
+        let operands = format!(" x{rs1}, x{rs2}, {imm}", rs1 = (instruction.rs1() as u64), rs2 = (instruction.rs2() as u64), imm = imm);
         result.push_str(&operands);
         return result
     }
@@ -151,7 +171,13 @@ impl<'a> Disassembler<'a> {
             // stores
             0x23 => {
                 return Self::disassemble_s_type(instruction);
+            },
+
+            // branches
+            0x63 => {
+                return Self::disassemble_b_type(instruction);
             }
+
             _ => return String::from("NOT YET IMPLEMENTED / ILLEGAL INSTRUCTIONS")
         }
     }
