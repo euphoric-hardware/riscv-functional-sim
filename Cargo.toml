@@ -1,8 +1,4 @@
 [workspace]
 
-<<<<<<< Updated upstream
 members = ["fesvr-rs", "sim", "riscv-simulator"]
-=======
-members = ["fesvr-rs", "riscv-simulator"]
->>>>>>> Stashed changes
 resolver = "2"
