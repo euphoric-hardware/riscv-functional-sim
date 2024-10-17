@@ -1,12 +1,17 @@
 use crate::{elf::RiscvElf, syscall::SyscallId, Error, Result, Syscall};
+use log::info;
 use object::{elf::SHT_PROGBITS, read::elf::SectionHeader as _};
-use std::{fs, future::Future, os::fd::FromRawFd as _, path::Path, time::Duration};
-use tokio::{fs::File, io::AsyncWriteExt as _};
-use tracing::info;
+use std::{
+    fs::{self, File},
+    io::Write,
+    os::fd::FromRawFd as _,
+    path::Path,
+    time::Duration,
+};
 
 pub trait Htif {
-    fn read(&self, ptr: u64, buf: &mut [u8]) -> impl Future<Output = Result<u64>> + Send;
-    fn write(&self, ptr: u64, buf: &[u8]) -> impl Future<Output = Result<u64>> + Send;
+    fn read(&self, ptr: u64, buf: &mut [u8]) -> Result<u64>;
+    fn write(&self, ptr: u64, buf: &[u8]) -> Result<u64>;
 }
 
 pub struct Frontend<H> {
@@ -39,7 +44,7 @@ impl<H: Htif> Frontend<H> {
                 let data = section.data(e, &*self.elf.data)?;
 
                 // const CHUNK_SIZE: u64 = 1024; do .chunks() for progress bar later
-                self.htif.write(section.sh_addr(e) as u64, &data).await?;
+                self.htif.write(section.sh_addr(e) as u64, &data)?;
             }
         }
 
@@ -50,25 +55,25 @@ impl<H: Htif> Frontend<H> {
     pub async fn poll(&self, delay: Duration) -> Result<()> {
         loop {
             let mut buf = [0; size_of::<Syscall>()];
-            self.htif.read(self.to_host, &mut buf).await?;
+            self.htif.read(self.to_host, &mut buf)?;
             let syscall = Syscall::from_le_bytes(&buf);
 
             if let Some(syscall) = syscall {
-                self.execute_syscall(syscall).await?;
+                self.execute_syscall(syscall)?;
 
                 // "signal chip that syscall processed" (taken from pyuartsi, verbatim)
-                self.htif.write(self.to_host, &[0]).await?;
-                self.htif.write(self.from_host, &[1]).await?;
+                self.htif.write(self.to_host, &[0])?;
+                self.htif.write(self.from_host, &[1])?;
             } else {
                 info!("target attempted invalid syscall: {:?}", syscall);
             }
 
-            tokio::time::sleep(delay).await;
+            std::thread::sleep(delay);
         }
     }
 
     // execute syscall on host
-    async fn execute_syscall(&self, syscall: Syscall) -> Result<()> {
+    fn execute_syscall(&self, syscall: Syscall) -> Result<()> {
         match syscall.syscall_id {
             SyscallId::Exit => {
                 info!("target requested exit, exiting...");
@@ -78,7 +83,7 @@ impl<H: Htif> Frontend<H> {
                 let (fd, ptr, len) = (syscall.arg0, syscall.arg1, syscall.arg2);
 
                 let mut buf = vec![0; len as usize];
-                self.htif.read(ptr, &mut buf).await?;
+                self.htif.read(ptr, &mut buf)?;
 
                 let fd = fd.try_into().map_err(|_| Error::InvalidSyscallArg {
                     arg_no: 0,
@@ -87,7 +92,6 @@ impl<H: Htif> Frontend<H> {
                 let mut f = unsafe { File::from_raw_fd(fd) };
 
                 f.write_all(&buf)
-                    .await
                     .map_err(|io_error| Error::SyscallFailed { io_error, syscall })
             }
         }

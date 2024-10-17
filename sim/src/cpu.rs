@@ -9,6 +9,10 @@ pub struct Cpu {
 pub struct Insn(pub u64);
 
 impl Insn {
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        Self(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as u64)
+    }
+
     pub fn bits(&self) -> u64 {
         self.0
     }

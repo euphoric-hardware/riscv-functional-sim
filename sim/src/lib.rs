@@ -14,7 +14,7 @@ pub use log::*;
 mod tests {
     use super::cpu::{Cpu, Insn};
 
-    use std::sync::Once;
+    use std::{fs, sync::Once};
 
     static INIT: Once = Once::new();
     fn setup() {
@@ -34,5 +34,19 @@ mod tests {
 
         println!("{:?}", cpu.regs);
         assert_eq!(cpu.regs[5], 123 + 456)
+    }
+
+    #[test]
+    fn run_rom() {
+        setup();
+
+        let mut cpu = Cpu::default();
+        let rom = fs::read("test_rom").expect("test_rom not found");
+
+        while cpu.pc < rom.len() as u64 {
+            // just handle standard 32-bit wide insns right now
+            let insn = Insn::from_bytes(&rom[cpu.pc as usize..cpu.pc as usize + 4]);
+            cpu.execute(insn);
+        }
     }
 }
