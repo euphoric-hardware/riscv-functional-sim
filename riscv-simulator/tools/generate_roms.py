@@ -65,23 +65,23 @@ def generate_branch_instruction(operation=-1):
     print(hex(instruction))
     return instruction
 
-def generate_instructions(n):
-    instructions = []
-    for _ in range(n):
-        x = random.randint(0, 0)
-        match x:
-            case 0:
-               instructions.append(generate_immediate_arith_instruction())
-            case 1:
-                instructions.append(generate_immediate_memory_instruction())
-            case 2:
-                instructions.append(generate_store_memory_instruction())
-            case 3:
-                instructions.append(generate_branch_instruction())
-    return instructions
+def generate_instructions(args, n):
+    results = []
+    for i in range(n):
+        i = random.randint(0, len(args) - 1)
+        results.append(args[i]())
+    return results
+# def generate_jump_instruction(operation=-1):
+#     op = 0x67 if random.randint(0, 1) else 0x6f
+#     if op == 0x67:
+#         # jalr
+    
+#     if op == 0x6f:
+#         # jal
+
 
 if __name__ == "__main__":
-    instructions = generate_instructions(int(sys.argv[2]))
+    instructions = generate_instructions([generate_immediate_arith_instruction], int(sys.argv[2]))
     
     with open(sys.argv[1], "wb") as binary_file:
         for instruction in instructions:

@@ -1,44 +1,41 @@
-use std::io::prelude::*;
 use std::fs::File;
+use std::io::prelude::*;
 
 pub struct Rom {
-    data: Vec<u32>,
-    length: usize
+    data: Vec<u8>,
+    length: usize,
 }
 
 impl Rom {
-    pub fn new_rom(filename: String) -> Self{
-        let mut data: Vec<u32> = (0..0).collect();
+    pub fn new_rom(filename: String) -> Self {
+        let mut data: Vec<u8> = (0..0).collect();
 
         let f = File::open(filename).expect("Unable to open ROM\n");
         let mut i: usize = 0;
-        let mut instruction: u32 = 0;
-        
+
         for byte_or_error in f.bytes() {
             let byte = byte_or_error.unwrap();
-            instruction |= u32::from(byte) << (24 - ((i & 0x3) << 3)); // append each byte to the correct place in the 32 bit instruction
-            
-            if i & 0x3 == 0x3 {
-                data.push(instruction);
-                instruction = 0;
-            }
-            i += 1; 
+            data.push(byte);
+            i += 1;
         }
 
         let length = data.len();
 
         Rom {
             data: data,
-            length: length
+            length: length,
         }
     }
 
-    pub fn get_length(&self) -> usize{
+    pub fn get_length(&self) -> usize {
         return self.length;
     }
 
-    pub fn get_instruction(&self, address: usize) -> u32 {
-        return self.data[address as usize];
+    pub fn read_byte(&self, address: usize) -> u8 {
+        return self.data[address as usize] as u8;
     }
 
+    pub fn read_word(&self, address: usize) -> u32 {
+        return (self.data[address + 3 as usize] as u32 | (self.data[address + 2 as usize] as u32 ) << 8 | (self.data[address + 1 as usize] as u32) << 16 | (self.data[address as usize] as u32) << 24) as u32;
+    }
 }

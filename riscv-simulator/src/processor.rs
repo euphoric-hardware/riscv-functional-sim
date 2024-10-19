@@ -1,6 +1,6 @@
 use crate::{
     instruction_memory::InstructionMemory,
-    instructions::{BType, IType, RType, SType},
+    instructions::{BType, IType, JType, RType, SType},
     memory::Memory,
     state::State,
 };
@@ -85,7 +85,7 @@ impl<'a> Processor<'a> {
 
             /* ARITHMETIC */
             0x33 => {
-                let instruction: RType = RType::from_bytes(instruction_word.to_be_bytes());
+                let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
                 match instruction_word & 0xfe007000 {
                     0x0 => self.add(instruction),
                     0x40000000 => self.sub(instruction),
@@ -128,7 +128,6 @@ impl<'a> Processor<'a> {
 
             _ => println!("ILLEGAL INSTRUCTION"),
         }
-
         self.get_state().increment_pc();
     }
 
@@ -141,7 +140,7 @@ impl<'a> Processor<'a> {
             .read(instruction.rs1() as usize);
         self.get_state().get_regfile().write(
             instruction.rd() as usize,
-            (rs1 as i64 + instruction.imm() as i64) as u64,
+            (rs1 as i64 + Self::sign_extend(instruction.imm() as u32) as i64) as u64,
         );
     }
 
@@ -163,7 +162,7 @@ impl<'a> Processor<'a> {
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize) as i64;
-        let result: u64 = if rs1 < Self::sign_extend_itype(instruction.imm()) {
+        let result: u64 = if rs1 < Self::sign_extend(instruction.imm() as u32) as i64 {
             1
         } else {
             0
@@ -179,7 +178,7 @@ impl<'a> Processor<'a> {
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let result: u64 = if rs1 < (Self::sign_extend_itype(instruction.imm()) as u64) {
+        let result: u64 = if rs1 < (Self::sign_extend(instruction.imm() as u32) as u64) {
             1
         } else {
             0
@@ -194,9 +193,10 @@ impl<'a> Processor<'a> {
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        self.get_state()
-            .get_regfile()
-            .write(instruction.rd() as usize, rs1 ^ instruction.imm() as u64);
+        self.get_state().get_regfile().write(
+            instruction.rd() as usize,
+            (rs1 ^ (Self::sign_extend(instruction.imm() as u32) as u64)),
+        );
     }
 
     fn srli(&mut self, instruction: IType) {
@@ -217,7 +217,7 @@ impl<'a> Processor<'a> {
             .get_regfile()
             .read(instruction.rs1() as usize);
         let sign: bool = (rs1 >> 63) == 1;
-        let shift: i64 = Self::sign_extend_itype(((instruction.imm() as u32) & 0x1f) as u16);
+        let shift: i32 = Self::sign_extend(((instruction.imm() as u32) & 0x1f));
         let mut result: u64 = rs1 << shift;
         if sign {
             // fill the leading bits with ones
@@ -234,9 +234,10 @@ impl<'a> Processor<'a> {
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        self.get_state()
-            .get_regfile()
-            .write(instruction.rd() as usize, rs1 | instruction.imm() as u64);
+        self.get_state().get_regfile().write(
+            instruction.rd() as usize,
+            (rs1 | (Self::sign_extend(instruction.imm() as u32) as u64)),
+        );
     }
 
     fn andi(&mut self, instruction: IType) {
@@ -244,9 +245,10 @@ impl<'a> Processor<'a> {
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        self.get_state()
-            .get_regfile()
-            .write(instruction.rd() as usize, rs1 & instruction.imm() as u64);
+        self.get_state().get_regfile().write(
+            instruction.rd() as usize,
+            (rs1 & (Self::sign_extend(instruction.imm() as u32) as u64)),
+        );
     }
 
     /* LOAD OPERATIONS */
@@ -325,7 +327,7 @@ impl<'a> Processor<'a> {
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        let result = rs1.wrapping_sub(rs2);
+        let result = rs1 - (rs2);
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, result);
@@ -491,60 +493,165 @@ impl<'a> Processor<'a> {
 
     /* BRANCH OPERATIONS */
     fn beq(&mut self, instruction: BType) {
-        if (instruction.rs1() as i64) == (instruction.rs2() as i64) {
-            let imm: i32 = (((instruction.imm_upper() as u32) & 0x40 << 12) | (((instruction.imm_lower() as u32) & 0x1 << 11)) | (((instruction.imm_upper() as u32) & 0x3f) << 5) | (instruction.imm_lower() as u32) & 0x1e) as i32;
-            let result = self.get_state().get_pc() + imm as u64;
-            self.get_state().set_pc(result);
+        let rs1 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize);
+        let rs2 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs2() as usize);
+        if (rs1 as i64) == (rs1 as i64) {
+            let imm: i32 = Self::sign_extend(
+                (((instruction.imm_upper() as u32) & 0x7f) << 5)
+                    | ((instruction.imm_lower() as u32) & 0x1 << 10)
+                    | (((instruction.imm_upper() as u32) & 0x3f) << 5)
+                    | (instruction.imm_lower() as u32) & 0x1e,
+            );
+
+            let result = (self.get_state().get_pc()) as i64 + (imm as i64) - 4;
+            self.get_state().set_pc(result as u64);
         }
     }
 
     fn bne(&mut self, instruction: BType) {
-        if (instruction.rs1() as i64) != (instruction.rs2() as i64) {
-            let imm: i32 = (((instruction.imm_upper() as u32) & 0x40 << 12) | (((instruction.imm_lower() as u32) & 0x1 << 11)) | (((instruction.imm_upper() as u32) & 0x3f) << 5) | (instruction.imm_lower() as u32) & 0x1e) as i32;
-            let result = self.get_state().get_pc() + imm as u64;
-            self.get_state().set_pc(result);
+        let rs1 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize);
+        let rs2 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs2() as usize);
+        if (rs1 as i64) != (rs2 as i64) {
+            let imm: i32 = Self::sign_extend(
+                (((instruction.imm_upper() as u32) & 0x7f) << 5)
+                    | ((instruction.imm_lower() as u32) & 0x1 << 10)
+                    | (((instruction.imm_upper() as u32) & 0x3f) << 5)
+                    | (instruction.imm_lower() as u32) & 0x1e,
+            );
+
+            let result = (self.get_state().get_pc()) as i64 + (imm as i64) - 4;
+            self.get_state().set_pc(result as u64);
         }
     }
 
     fn blt(&mut self, instruction: BType) {
-        if (instruction.rs1() as i64) < (instruction.rs2() as i64) {
-            let imm: i32 = (((instruction.imm_upper() as u32) & 0x40 << 12) | (((instruction.imm_lower() as u32) & 0x1 << 11)) | (((instruction.imm_upper() as u32) & 0x3f) << 5) | (instruction.imm_lower() as u32) & 0x1e) as i32;
-            let result = self.get_state().get_pc() + imm as u64;
-            self.get_state().set_pc(result);
+        let rs1 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize);
+        let rs2 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs2() as usize);
+        if (rs1 as i64) < (rs2 as i64) {
+            let imm: i32 = Self::sign_extend(
+                (((instruction.imm_upper() as u32) & 0x7f) << 5)
+                    | ((instruction.imm_lower() as u32) & 0x1 << 10)
+                    | (((instruction.imm_upper() as u32) & 0x3f) << 5)
+                    | (instruction.imm_lower() as u32) & 0x1e,
+            );
+
+            let result = (self.get_state().get_pc()) as i64 + (imm as i64) - 4;
+            self.get_state().set_pc((result as u64));
         }
     }
 
     fn bge(&mut self, instruction: BType) {
-        if (instruction.rs1() as i64) >= (instruction.rs2() as i64) {
-            let imm: i32 = (((instruction.imm_upper() as u32) & 0x40 << 12) | (((instruction.imm_lower() as u32) & 0x1 << 11)) | (((instruction.imm_upper() as u32) & 0x3f) << 5) | (instruction.imm_lower() as u32) & 0x1e) as i32;
-            let result = self.get_state().get_pc() + imm as u64;
-            self.get_state().set_pc(result);
+        let rs1 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize);
+        let rs2 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs2() as usize);
+        if (rs1 as i64) >= (rs2 as i64) {
+            let imm: i32 = Self::sign_extend(
+                (((instruction.imm_upper() as u32) & 0x7f) << 5)
+                    | ((instruction.imm_lower() as u32) & 0x1 << 10)
+                    | (((instruction.imm_upper() as u32) & 0x3f) << 5)
+                    | (instruction.imm_lower() as u32) & 0x1e,
+            );
+
+            let result = (self.get_state().get_pc()) as i64 + (imm as i64) - 4;
+            self.get_state().set_pc((result as u64));
         }
     }
 
     fn bltu(&mut self, instruction: BType) {
-        if instruction.rs1() >= instruction.rs2() {
-            let imm: i32 = (((instruction.imm_upper() as u32) & 0x40 << 12) | (((instruction.imm_lower() as u32) & 0x1 << 11)) | (((instruction.imm_upper() as u32) & 0x3f) << 5) | (instruction.imm_lower() as u32) & 0x1e) as i32;
-            let result = self.get_state().get_pc() + imm as u64;
-            self.get_state().set_pc(result);
+        let rs1 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize);
+        let rs2 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs2() as usize);
+        if rs1 >= rs2 {
+            let imm: i32 = Self::sign_extend(
+                (((instruction.imm_upper() as u32) & 0x7f) << 5)
+                    | ((instruction.imm_lower() as u32) & 0x1 << 10)
+                    | (((instruction.imm_upper() as u32) & 0x3f) << 5)
+                    | (instruction.imm_lower() as u32) & 0x1e,
+            );
+
+            let result = (self.get_state().get_pc()) as i64 + (imm as i64) - 4;
+            self.get_state().set_pc((result as u64));
         }
     }
 
     fn bgeu(&mut self, instruction: BType) {
-        if instruction.rs1() >= instruction.rs2() {
-            let imm: i32 = (((instruction.imm_upper() as u32) & 0x40 << 12) | (((instruction.imm_lower() as u32) & 0x1 << 11)) | (((instruction.imm_upper() as u32) & 0x3f) << 5) | (instruction.imm_lower() as u32) & 0x1e) as i32;
-            let result = self.get_state().get_pc() + imm as u64;
-            self.get_state().set_pc(result);
+        let rs1 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize);
+        let rs2 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs2() as usize);
+        if rs1 >= rs2 {
+            let imm: i32 = Self::sign_extend(
+                (((instruction.imm_upper() as u32) & 0x7f) << 5)
+                    | ((instruction.imm_lower() as u32) & 0x1 << 10)
+                    | (((instruction.imm_upper() as u32) & 0x3f) << 5)
+                    | (instruction.imm_lower() as u32) & 0x1e,
+            );
+
+            let result = (self.get_state().get_pc()) as i64 + (imm as i64) - 4;
+            self.get_state().set_pc((result as u64));
         }
     }
 
-    fn sign_extend_itype(imm: u16) -> i64 {
+    /* JUMP OPERATIONS */
+    fn jal(&mut self, instruction: JType) {
+        let imm: i64 = Self::sign_extend(
+            ((instruction.imm_20() as u32) << 20)
+                | ((instruction.imm_12_19() as u32) << 12)
+                | ((instruction.imm_11() as u32) << 11)
+                | ((instruction.imm_1_10() as u32) << 1) as u32,
+        ) as i64;
+        let result: u64 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rd() as usize)
+            + imm as u64;
+        let stored_pc: u64 = self.get_state().get_pc() + 1;
+        self.get_state()
+            .get_regfile()
+            .write(instruction.rd() as usize, stored_pc);
+    }
+
+    fn jalr(&mut self, instruction: JType) {}
+
+    fn sign_extend(imm: u32) -> i32 {
         let imm12 = imm & 0xFFF;
 
         if (imm12 & 0x800) != 0 {
-            (imm12 as i64) | !0xFFF
+            (imm12 as i32) | !0xFFF
         } else {
-            imm12 as i64
+            imm12 as i32
         }
     }
 }

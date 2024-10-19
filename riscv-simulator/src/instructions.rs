@@ -38,3 +38,20 @@ pub struct BType {
     pub rs2: B5,
     pub imm_upper:B7
 }
+
+#[bitfield]
+pub struct JType {
+    pub opcode: B7,
+    pub rd: B5,
+    pub imm_12_19: B8,
+    pub imm_11: B1,
+    pub imm_1_10: B10,
+    pub imm_20: B1
+}
+
+#[bitfield]
+pub struct UType {
+    pub opcode: B7,
+    pub rd: B5,
+    pub imm: B20
+}
