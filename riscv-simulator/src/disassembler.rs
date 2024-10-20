@@ -181,7 +181,7 @@ impl<'a> Disassembler<'a> {
             | ((instruction.imm_12_19() as u32) << 12)
             | ((instruction.imm_11() as u32) << 11)
             | ((instruction.imm_1_10() as u32) << 1) as u32);
-        let operands = format!(" {imm}", imm = imm);
+        let operands = format!(" x{rd}, {imm}", rd = instruction.rd(), imm = imm);
         result.push_str(&operands);
         return result;
     }

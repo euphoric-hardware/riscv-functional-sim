@@ -8,6 +8,7 @@ pub struct Processor<'a> {
     state: &'a mut State<'a>,
     instruction_memory: &'a InstructionMemory,
     memory: &'a mut Memory,
+    increment_pc: bool,
 }
 
 impl<'a> Processor<'a> {
@@ -20,6 +21,7 @@ impl<'a> Processor<'a> {
             state,
             instruction_memory,
             memory,
+            increment_pc: false,
         }
     }
 
@@ -45,7 +47,7 @@ impl<'a> Processor<'a> {
             .instruction_memory
             .read(self.get_state().get_pc() as usize);
         let opcode: u8 = (instruction_word & 0x7f) as u8;
-
+        self.increment_pc = true;
         match opcode {
             /* IMMEDIATE ARITHMETIC */
             0x13 => {
@@ -116,7 +118,7 @@ impl<'a> Processor<'a> {
             0x63 => {
                 let instruction: BType = BType::from_bytes(instruction_word.to_le_bytes());
                 match instruction.funct3() {
-                    0x0 => self.bge(instruction),
+                    0x0 => self.beq(instruction),
                     0x1 => self.bne(instruction),
                     0x4 => self.blt(instruction),
                     0x5 => self.bge(instruction),
@@ -126,9 +128,23 @@ impl<'a> Processor<'a> {
                 }
             }
 
+            /* JUMPS */
+            0x6F => {
+                let instruction: JType = JType::from_bytes(instruction_word.to_le_bytes());
+                self.jal(instruction);
+            }
+
+            0x67 => {
+                let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+                self.jalr(instruction);
+            }
+
             _ => println!("ILLEGAL INSTRUCTION"),
         }
-        self.get_state().increment_pc();
+
+        if self.increment_pc {
+            self.get_state().increment_pc();
+        }
     }
 
     /* IMMEDIATE OPERATIONS */
@@ -509,7 +525,7 @@ impl<'a> Processor<'a> {
                     | (instruction.imm_lower() as u32) & 0x1e,
             );
 
-            let result = (self.get_state().get_pc()) as i64 + (imm as i64) - 4;
+            let result = (self.get_state().get_pc()) as i64 + (imm as i64);
             self.get_state().set_pc(result as u64);
         }
     }
@@ -531,8 +547,9 @@ impl<'a> Processor<'a> {
                     | (instruction.imm_lower() as u32) & 0x1e,
             );
 
-            let result = (self.get_state().get_pc()) as i64 + (imm as i64) - 4;
+            let result = (self.get_state().get_pc()) as i64 + (imm as i64);
             self.get_state().set_pc(result as u64);
+            self.increment_pc = false;
         }
     }
 
@@ -553,8 +570,9 @@ impl<'a> Processor<'a> {
                     | (instruction.imm_lower() as u32) & 0x1e,
             );
 
-            let result = (self.get_state().get_pc()) as i64 + (imm as i64) - 4;
+            let result = (self.get_state().get_pc()) as i64 + (imm as i64);
             self.get_state().set_pc((result as u64));
+            self.increment_pc = false;
         }
     }
 
@@ -575,8 +593,9 @@ impl<'a> Processor<'a> {
                     | (instruction.imm_lower() as u32) & 0x1e,
             );
 
-            let result = (self.get_state().get_pc()) as i64 + (imm as i64) - 4;
+            let result = (self.get_state().get_pc()) as i64 + (imm as i64);
             self.get_state().set_pc((result as u64));
+            self.increment_pc = false;
         }
     }
 
@@ -597,8 +616,9 @@ impl<'a> Processor<'a> {
                     | (instruction.imm_lower() as u32) & 0x1e,
             );
 
-            let result = (self.get_state().get_pc()) as i64 + (imm as i64) - 4;
+            let result = (self.get_state().get_pc()) as i64 + (imm as i64);
             self.get_state().set_pc((result as u64));
+            self.increment_pc = false;
         }
     }
 
@@ -619,8 +639,9 @@ impl<'a> Processor<'a> {
                     | (instruction.imm_lower() as u32) & 0x1e,
             );
 
-            let result = (self.get_state().get_pc()) as i64 + (imm as i64) - 4;
+            let result = (self.get_state().get_pc()) as i64 + (imm as i64);
             self.get_state().set_pc((result as u64));
+            self.increment_pc = false;
         }
     }
 
@@ -632,18 +653,35 @@ impl<'a> Processor<'a> {
                 | ((instruction.imm_11() as u32) << 11)
                 | ((instruction.imm_1_10() as u32) << 1) as u32,
         ) as i64;
-        let result: u64 = self
-            .get_state()
-            .get_regfile()
-            .read(instruction.rd() as usize)
-            + imm as u64;
-        let stored_pc: u64 = self.get_state().get_pc() + 1;
+
+        let stored_pc: u64 = self.get_state().get_pc() + 4;
+        let new_pc: u64 = self.get_state().get_pc() + imm as u64;
+
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, stored_pc);
+
+        self.get_state().set_pc(new_pc);
+        self.increment_pc = false;
     }
 
-    fn jalr(&mut self, instruction: JType) {}
+    fn jalr(&mut self, instruction: IType) {
+        let imm = Self::sign_extend(instruction.imm() as u32);
+
+        let stored_pc: u64 = self.get_state().get_pc() + 4;
+        let new_pc: u64 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize)
+            + imm as u64;
+
+        self.get_state()
+            .get_regfile()
+            .write(instruction.rd() as usize, stored_pc);
+
+        self.get_state().set_pc(new_pc);
+        self.increment_pc = false;
+    }
 
     fn sign_extend(imm: u32) -> i32 {
         let imm12 = imm & 0xFFF;

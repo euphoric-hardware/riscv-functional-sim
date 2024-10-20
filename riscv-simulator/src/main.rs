@@ -35,7 +35,7 @@ fn main() {
     let disassembler: Disassembler = Disassembler::new_disassembler(&instruction_memory);
     
     while (processor.get_state().get_pc() as usize) < rom.get_length() {
-        println!("{trace}", trace = disassembler.get_trace(processor.get_state().get_pc() as usize));
+        println!("{} {trace}", processor.get_state().get_pc(), trace = disassembler.get_trace(processor.get_state().get_pc() as usize));
         processor.step();
     }
 
