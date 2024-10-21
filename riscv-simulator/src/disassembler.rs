@@ -203,7 +203,7 @@ impl<'a> Disassembler<'a> {
         let mut result = String::from("lui");
         let instruction: UType = UType::from_bytes(instruction_word.to_le_bytes());
         let operands = format!(
-            " x{rd}, {imm},",
+            " x{rd}, {imm}",
             rd = (instruction.rd()) as u64,
             imm = Self::sign_extend(instruction.imm() as u32)
         );
@@ -215,7 +215,7 @@ impl<'a> Disassembler<'a> {
         let mut result = String::from("auipc");
         let instruction: UType = UType::from_bytes(instruction_word.to_le_bytes());
         let operands = format!(
-            " x{rd}, {imm},",
+            " x{rd}, {imm}",
             rd = (instruction.rd()) as u64,
             imm = Self::sign_extend(instruction.imm() as u32)
         );

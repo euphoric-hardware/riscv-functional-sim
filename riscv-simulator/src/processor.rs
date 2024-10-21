@@ -1,6 +1,6 @@
 use crate::{
     instruction_memory::InstructionMemory,
-    instructions::{BType, IType, JType, RType, SType},
+    instructions::{BType, IType, JType, RType, SType, UType},
     memory::Memory,
     state::State,
 };
@@ -137,6 +137,17 @@ impl<'a> Processor<'a> {
             0x67 => {
                 let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
                 self.jalr(instruction);
+            }
+
+            /* UPPER IMMEDIATES */
+            0x37 => {
+                let instruction: UType = UType::from_bytes(instruction_word.to_le_bytes());
+                self.lui(instruction);
+            }
+
+            0x17 => {
+                let instruction: UType = UType::from_bytes(instruction_word.to_le_bytes());
+                self.auipc(instruction);
             }
 
             _ => println!("ILLEGAL INSTRUCTION"),
@@ -681,6 +692,21 @@ impl<'a> Processor<'a> {
 
         self.get_state().set_pc(new_pc);
         self.increment_pc = false;
+    }
+
+    fn lui(&mut self, instruction: UType) {
+        let imm: u64 = instruction.imm() as u64;
+        self.get_state()
+            .get_regfile()
+            .write(instruction.rd() as usize, imm << 12);
+    }
+
+    fn auipc(&mut self, instruction: UType) {
+        let imm: u64 = instruction.imm() as u64;
+        let result = self.get_state().get_pc() + (imm << 12);
+        self.get_state()
+            .get_regfile()
+            .write(instruction.rd() as usize, result);
     }
 
     fn sign_extend(imm: u32) -> i32 {
