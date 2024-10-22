@@ -241,3 +241,4 @@ case class Add(rs1: UInt, rs2: UInt, rd: UInt, op: (UInt, UInt) => UInt) derives
     - Receive load/store requests and route them to the correct device
     - When it receives a request with an invalid address, return a response indicating that the request had a invalid address
 - Possible devices includes: cores, DRAM, CLINT, PLIC, NIC, block device, uart, bootrom ...
+- Future work: I would also like this "bus" struct to be able to defer certain transactions until there is a hint from the top level. This can be useful for ganged simulation
