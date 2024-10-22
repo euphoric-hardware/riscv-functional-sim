@@ -204,3 +204,40 @@ case class Add(rs1: UInt, rs2: UInt, rd: UInt, op: (UInt, UInt) => UInt) derives
 - Logistical thoughts
     - In the long term, I do prefer this than the above approach. Approach 1 just feels like more of an hack on top of Chisel rather than a clean implementation
     - However, this might feel quite difficult and they can loose motivation unless we guide them aggressively. We may even have to work on the initial implementation to get them going
+
+---
+
+# Configurability in functional simulation
+
+- For cases when the functional simulation runs in ganged mode, trace-driven mode, or runahead mode (for sampling) we want the functional simulator device tree configuration to look identical to the actual SoC configuration
+- Spike is problematic in that aligning the functional/RTL simulation configuration requires various hacks/modifications
+    - Spike has its own bootrom which is the first source of divergence between RTL & functional simulation
+    - For baremetal binaries, Spike boots without FESVR having to send a interrupt to the CLINT. This is another source of divergence that we would like to eliminate
+    - API to add IO devices is not clean as device models are loaded in a dynamically linked libraries into simulation. However, there is no need for device models to be dynamically loaded in the first place
+
+## How I would like the configuration system to look like
+
+- There has to be two modes
+
+### DTS generated mode
+
+- The functional simulation configuration is "generated" from the device tree source (DTS) of the SoC that you want to model
+- As mentioned above, this is useful for ganged simulation, trace-driven simulation, and runahead mode
+- Parse the DTS file: [fdt](https://github.com/repnop/fdt)
+- Generate a bus hierarchy according to the DTS
+
+### Default mode
+
+- The functional simulation uses a pre-determined DTS configuration with minimal IO device models (UART)
+- The device models should not by dynamically linked libraries. Device models should be statically compiled into the binary and the top level should expose runtime flags to add/change device configurations
+- Use case of this mode is for simple software verification/debugging
+- We can think of the default mode as where there is no DTS provided and we are using a preconfigured DTS
+
+### Implementation
+
+- Need a way of registering all the possible device models and searching for matching ones from the DTS
+- Need to implement a "bus" struct that has APIs for
+    - Adding new devices on the the bus and register its address range
+    - Receive load/store requests and route them to the correct device
+    - When it receives a request with an invalid address, return a response indicating that the request had a invalid address
+- Possible devices includes: cores, DRAM, CLINT, PLIC, NIC, block device, uart, bootrom ...
