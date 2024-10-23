@@ -100,6 +100,7 @@ impl Cpu {
             r#"
         if bits & {} == {} {{
             insn_impl::{insn_name}::{insn_name}(insn, self);
+            return;
         }}"#,
             insn.mask, insn.i_match
         )
@@ -156,6 +157,11 @@ fn main() {
     let out_dir = Path::new(&out_dir);
 
     let spec_dir = out_dir.join("..").join("riscv-opcodes");
+    println!(
+        "cargo:rerun-if-changed={}",
+        spec_dir.canonicalize().unwrap().to_string_lossy()
+    );
+
     let cmd = Command::new("make")
         .arg("EXTENSIONS=rv_i rv64_i")
         .current_dir(&spec_dir)

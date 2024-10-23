@@ -32,7 +32,6 @@ mod tests {
         cpu.regs[2] = 456;
         cpu.execute(Insn(0x002082b3)); // add x5, x1, x2
 
-        println!("{:?}", cpu.regs);
         assert_eq!(cpu.regs[5], 123 + 456)
     }
 

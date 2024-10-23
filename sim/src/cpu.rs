@@ -1,4 +1,4 @@
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Cpu {
     pub regs: [u64; 32],
     pub pc: u64,
