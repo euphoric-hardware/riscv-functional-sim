@@ -4,7 +4,33 @@
 
 ## Goals
 
+We want to build a RISC-V instruction set simulator (ISS) from first principles.
+
+### Support Many Modes of Operation
+
+We want to support all these modes both as top and as a library.
+
+- **Master**: ISS executes a binary directly
+  - As library: still master, but can be controlled by custom top. Can dump traces into buffer for top to analyze. Can checkpoint / restore / rewind. Can emulate time from external source (e.g. sampled RTL simulation, uArch perf model).
+- **Ganged / CoSim**: ISS executes a binary and emulates all arch state, but not as strict master. It receives arch events from RTL simulation and determines whether the next instruction group to commit in RTL sim is legal and matches the expected commit from the ISS.
+  - There is a big range of what RTL is verified in ganged simulation based on which SoC components are simulated in the ISS exactly vs simply 'believed' from RTL simulation. For instance, a DMA engine can be modeled exactly in the ISS, or the transactions to/from the DMA engine in RTL can be simply replayed in the ISS (eliding verification of the DMA engine's behavior itself).
+- **Slave**: ISS acts as a trace ingester from RTL sim / trace of another execution
+  - All SoC components and arch state are still modeled. The trace can contain partial information about the SoC (e.g. only the core / DRAM state can be reconstructed).
+  - In this mode, the ISS is used as a library and the top-level peeks the reconstructed arch state as needed (e.g. for trace-driven profiling / flamegraph construction)
+- **Other things**: There are a bunch of other usecases and features we wish to support
+  - **Checkpoint / restore**:
+  - Trace analysis
+  - Sampled simulation
+  - **Instruction generation**: for DV or fuzzing
+  - **Formal equivalence checking**: similar to [riscv-formal](https://github.com/YosysHQ/riscv-formal)
+  - RTL generation (for a simple single-cycle core model)
+  - Coverage analysis (given a trace, code path coverage within the ISS + inst level coverage)
+
+
+
 - Automate the generation of instruction interpretation logic
+  - Avoid hand-written ISA implementations (like in spike or qemu)
+  - Use a formal ISA spec (maybe Sail, maybe something else) to generate
 - It should have a basic top that works like Spike, but it should also be a library where users can write their own top
     - Ganged-simulation, trace generation, sampling (checkpointing), trace-execution mode(?)
 - Cleanup the weird coroutine stuff in FESVR
@@ -12,6 +38,22 @@
 - High performance
     - Biggest performance bottleneck of functional simulators are in the instruction decode stage
     - Need to have a micro-op cache where we maintain decoded instructions
+
+### Dynamic Binary Translation Mode
+
+- DBT using cranelift JIT
+- dynamic binary translation for even higher performance (like qemu, but tailored for RISC-V specifically, leverage cranelift)
+
+## Prior Work
+
+- ISS
+  - spike (riscv-isa-sim)
+  - dromajo
+  - qemu
+  - NEMU
+- ADLs
+  - Vienna ADL
+  - CodAL
 
 ---
 
@@ -107,6 +149,9 @@
     - Support compressed instructions [C extension](https://five-embeddev.com/riscv-user-isa-manual/latest-latex/c.html#compressed)
     - Support atomic instructions [A extension](https://five-embeddev.com/riscv-user-isa-manual/latest-latex/a.html#atomics)
 
+- https://github.com/gnzlbg/bitintrf
+  - Use x86 bitextract intrinsics to speed up instruction decode
+
 ## Rearchitecting FESVR (Safin)
 
 - Front end server (FESVR) background
@@ -156,7 +201,7 @@
         - Privileged instructions are where this might become challenging
             - Virtual memory: this seems quite doable. Need to write rules for SATP & TLB updates
             - Interrupt & exception handling
-            - Expressing the behaviors of PLIC & CLINT 
+            - Expressing the behaviors of PLIC & CLINT
 
 ### Approach 1: Use Chisel as the frontend, but build a custom interpretter
 
