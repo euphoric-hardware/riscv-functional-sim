@@ -7,5 +7,6 @@ pub fn slliw(insn: Insn, cpu: &mut Cpu) {
     let rs1 = insn.rs1();
     let shamtw = insn.shamtw();
 
-    todo!();
+    cpu.regs[rd as usize] = Insn::sign_extend(((cpu.regs[rs1 as usize] as u32) << shamtw) as u64, 32) as u64;
+    cpu.pc += 4;
 }

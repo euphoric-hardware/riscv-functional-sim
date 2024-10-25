@@ -7,5 +7,7 @@ pub fn sltiu(insn: Insn, cpu: &mut Cpu) {
     let rs1 = insn.rs1();
     let imm12 = insn.imm12();
 
-    todo!();
+    let imm12_sign_extended = Insn::sign_extend(imm12 as u64, 12);
+    cpu.regs[rd as usize] = if rs1 < (imm12_sign_extended as u64) { 1 } else { 0 };
+    cpu.pc += 4;
 }

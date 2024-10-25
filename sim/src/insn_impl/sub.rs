@@ -7,5 +7,6 @@ pub fn sub(insn: Insn, cpu: &mut Cpu) {
     let rs1 = insn.rs1();
     let rs2 = insn.rs2();
 
-    todo!();
+    cpu.regs[rd as usize] = cpu.regs[rs1 as usize].wrapping_sub(cpu.regs[rs2 as usize]);
+    cpu.pc += 4;
 }

@@ -7,5 +7,6 @@ pub fn srai(insn: Insn, cpu: &mut Cpu) {
     let rs1 = insn.rs1();
     let shamtd = insn.shamtd();
 
-    todo!();
+    cpu.regs[rd as usize] = ((cpu.regs[rs1 as usize] as i64) >> shamtd) as u64;
+    cpu.pc += 4;
 }

@@ -7,5 +7,6 @@ pub fn add(insn: Insn, cpu: &mut Cpu) {
     let rs1 = insn.rs1();
     let rs2 = insn.rs2();
 
-    cpu.regs[rd as usize] = cpu.regs[rs1 as usize] + cpu.regs[rs2 as usize];
+    cpu.regs[rd as usize] = cpu.regs[rs1 as usize].wrapping_add(cpu.regs[rs2 as usize]);
+    cpu.pc += 4;
 }

@@ -7,5 +7,6 @@ pub fn sraiw(insn: Insn, cpu: &mut Cpu) {
     let rs1 = insn.rs1();
     let shamtw = insn.shamtw();
 
-    todo!();
+    cpu.regs[rd as usize] = ((cpu.regs[rs1 as usize] as i32) >> shamtw) as i64 as u64;
+    cpu.pc += 4;
 }

@@ -7,5 +7,6 @@ pub fn slli(insn: Insn, cpu: &mut Cpu) {
     let rs1 = insn.rs1();
     let shamtd = insn.shamtd();
 
-    todo!();
+    cpu.regs[rd as usize] = cpu.regs[rs1 as usize] << shamtd;
+    cpu.pc += 4;
 }

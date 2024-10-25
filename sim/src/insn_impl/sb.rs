@@ -8,5 +8,8 @@ pub fn sb(insn: Insn, cpu: &mut Cpu) {
     let rs2 = insn.rs2();
     let imm12lo = insn.imm12lo();
 
-    todo!();
+    let imm12_sign_extended = Insn::sign_extend((imm12hi << 5 | imm12lo) as u64, 12);
+    let address= cpu.regs[rs1 as usize] + imm12_sign_extended as u64;
+    cpu.dram[address as usize] = cpu.regs[rs2 as usize] as u8;
+    cpu.pc += 4;
 }

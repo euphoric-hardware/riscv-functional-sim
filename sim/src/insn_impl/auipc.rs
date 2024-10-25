@@ -6,5 +6,6 @@ pub fn auipc(insn: Insn, cpu: &mut Cpu) {
     let rd = insn.rd();
     let imm20 = insn.imm20();
 
-    todo!();
+    cpu.regs[rd as usize] = Insn::sign_extend((cpu.pc + (imm20 << 12)) as u64, 32) as u64;
+    cpu.pc += 4;
 }

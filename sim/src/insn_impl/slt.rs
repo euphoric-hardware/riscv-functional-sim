@@ -7,5 +7,6 @@ pub fn slt(insn: Insn, cpu: &mut Cpu) {
     let rs1 = insn.rs1();
     let rs2 = insn.rs2();
 
-    todo!();
+    cpu.regs[rd as usize] = ((cpu.regs[rs1 as usize] as i64) < (cpu.regs[rs2 as usize] as i64)) as u64;
+    cpu.pc += 4;
 }
