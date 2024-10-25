@@ -9,8 +9,10 @@ def generate_immediate_arith_instruction(operation=-1):
     rs1 = random.randint(0, 31)
 
     if funct3 == 5:
-        imm = (random.randint(0, 1) * 0x20) << 5
+        imm = (random.randint(0, 1) * 0x400)
         imm |= random.randint(0, 32)
+    elif funct3 == 1:
+        imm = random.randint(0, 32)
     else:
         imm = random.randint(0, 0xfff)
     
@@ -49,6 +51,20 @@ def generate_store_memory_instruction(operation=-1):
     print(hex(instruction))
     return instruction
 
+def generate_r_type_instruction():
+    op = 0b0110011
+    funct3 = random.randint(0, 7)
+    rd = random.randint(0, 31)
+    rs1 = random.randint(0, 31)
+    rs2 = random.randint(0, 31)
+    funct7 = 0
+    if funct3 == 0:
+        funct7 = random.randint(0, 1) * 0x20
+    instruction = (funct7 << 25) | (rs2 << 20) | (rs1 << 15) | (funct3 << 12) | (rd << 7) | op
+    print(hex(instruction))
+    return instruction
+
+
 def generate_branch_instruction(operation=-1):
     op = 0x63 # set opcode to indicate store operations
     imm_lower = random.randint(2, 31)
@@ -81,7 +97,7 @@ def generate_instructions(args, n):
 
 
 if __name__ == "__main__":
-    instructions = generate_instructions([generate_immediate_arith_instruction], int(sys.argv[2]))
+    instructions = generate_instructions([generate_immediate_arith_instruction, generate_r_type_instruction], int(sys.argv[2]))
     
     with open(sys.argv[1], "wb") as binary_file:
         for instruction in instructions:

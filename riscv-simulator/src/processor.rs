@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use crate::{
     instruction_memory::InstructionMemory,
     instructions::{BType, IType, JType, RType, SType, UType},
@@ -37,7 +38,10 @@ impl<'a> Processor<'a> {
         // display pc and registers for basic debugging
         println!("Current PC = {:#04x}", self.state.get_pc());
         for i in 0..self.state.get_regfile().get_num_registers() {
-            println!("r{i} = {value}", value = self.state.get_regfile().read(i));
+            println!(
+                "r{i} = {value}",
+                value = self.state.get_regfile().read(i) as i64
+            );
         }
     }
 
@@ -47,110 +51,303 @@ impl<'a> Processor<'a> {
             .instruction_memory
             .read(self.get_state().get_pc() as usize);
         let opcode: u8 = (instruction_word & 0x7f) as u8;
+
         self.increment_pc = true;
-        match opcode {
-            /* IMMEDIATE ARITHMETIC */
-            0x13 => {
-                let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
-                match instruction.funct3() {
-                    0x0 => self.addi(instruction),
-                    0x1 => self.slli(instruction),
-                    0x2 => self.slti(instruction),
-                    0x3 => self.sltiu(instruction),
-                    0x4 => self.xori(instruction),
-                    0x5 => {
-                        if ((instruction.imm() >> 5) & 0x20) > 0 {
-                            self.srai(instruction);
-                        } else {
-                            self.srli(instruction);
-                        }
-                    }
-                    0x6 => self.ori(instruction),
-                    0x7 => self.andi(instruction),
+        if instruction_word & 0xfe00707f == 0x33 {
+            let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
+            self.add(instruction);
+            return;
+        }
 
-                    _ => println!("ILLEGAL INSTRUCTION"),
-                }
-            }
+        if instruction_word & 0x707f == 0x13 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.addi(instruction);
+            return;
+        }
 
-            /* LOADS */
-            0x3 => {
-                let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
-                match instruction.funct3() {
-                    0x0 => self.lb(instruction),
-                    0x1 => self.lh(instruction),
-                    0x2 => self.lw(instruction),
-                    0x4 => self.lbu(instruction),
-                    0x5 => self.lhu(instruction),
-                    _ => println!("ILLEGAL INSTRUCTION"),
-                }
-            }
+        if instruction_word & 0x707f == 0x1b {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.addiw(instruction);
+            return;
+        }
 
-            /* ARITHMETIC */
-            0x33 => {
-                let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
-                match instruction_word & 0xfe007000 {
-                    0x0 => self.add(instruction),
-                    0x40000000 => self.sub(instruction),
-                    0x4000 => self.xor(instruction),
-                    0x6000 => self.or(instruction),
-                    0x7000 => self.and(instruction),
-                    0x1000 => self.sll(instruction),
-                    0x5000 => self.srl(instruction),
-                    0x4005000 => self.sra(instruction),
-                    0x4000000 => self.slt(instruction),
-                    0x6000000 => self.sltu(instruction),
-                    _ => println!("ILLEGAL INSTRUCTION"),
-                }
-            }
+        if instruction_word & 0xfe00707f == 0x3b {
+            let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
+            self.addw(instruction);
+            return;
+        }
 
-            /* STORES */
-            0x23 => {
-                let instruction: SType = SType::from_bytes(instruction_word.to_le_bytes());
-                match instruction.funct3() {
-                    0x0 => self.sb(instruction),
-                    0x1 => self.sh(instruction),
-                    0x2 => self.sw(instruction),
-                    _ => println!("ILLEGAL INSTRUCTION"),
-                }
-            }
+        if instruction_word & 0xfe00707f == 0x7033 {
+            let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
+            self.and(instruction);
+            return;
+        }
 
-            /* BRANCHES */
-            0x63 => {
-                let instruction: BType = BType::from_bytes(instruction_word.to_le_bytes());
-                match instruction.funct3() {
-                    0x0 => self.beq(instruction),
-                    0x1 => self.bne(instruction),
-                    0x4 => self.blt(instruction),
-                    0x5 => self.bge(instruction),
-                    0x6 => self.bltu(instruction),
-                    0x7 => self.bgeu(instruction),
-                    _ => println!("ILLEGAL INSTRUCTION"),
-                }
-            }
+        if instruction_word & 0x707f == 0x7013 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.andi(instruction);
+            return;
+        }
 
-            /* JUMPS */
-            0x6F => {
-                let instruction: JType = JType::from_bytes(instruction_word.to_le_bytes());
-                self.jal(instruction);
-            }
+        if instruction_word & 0x7f == 0x17 {
+            let instruction: UType = UType::from_bytes(instruction_word.to_le_bytes());
+            self.auipc(instruction);
+            return;
+        }
 
-            0x67 => {
-                let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
-                self.jalr(instruction);
-            }
+        if instruction_word & 0x707f == 0x63 {
+            let instruction: BType = BType::from_bytes(instruction_word.to_le_bytes());
+            self.beq(instruction);
+            return;
+        }
 
-            /* UPPER IMMEDIATES */
-            0x37 => {
-                let instruction: UType = UType::from_bytes(instruction_word.to_le_bytes());
-                self.lui(instruction);
-            }
+        if instruction_word & 0x707f == 0x5063 {
+            let instruction: BType = BType::from_bytes(instruction_word.to_le_bytes());
+            self.bge(instruction);
+            return;
+        }
 
-            0x17 => {
-                let instruction: UType = UType::from_bytes(instruction_word.to_le_bytes());
-                self.auipc(instruction);
-            }
+        if instruction_word & 0x707f == 0x7063 {
+            let instruction: BType = BType::from_bytes(instruction_word.to_le_bytes());
+            self.bgeu(instruction);
+            return;
+        }
 
-            _ => println!("ILLEGAL INSTRUCTION"),
+        if instruction_word & 0x707f == 0x4063 {
+            let instruction: BType = BType::from_bytes(instruction_word.to_le_bytes());
+            self.blt(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x6063 {
+            let instruction: BType = BType::from_bytes(instruction_word.to_le_bytes());
+            self.bltu(instruction);
+            return;
+        }
+        if instruction_word & 0x707f == 0x1063 {
+            let instruction: BType = BType::from_bytes(instruction_word.to_le_bytes());
+            self.bne(instruction);
+            return;
+        }
+
+        if instruction_word & 0x7f == 0x6f {
+            let instruction: JType = JType::from_bytes(instruction_word.to_le_bytes());
+            self.jal(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x67 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.jalr(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x3 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.lb(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x4003 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.lbu(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x3003 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.ld(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x1003 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.lh(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x5003 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.lhu(instruction);
+            return;
+        }
+
+        if instruction_word & 0x7f == 0x37 {
+            let instruction: UType = UType::from_bytes(instruction_word.to_le_bytes());
+            self.lui(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x2003 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.lw(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x6003 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.lwu(instruction);
+            return;
+        }
+        
+        if instruction_word & 0xfe00707f == 0x6033 {
+            let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
+            self.or(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x6013 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.ori(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x23 {
+            let instruction: SType = SType::from_bytes(instruction_word.to_le_bytes());
+            self.sb(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x3023 {
+            let instruction: SType = SType::from_bytes(instruction_word.to_le_bytes());
+            self.sd(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x1023 {
+            let instruction: SType = SType::from_bytes(instruction_word.to_le_bytes());
+            self.sh(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfe00707f == 0x1033 {
+            let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
+            self.sll(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfc00707f == 0x1013 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.slli(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfe00707f == 0x101b {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.slliw(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfe00707f == 0x103b {
+            let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
+            self.sllw(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfe00707f == 0x2033 {
+            let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
+            self.slt(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x2013 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.slti(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x3013 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.sltiu(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfe00707f == 0x3033 {
+            let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
+            self.sltu(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfe00707f == 0x40005033 {
+            let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
+            self.sra(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfc00707f == 0x40005013 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.srai(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfe00707f == 0x4000501b {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.sraiw(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfe00707f == 0x4000503b {
+            let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
+            self.sraw(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfe00707f == 0x5033 {
+            let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
+            self.srl(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfc00707f == 0x5013 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.srli(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfe00707f == 0x501b {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.srliw(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfe00707f == 0x503b {
+            let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
+            self.srlw(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfe00707f == 0x40000033 {
+            let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
+            self.sub(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfe00707f == 0x4000003b {
+            let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
+            self.subw(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x2023 {
+            let instruction: SType = SType::from_bytes(instruction_word.to_le_bytes());
+            self.sw(instruction);
+            return;
+        }
+
+        if instruction_word & 0xfe00707f == 0x4033 {
+            let instruction: RType = RType::from_bytes(instruction_word.to_le_bytes());
+            self.xor(instruction);
+            return;
+        }
+
+        if instruction_word & 0x707f == 0x4013 {
+            let instruction: IType = IType::from_bytes(instruction_word.to_le_bytes());
+            self.xori(instruction);
+            return;
+        }
+
+        else {
+            panic!("unknown instruction!")
         }
 
         if self.increment_pc {
@@ -161,13 +358,14 @@ impl<'a> Processor<'a> {
     /* IMMEDIATE OPERATIONS */
     fn addi(&mut self, instruction: IType) {
         // rd = rs1 + imm
-        let rs1: u64 = self
+        let rs1_value: u64 = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
         self.get_state().get_regfile().write(
             instruction.rd() as usize,
-            (rs1 as i64 + Self::sign_extend(instruction.imm() as u32) as i64) as u64,
+            ((rs1_value)
+                .wrapping_add(Self::sign_extend(instruction.imm() as u64, 12) as i64 as u64)),
         );
     }
 
@@ -177,7 +375,7 @@ impl<'a> Processor<'a> {
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize))
-            << ((instruction.imm() as u32) & 0x1f)) as u64;
+            << ((instruction.imm() as u32) & 0x3f)) as u64;
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, result);
@@ -185,11 +383,11 @@ impl<'a> Processor<'a> {
 
     fn slti(&mut self, instruction: IType) {
         // rd = (rs1 < imm) ? 1 : 0
-        let rs1: i64 = self
+        let rs1_value: i64 = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize) as i64;
-        let result: u64 = if rs1 < Self::sign_extend(instruction.imm() as u32) as i64 {
+        let result: u64 = if rs1_value < Self::sign_extend(instruction.imm() as u64, 12) as i64 {
             1
         } else {
             0
@@ -201,11 +399,11 @@ impl<'a> Processor<'a> {
 
     fn sltiu(&mut self, instruction: IType) {
         // rd = (rs1 < imm) ? 1 : 0
-        let rs1: u64 = self
+        let rs1_value: u64 = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let result: u64 = if rs1 < (Self::sign_extend(instruction.imm() as u32) as u64) {
+        let result: u64 = if rs1_value < (Self::sign_extend(instruction.imm() as u64, 12) as u64) {
             1
         } else {
             0
@@ -216,103 +414,167 @@ impl<'a> Processor<'a> {
     }
 
     fn xori(&mut self, instruction: IType) {
-        let rs1: u64 = self
+        let rs1_value: u64 = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
         self.get_state().get_regfile().write(
             instruction.rd() as usize,
-            (rs1 ^ (Self::sign_extend(instruction.imm() as u32) as u64)),
+            (rs1_value ^ (Self::sign_extend(instruction.imm() as u64, 12) as u64)),
         );
     }
 
     fn srli(&mut self, instruction: IType) {
-        // rd = rs1 >> imm[0:4]
-        let rs1: u64 = self
+        // rd = rs1_value >> imm[0:4]
+        let rs1_value: u64 = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let result: u64 = (rs1) >> ((instruction.imm() as u32) & 0x1f) as u64;
+        let result: u64 = (rs1_value) >> ((instruction.imm() as u32) & 0x3f) as u64;
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, result);
     }
 
     fn srai(&mut self, instruction: IType) {
-        let rs1: u64 = self
+        let rs1_value: u64 = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let sign: bool = (rs1 >> 63) == 1;
-        let shift: i32 = Self::sign_extend(((instruction.imm() as u32) & 0x1f));
-        let mut result: u64 = rs1 << shift;
-        if sign {
-            // fill the leading bits with ones
-            result |= 1 << (64 - shift) - 1;
-        }
-
+        let mut result: u64 = ((rs1_value as i64) >> ((instruction.imm() as u32) & 0x3f)) as u64;
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, result);
     }
 
     fn ori(&mut self, instruction: IType) {
-        let rs1: u64 = self
+        let rs1_value: u64 = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
         self.get_state().get_regfile().write(
             instruction.rd() as usize,
-            (rs1 | (Self::sign_extend(instruction.imm() as u32) as u64)),
+            (rs1_value | (Self::sign_extend(instruction.imm() as u64, 12) as u64)),
         );
     }
 
     fn andi(&mut self, instruction: IType) {
-        let rs1: u64 = self
+        let rs1_value: u64 = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
         self.get_state().get_regfile().write(
             instruction.rd() as usize,
-            (rs1 & (Self::sign_extend(instruction.imm() as u32) as u64)),
+            (rs1_value & (Self::sign_extend(instruction.imm() as u64, 12) as u64)),
         );
+    }
+
+    fn addiw(&mut self, instruction: IType) {
+        let rs1_value: u64 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize);
+        let imm12_sign_extended = Self::sign_extend(instruction.imm() as u64, 12);
+        let result = (rs1_value as u32).wrapping_add(imm12_sign_extended as u32) as u64;
+        self.get_state()
+            .get_regfile()
+            .write(instruction.rd() as usize, result);
+    }
+
+    fn slliw(&mut self, instruction: IType) {
+        // rd = rs1 << imm[0:4]
+        let rs1_value = (self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize)) as u32;
+        let result: u64 = Self::sign_extend(
+            (rs1_value << ((instruction.imm() as u32) & 0x32)) as u64, 32) as u64;
+        self.get_state()
+            .get_regfile()
+            .write(instruction.rd() as usize, result);
+    }
+
+    fn srliw(&mut self, instruction: IType) {
+        // rd = rs1_value >> imm[0:4]
+        let rs1_value = (self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize)) as u32;
+        let result: u64 = Self::sign_extend(
+            (rs1_value >> ((instruction.imm() as u32) & 0x32)) as u64, 32) as u64;
+        self.get_state()
+            .get_regfile()
+            .write(instruction.rd() as usize, result);
+    }
+
+    fn sraiw(&mut self, instruction: IType) {
+        let rs1_value: u64 = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize);
+        let mut result: u64 = ((rs1_value as i32) >> (instruction.imm() as u32) as i64) as u64;
+        self.get_state()
+            .get_regfile()
+            .write(instruction.rd() as usize, result);
     }
 
     /* LOAD OPERATIONS */
     fn lb(&mut self, instruction: IType) {
-        let address: usize =
-            (instruction.rs1() as u64).wrapping_add(instruction.imm() as u64) as usize;
-        let value = (self.memory.read(address) as i64) as u64;
+        let address: usize = (instruction.rs1() as i64)
+            .wrapping_add(Self::sign_extend(instruction.imm() as u64, 12) as i64)
+            as usize;
+        let value = Self::sign_extend(self.memory.read(address) as u64, 8) as u64;
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, value);
     }
 
     fn lh(&mut self, instruction: IType) {
-        let address: usize =
-            (instruction.rs1() as u64).wrapping_add(instruction.imm() as u64) as usize;
-        let value =
-            (((self.memory.read(address + 1) << 8) | self.memory.read(address)) as i64) as u64;
+        let address: usize = (instruction.rs1() as i64)
+            .wrapping_add(Self::sign_extend(instruction.imm() as u64, 12) as i64)
+            as usize;
+        let value = Self::sign_extend(
+            ((self.memory.read(address + 1) << 8) | self.memory.read(address)) as u64,
+            16,
+        ) as u64;
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, value);
     }
 
     fn lw(&mut self, instruction: IType) {
-        let address: usize =
-            (instruction.rs1() as u64).wrapping_add(instruction.imm() as u64) as usize;
-        let value = (((self.memory.read(address + 3) << 24)
-            | (self.memory.read(address + 2) << 16)
-            | (self.memory.read(address + 1) << 8)
-            | self.memory.read(address)) as i64) as u64;
+        let address: usize = (instruction.rs1() as i64)
+            .wrapping_add(Self::sign_extend(instruction.imm() as u64, 12) as i64)
+            as usize;
+        let value = Self::sign_extend(
+            ((self.memory.read(address + 3) << 24) as u32
+                | (self.memory.read(address + 2) << 16) as u32
+                | (self.memory.read(address + 1) << 8) as u32
+                | self.memory.read(address) as u32) as u64,
+            32,
+        ) as u64;
+        self.get_state()
+            .get_regfile()
+            .write(instruction.rd() as usize, value);
+    }
+
+    fn lwu(&mut self, instruction: IType) {
+        let address: usize = (instruction.rs1() as i64)
+            .wrapping_add(Self::sign_extend(instruction.imm() as u64, 12) as i64)
+            as usize;
+        let value = ((self.memory.read(address + 3) << 24) as u32
+            | (self.memory.read(address + 2) << 16) as u32
+            | (self.memory.read(address + 1) << 8) as u32
+            | self.memory.read(address) as u32) as u64;
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, value);
     }
 
     fn lbu(&mut self, instruction: IType) {
-        let address: usize =
-            (instruction.rs1() as u64).wrapping_add(instruction.imm() as u64) as usize;
+        let address: usize = (instruction.rs1() as i64)
+            .wrapping_add(Self::sign_extend(instruction.imm() as u64, 12) as i64)
+            as usize;
         let value = self.memory.read(address) as u64;
         self.get_state()
             .get_regfile()
@@ -320,8 +582,9 @@ impl<'a> Processor<'a> {
     }
 
     fn lhu(&mut self, instruction: IType) {
-        let address: usize =
-            (instruction.rs1() as u64).wrapping_add(instruction.imm() as u64) as usize;
+        let address: usize = (instruction.rs1() as i64)
+            .wrapping_add(Self::sign_extend(instruction.imm() as u64, 12) as i64)
+            as usize;
         let value =
             ((self.memory.read(address.wrapping_add(1)) << 8) | self.memory.read(address)) as u64;
         self.get_state()
@@ -329,152 +592,246 @@ impl<'a> Processor<'a> {
             .write(instruction.rd() as usize, value);
     }
 
+    fn ld(&mut self, instruction: IType) {
+        let address: usize = (instruction.rs1() as i64)
+            .wrapping_add(Self::sign_extend(instruction.imm() as u64, 12) as i64)
+            as usize;
+        let value = ((self.memory.read(address + 7) << 56) as u64
+            | (self.memory.read(address + 6) << 48) as u64
+            | (self.memory.read(address + 5) << 40) as u64
+            | (self.memory.read(address + 4) << 32) as u64
+            | (self.memory.read(address + 3) << 24) as u64
+            | (self.memory.read(address + 2) << 16) as u64
+            | (self.memory.read(address + 1) << 8) as u64
+            | self.memory.read(address) as u64) as u64;
+        self.get_state()
+            .get_regfile()
+            .write(instruction.rd() as usize, value);
+    }
+
     /* REGISTER TYPE OPERATIONS */
     fn add(&mut self, instruction: RType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        let result = rs1.wrapping_add(rs2);
+        let result = rs1_value.wrapping_add(rs2_value);
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, result);
     }
 
     fn sub(&mut self, instruction: RType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        let result = rs1 - (rs2);
+        let result = rs1_value.wrapping_sub(rs2_value);
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, result);
     }
 
     fn xor(&mut self, instruction: RType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        let result = rs1 ^ rs2;
+        let result = rs1_value ^ rs2_value;
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, result);
     }
 
     fn or(&mut self, instruction: RType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        let result = rs1 | rs2;
+        let result = rs1_value | rs2_value;
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, result);
     }
 
     fn and(&mut self, instruction: RType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        let result = rs1 & rs2;
+        let result = rs1_value & rs2_value;
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, result);
     }
 
     fn sll(&mut self, instruction: RType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        let result = rs1 << rs2;
+        // println!("SHIFT AMOUNT {}", rs2_value);
+        let result = rs1_value.wrapping_shl((rs2_value % 32) as u32);
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, result);
     }
 
     fn srl(&mut self, instruction: RType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        let result = rs1 >> rs2;
+        let result = rs1_value.wrapping_shr((rs2_value % 32) as u32);
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, result);
     }
 
     fn sra(&mut self, instruction: RType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        let result = ((rs1 as i64) >> rs2) as u64;
+        let result = (rs1_value as i64).wrapping_shr((rs2_value % 32) as u32) as u64;
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, result);
     }
 
     fn slt(&mut self, instruction: RType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize) as i64;
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize) as i64;
-        let result: u64 = if rs1 < rs2 { 1 } else { 0 };
+        let result: u64 = if rs1_value < rs2_value { 1 } else { 0 };
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, result);
     }
 
     fn sltu(&mut self, instruction: RType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        let result: u64 = if rs1 < rs2 { 1 } else { 0 };
+        let result: u64 = if rs1_value < rs2_value { 1 } else { 0 };
+        self.get_state()
+            .get_regfile()
+            .write(instruction.rd() as usize, result);
+    }
+
+    fn addw(&mut self, instruction: RType) {
+        let rs1_value = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize);
+        let rs2_value = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs2() as usize);
+        let result = (rs1_value as u32).wrapping_add(rs2_value as u32) as i64 as u64;
+        self.get_state()
+            .get_regfile()
+            .write(instruction.rd() as usize, result);
+    }
+
+    fn subw(&mut self, instruction: RType) {
+        let rs1_value = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize);
+        let rs2_value = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs2() as usize);
+        let result = Self::sign_extend((rs1_value as u32).wrapping_sub(rs2_value as u32) as u64, 32) as u64;
+        self.get_state()
+            .get_regfile()
+            .write(instruction.rd() as usize, result);
+    }
+
+    fn srlw(&mut self, instruction: RType) {
+        let rs1_value = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize);
+        let rs2_value = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs2() as usize);
+        let result = Self::sign_extend(rs1_value.wrapping_shr((rs2_value & 0x31) as u32) as u64, 32) as u64;
+        self.get_state()
+            .get_regfile()
+            .write(instruction.rd() as usize, result);
+    }
+
+    fn sraw(&mut self, instruction: RType) {
+        let rs1_value = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize);
+        let rs2_value = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs2() as usize);
+        let result = Self::sign_extend((rs1_value as i32).wrapping_shr((rs2_value & 0x31) as u32) as u64, 32) as u64;
+        self.get_state()
+            .get_regfile()
+            .write(instruction.rd() as usize, result);
+    }
+
+    fn sllw(&mut self, instruction: RType) {
+        let rs1_value = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs1() as usize);
+        let rs2_value = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs2() as usize);
+        // println!("SHIFT AMOUNT {}", rs2_value);
+        let result = Self::sign_extend((rs1_value as u32).wrapping_shl((rs2_value & 0x31) as u32) as u64, 32) as u64;
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, result);
@@ -482,59 +839,78 @@ impl<'a> Processor<'a> {
 
     /* STORE OPERATIONS */
     fn sb(&mut self, instruction: SType) {
-        let address: usize = (instruction.rs1() as u64)
-            .wrapping_add((instruction.imm_upper() << 5 | instruction.imm_lower()) as u64)
-            as usize;
-        self.memory.write(address, (instruction.rs2() & 0xff) as u8);
+        let rs2_value = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs2() as usize);
+        let address: usize = (instruction.rs1() as u64).wrapping_add(Self::sign_extend(
+            ((instruction.imm_upper() as u32) << 5 | instruction.imm_lower() as u32) as u64,
+            12,
+        ) as u64) as usize;
+        self.memory.write(address, rs2_value as u8);
     }
 
     fn sh(&mut self, instruction: SType) {
-        let address: usize = (instruction.rs1() as u64)
-            .wrapping_add((instruction.imm_upper() << 5 | instruction.imm_lower()) as u64)
-            as usize;
-        self.memory.write(address, (instruction.rs2() & 0xff) as u8);
-        self.memory.write(
-            address + 1,
-            (((instruction.rs2() as u64) >> 8) & 0xff) as u8,
-        );
+        let rs2_value = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs2() as usize);
+        let address: usize = (instruction.rs1() as u64).wrapping_add(Self::sign_extend(
+            ((instruction.imm_upper() as u32) << 5 | instruction.imm_lower() as u32) as u64,
+            12,
+        ) as u64) as usize;
+        self.memory
+            .write(address + 1, (rs2_value >> 8 as u64) as u8);
+        self.memory.write(address, rs2_value as u8);
     }
 
     fn sw(&mut self, instruction: SType) {
+        let rs2_value = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs2() as usize);
         let address: usize = (instruction.rs1() as u64)
-            .wrapping_add((instruction.imm_upper() << 5 | instruction.imm_lower()) as u64)
+            .wrapping_add(((instruction.imm_upper() << 5) | instruction.imm_lower()) as u64)
             as usize;
-        self.memory.write(address, (instruction.rs2() & 0xff) as u8);
-        self.memory.write(
-            address + 1,
-            (((instruction.rs2() as u64) >> 8) & 0xff) as u8,
-        );
-        self.memory.write(
-            address + 2,
-            (((instruction.rs2() as u64) >> 16) & 0xff) as u8,
-        );
-        self.memory.write(
-            address + 3,
-            (((instruction.rs2() as u64) >> 24) & 0xff) as u8,
-        );
+        for i in 0..4 {
+            self.memory
+                .write(address + i, (rs2_value >> (8 * i as u8)) as u8)
+        }
+    }
+
+    fn sd(&mut self, instruction: SType) {
+        let rs2_value = self
+            .get_state()
+            .get_regfile()
+            .read(instruction.rs2() as usize);
+        let address: usize = (instruction.rs1() as u64)
+            .wrapping_add(((instruction.imm_upper() << 5) | instruction.imm_lower()) as u64)
+            as usize;
+
+        for i in 0..8 {
+            self.memory
+                .write(address + i, (rs2_value >> (8 * i as u8)) as u8)
+        }
     }
 
     /* BRANCH OPERATIONS */
     fn beq(&mut self, instruction: BType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        if (rs1 as i64) == (rs1 as i64) {
+        if (rs1_value as i64) == (rs2_value as i64) {
             let imm: i32 = Self::sign_extend(
-                (((instruction.imm_upper() as u32) & 0x7f) << 5)
+                ((((instruction.imm_upper() as u32) & 0x7f) << 5)
                     | ((instruction.imm_lower() as u32) & 0x1 << 10)
                     | (((instruction.imm_upper() as u32) & 0x3f) << 5)
-                    | (instruction.imm_lower() as u32) & 0x1e,
-            );
+                    | (instruction.imm_lower() as u32) & 0x1e) as u64,
+                12,
+            ) as i32;
 
             let result = (self.get_state().get_pc()) as i64 + (imm as i64);
             self.get_state().set_pc(result as u64);
@@ -542,21 +918,22 @@ impl<'a> Processor<'a> {
     }
 
     fn bne(&mut self, instruction: BType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        if (rs1 as i64) != (rs2 as i64) {
+        if (rs1_value as i64) != (rs2_value as i64) {
             let imm: i32 = Self::sign_extend(
-                (((instruction.imm_upper() as u32) & 0x7f) << 5)
+                ((((instruction.imm_upper() as u32) & 0x7f) << 5)
                     | ((instruction.imm_lower() as u32) & 0x1 << 10)
                     | (((instruction.imm_upper() as u32) & 0x3f) << 5)
-                    | (instruction.imm_lower() as u32) & 0x1e,
-            );
+                    | (instruction.imm_lower() as u32) & 0x1e) as u64,
+                12,
+            ) as i32;
 
             let result = (self.get_state().get_pc()) as i64 + (imm as i64);
             self.get_state().set_pc(result as u64);
@@ -565,21 +942,22 @@ impl<'a> Processor<'a> {
     }
 
     fn blt(&mut self, instruction: BType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        if (rs1 as i64) < (rs2 as i64) {
+        if (rs1_value as i64) < (rs2_value as i64) {
             let imm: i32 = Self::sign_extend(
-                (((instruction.imm_upper() as u32) & 0x7f) << 5)
+                ((((instruction.imm_upper() as u32) & 0x7f) << 5)
                     | ((instruction.imm_lower() as u32) & 0x1 << 10)
                     | (((instruction.imm_upper() as u32) & 0x3f) << 5)
-                    | (instruction.imm_lower() as u32) & 0x1e,
-            );
+                    | (instruction.imm_lower() as u32) & 0x1e) as u64,
+                12,
+            ) as i32;
 
             let result = (self.get_state().get_pc()) as i64 + (imm as i64);
             self.get_state().set_pc((result as u64));
@@ -588,21 +966,22 @@ impl<'a> Processor<'a> {
     }
 
     fn bge(&mut self, instruction: BType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        if (rs1 as i64) >= (rs2 as i64) {
+        if (rs1_value as i64) >= (rs2_value as i64) {
             let imm: i32 = Self::sign_extend(
-                (((instruction.imm_upper() as u32) & 0x7f) << 5)
+                ((((instruction.imm_upper() as u32) & 0x7f) << 5)
                     | ((instruction.imm_lower() as u32) & 0x1 << 10)
                     | (((instruction.imm_upper() as u32) & 0x3f) << 5)
-                    | (instruction.imm_lower() as u32) & 0x1e,
-            );
+                    | (instruction.imm_lower() as u32) & 0x1e) as u64,
+                12,
+            ) as i32;
 
             let result = (self.get_state().get_pc()) as i64 + (imm as i64);
             self.get_state().set_pc((result as u64));
@@ -611,22 +990,22 @@ impl<'a> Processor<'a> {
     }
 
     fn bltu(&mut self, instruction: BType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        if rs1 >= rs2 {
+        if rs1_value >= rs2_value {
             let imm: i32 = Self::sign_extend(
-                (((instruction.imm_upper() as u32) & 0x7f) << 5)
+                ((((instruction.imm_upper() as u32) & 0x7f) << 5)
                     | ((instruction.imm_lower() as u32) & 0x1 << 10)
                     | (((instruction.imm_upper() as u32) & 0x3f) << 5)
-                    | (instruction.imm_lower() as u32) & 0x1e,
-            );
-
+                    | (instruction.imm_lower() as u32) & 0x1e) as u64,
+                12,
+            ) as i32;
             let result = (self.get_state().get_pc()) as i64 + (imm as i64);
             self.get_state().set_pc((result as u64));
             self.increment_pc = false;
@@ -634,21 +1013,22 @@ impl<'a> Processor<'a> {
     }
 
     fn bgeu(&mut self, instruction: BType) {
-        let rs1 = self
+        let rs1_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs1() as usize);
-        let rs2 = self
+        let rs2_value = self
             .get_state()
             .get_regfile()
             .read(instruction.rs2() as usize);
-        if rs1 >= rs2 {
+        if rs1_value >= rs2_value {
             let imm: i32 = Self::sign_extend(
-                (((instruction.imm_upper() as u32) & 0x7f) << 5)
+                ((((instruction.imm_upper() as u32) & 0x7f) << 5)
                     | ((instruction.imm_lower() as u32) & 0x1 << 10)
                     | (((instruction.imm_upper() as u32) & 0x3f) << 5)
-                    | (instruction.imm_lower() as u32) & 0x1e,
-            );
+                    | (instruction.imm_lower() as u32) & 0x1e) as u64,
+                12,
+            ) as i32;
 
             let result = (self.get_state().get_pc()) as i64 + (imm as i64);
             self.get_state().set_pc((result as u64));
@@ -659,10 +1039,11 @@ impl<'a> Processor<'a> {
     /* JUMP OPERATIONS */
     fn jal(&mut self, instruction: JType) {
         let imm: i64 = Self::sign_extend(
-            ((instruction.imm_20() as u32) << 20)
+            (((instruction.imm_20() as u32) << 20)
                 | ((instruction.imm_12_19() as u32) << 12)
                 | ((instruction.imm_11() as u32) << 11)
-                | ((instruction.imm_1_10() as u32) << 1) as u32,
+                | ((instruction.imm_1_10() as u32) << 1)) as u64,
+            20,
         ) as i64;
 
         let stored_pc: u64 = self.get_state().get_pc() + 4;
@@ -677,7 +1058,7 @@ impl<'a> Processor<'a> {
     }
 
     fn jalr(&mut self, instruction: IType) {
-        let imm = Self::sign_extend(instruction.imm() as u32);
+        let imm = Self::sign_extend(instruction.imm() as u64, 12);
 
         let stored_pc: u64 = self.get_state().get_pc() + 4;
         let new_pc: u64 = self
@@ -695,27 +1076,27 @@ impl<'a> Processor<'a> {
     }
 
     fn lui(&mut self, instruction: UType) {
-        let imm: u64 = instruction.imm() as u64;
+        let imm: u32 = instruction.imm() as u32;
+        let result = Self::sign_extend((imm << 12) as u64, 32);
         self.get_state()
             .get_regfile()
-            .write(instruction.rd() as usize, imm << 12);
+            .write(instruction.rd() as usize, result as u64);
     }
 
     fn auipc(&mut self, instruction: UType) {
         let imm: u64 = instruction.imm() as u64;
-        let result = self.get_state().get_pc() + (imm << 12);
+        let result = self.get_state().get_pc() + Self::sign_extend(imm << 12, 32) as u64;
         self.get_state()
             .get_regfile()
             .write(instruction.rd() as usize, result);
     }
 
-    fn sign_extend(imm: u32) -> i32 {
-        let imm12 = imm & 0xFFF;
-
-        if (imm12 & 0x800) != 0 {
-            (imm12 as i32) | !0xFFF
+    pub fn sign_extend(value: u64, length: u8) -> i64 {
+        let sign_bit = 1u64 << (length - 1);
+        if value & sign_bit != 0 {
+            (value as i64) | !((1 << length) - 1) as i64
         } else {
-            imm12 as i32
+            value as i64
         }
     }
 }

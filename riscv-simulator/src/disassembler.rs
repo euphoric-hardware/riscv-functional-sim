@@ -1,12 +1,16 @@
+#![allow(warnings)]
 use crate::instruction_memory::{self, InstructionMemory};
 use crate::instructions::{BType, IType, JType, RType, SType, UType};
+use crate::processor::Processor;
 pub struct Disassembler<'a> {
     instruction_memory: &'a InstructionMemory,
 }
 
 impl<'a> Disassembler<'a> {
     pub fn new_disassembler(instruction_memory: &'a InstructionMemory) -> Self {
-        return Disassembler { instruction_memory: instruction_memory };
+        return Disassembler {
+            instruction_memory: instruction_memory,
+        };
     }
 
     fn disassemble_i_type_arithmetic(instruction_word: u32) -> String {
@@ -33,7 +37,7 @@ impl<'a> Disassembler<'a> {
             " x{rd}, x{rs}, {imm}",
             rd = (instruction.rd()) as u64,
             rs = (instruction.rs1()) as u64,
-            imm = Self::sign_extend(instruction.imm() as u32)
+            imm = Processor::sign_extend(instruction.imm() as u64, 12)
         );
         result.push_str(&operands);
 
@@ -50,6 +54,8 @@ impl<'a> Disassembler<'a> {
             0x2 => result.push_str("lw"),
             0x4 => result.push_str("lbu"),
             0x5 => result.push_str("lhu"),
+            0x6 => result.push_str("lwu"),
+            0x7 => result.push_str("ld"),
             _ => result.push_str("ILLEGAL INSTRUCTION"),
         }
 
@@ -57,7 +63,7 @@ impl<'a> Disassembler<'a> {
             " x{rd}, {imm}(x{rs}),",
             rd = (instruction.rd()) as u64,
             rs = (instruction.rs1()) as u64,
-            imm = Self::sign_extend(instruction.imm() as u32)
+            imm = Processor::sign_extend(instruction.imm() as u64, 12)
         );
         result.push_str(&operands);
 
@@ -103,11 +109,11 @@ impl<'a> Disassembler<'a> {
                 result.push_str("sra");
             }
 
-            0x4000000 => {
+            0x2000 => {
                 result.push_str("slt");
             }
 
-            0x6000000 => {
+            0x3000 => {
                 result.push_str("sltu");
             }
             _ => return String::from("ILLEGAL INSTRUCTION"),
@@ -132,6 +138,7 @@ impl<'a> Disassembler<'a> {
             0x0 => result.push_str("sb"),
             0x1 => result.push_str("sh"),
             0x2 => result.push_str("sw"),
+            0x3 => result.push_str("sd"),
             _ => return String::from("ILLEGAL INSTRUCTION"),
         }
 
@@ -139,7 +146,10 @@ impl<'a> Disassembler<'a> {
             " x{rs2}, {imm}(x{rs1}),",
             rs2 = (instruction.rs2() as u64),
             rs1 = (instruction.rs1() as u64),
-            imm = Self::sign_extend((instruction.imm_upper() << 5 | instruction.imm_lower()) as u32)
+            imm = Processor::sign_extend(
+                (instruction.imm_upper() << 5 | instruction.imm_lower()) as u64,
+                12
+            )
         );
         result.push_str(&operands);
         return result;
@@ -159,10 +169,13 @@ impl<'a> Disassembler<'a> {
             _ => return String::from("ILLEGAL INSTRUCTION"),
         }
 
-        let imm: i32 = Self::sign_extend((((instruction.imm_upper() as u32) & 0x7f) << 5)
-            | ((instruction.imm_lower() as u32) & 0x1 << 10)
-            | (((instruction.imm_upper() as u32) & 0x3f) << 5)
-            | (instruction.imm_lower() as u32) & 0x1e);
+        let imm: i32 = Processor::sign_extend(
+            (((instruction.imm_upper() as u64) & 0x7f) << 5)
+                | ((instruction.imm_lower() as u64) & 0x1 << 10)
+                | (((instruction.imm_upper() as u64) & 0x3f) << 5)
+                | (instruction.imm_lower() as u64) & 0x1e,
+            12,
+        ) as i32;
         let operands = format!(
             " x{rs1}, x{rs2}, {imm}",
             rs1 = (instruction.rs1() as u64),
@@ -177,10 +190,13 @@ impl<'a> Disassembler<'a> {
         let mut result = String::from("");
         let instruction: JType = JType::from_bytes(instruction_word.to_le_bytes());
         result.push_str("jal");
-        let imm: i32 = Self::sign_extend(((instruction.imm_20() as u32) << 20)
-            | ((instruction.imm_12_19() as u32) << 12)
-            | ((instruction.imm_11() as u32) << 11)
-            | ((instruction.imm_1_10() as u32) << 1) as u32);
+        let imm: i32 = Processor::sign_extend(
+            (((instruction.imm_20() as u32) << 20)
+                | ((instruction.imm_12_19() as u32) << 12)
+                | ((instruction.imm_11() as u32) << 11)
+                | ((instruction.imm_1_10() as u32) << 1)) as u64,
+            20,
+        ) as i32;
         let operands = format!(" x{rd}, {imm}", rd = instruction.rd(), imm = imm);
         result.push_str(&operands);
         return result;
@@ -193,7 +209,7 @@ impl<'a> Disassembler<'a> {
             " x{rd}, {imm}(x{rs}),",
             rd = (instruction.rd()) as u64,
             rs = (instruction.rs1()) as u64,
-            imm = Self::sign_extend(instruction.imm() as u32)
+            imm = Processor::sign_extend(instruction.imm() as u64, 12)
         );
         result.push_str(&operands);
         return result;
@@ -205,7 +221,7 @@ impl<'a> Disassembler<'a> {
         let operands = format!(
             " x{rd}, {imm}",
             rd = (instruction.rd()) as u64,
-            imm = Self::sign_extend(instruction.imm() as u32)
+            imm = Processor::sign_extend(instruction.imm() as u64, 20)
         );
         result.push_str(&operands);
         return result;
@@ -217,20 +233,10 @@ impl<'a> Disassembler<'a> {
         let operands = format!(
             " x{rd}, {imm}",
             rd = (instruction.rd()) as u64,
-            imm = Self::sign_extend(instruction.imm() as u32)
+            imm = Processor::sign_extend(instruction.imm() as u64, 20)
         );
         result.push_str(&operands);
         return result;
-    }
-
-    fn sign_extend(imm: u32) -> i32 {
-        let imm12 = imm & 0xFFF;
-
-        if (imm12 & 0x800) != 0 {
-            ((imm12 as i32) | (!0xFFF)) as i32
-        } else {
-            imm12 as i32
-        }
     }
 
     pub fn get_trace(&self, pc: usize) -> String {
