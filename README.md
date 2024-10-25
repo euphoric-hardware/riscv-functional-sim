@@ -2,7 +2,7 @@
 
 ---
 
-## Goals
+## Background and Goals
 
 We want to build a RISC-V instruction set simulator (ISS) from first principles.
 
@@ -17,63 +17,111 @@ We want to support all these modes both as top and as a library.
 - **Slave**: ISS acts as a trace ingester from RTL sim / trace of another execution
   - All SoC components and arch state are still modeled. The trace can contain partial information about the SoC (e.g. only the core / DRAM state can be reconstructed).
   - In this mode, the ISS is used as a library and the top-level peeks the reconstructed arch state as needed (e.g. for trace-driven profiling / flamegraph construction)
-- **Other things**: There are a bunch of other usecases and features we wish to support
-  - **Checkpoint / restore**:
-  - Trace analysis
-  - Sampled simulation
-  - **Instruction generation**: for DV or fuzzing
-  - **Formal equivalence checking**: similar to [riscv-formal](https://github.com/YosysHQ/riscv-formal)
-  - RTL generation (for a simple single-cycle core model)
-  - Coverage analysis (given a trace, code path coverage within the ISS + inst level coverage)
+  - We can use this mode to do replay single-stepping of the SoC, a single instruction at a time
+- **Symbolic execution**: The modeled arch state is a mix of concrete and symbolic state
+  - This works similar to the slave mode, except the state update rules are computed symbolically
+  - This is useful for information flow tracking and memory trace reconstruction, among other things
+- **Other things**: There are a bunch of other usecases and features we wish to support that are quite iffy in the current spike + Chipyard world
+  - **Exact SoC modeling**: all undefined / vague behaviors pinned down. All SoC components and their arch state are modeled.
+    - An identical setup in the ISS that matches the SoC exactly
+    - RTL that's generated should be driving the parameterization of the functional sim (not the other way around)
+    - First-class support for passing a dts and bootrom into the functional sim from the RTL generator
+  - **Checkpoint / restore**: deser of arch state + testbench component / IO model state. No loss of information.
+  - **Trace analysis**: generic analysis pass writing using a generic ISA IR. Ability to dump execution traces into a trace buffer controlled and drained by a custom top.
+  - **Sampled simulation**: a custom top that leverages the above for sampled RTL simulation for accurate performance trace estimation.
+  - **Instruction generation**: for DV or fuzzing a RISC-V DUT.
+  - **Formal equivalence checking**: similar to [riscv-formal](https://github.com/YosysHQ/riscv-formal).
+  - **RTL generation**: targeting a simple single-cycle core model.
+  - **Coverage analysis**: given a trace, track code path coverage within the ISS + instruction-level coverage (see [RISC-V ISAC](https://riscv-isac.readthedocs.io/en/0.4.0/overview.html))
+  - **High performance disassembler**
+    - Disassembles execution traces into Rust-native structures either based on instruction encoding type (R, I, ...) or semantic instruction type (arithmetic, memory access, control flow, etc.)
+    - Leverage the host's SIMD ISA for high performance decoding
+      - https://github.com/gnzlbg/bitintrf
+      - Use x86 bitextract intrinsics to speed up instruction decode
 
+### Unification of Testbench/IO Models
 
+- Unify models between all simulation backends (ISS, RTL simulation, FPGA prototyping, FPGA-based emulation / Firesim, ASIC-based emulation) + reality (testchip)
+  - Includes: fesvr + IO models + everything on the edge of the RISC-V target
+  - Accurate checkpoint + restore is also critical for all stateful non-DUT components (but this is really hard, maybe impossible)
+  - On the RTL side, we need to make top-level ports explicit (no internal DPIs)
+- Current state of fesvr + IO models is quite unified, but not sufficient since we need exact state snapshotting (+ ideally no C++)
 
+### EZ Custom Tops
+
+- It should have a basic top that works like Spike, but it should also be a library where users can write their own top
+    - Ganged-simulation, trace generation, sampling (checkpointing), trace-execution mode(?)
+
+### Generated ISS
+
+- specification first interpreter/jit generator for ISA simulation
 - Automate the generation of instruction interpretation logic
   - Avoid hand-written ISA implementations (like in spike or qemu)
   - Use a formal ISA spec (maybe Sail, maybe something else) to generate
-- It should have a basic top that works like Spike, but it should also be a library where users can write their own top
-    - Ganged-simulation, trace generation, sampling (checkpointing), trace-execution mode(?)
-- Cleanup the weird coroutine stuff in FESVR
-    - [tokio](https://docs.rs/tokio/latest/tokio/index.html)
+
+### High Performance
+
 - High performance
     - Biggest performance bottleneck of functional simulators are in the instruction decode stage
     - Need to have a micro-op cache where we maintain decoded instructions
 
-### Dynamic Binary Translation Mode
+### Principled Discrete Event Simulation
+
+- Cleanup the weird coroutine stuff in FESVR
+    - [tokio](https://docs.rs/tokio/latest/tokio/index.html)
+
+### Dynamic Binary Translation (DBT) Mode
+
 
 - DBT using cranelift JIT
 - dynamic binary translation for even higher performance (like qemu, but tailored for RISC-V specifically, leverage cranelift)
 
-## Prior Work
+### Prior Work
 
-- ISS
-  - spike (riscv-isa-sim)
-  - dromajo
-  - qemu
-  - NEMU
-- ADLs
-  - Vienna ADL
-  - CodAL
+#### ISS
 
----
+- spike (riscv-isa-sim)
+- dromajo
 
-## Background information
+- NEMU
+https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9923860
+Look at this paper, in particular the section "NEMU: Fast Interpreter for Performance Evaluation"
 
-### Threaded interpretation vs switch based interpretation
+Get familiar with threaded interpreters
+https://www.complang.tuwien.ac.at/forth/threaded-code.html
+https://stackoverflow.com/questions/58774170/how-to-speed-up-dynamic-dispatch-by-20-using-computed-gotos-in-standard-c
+https://stackoverflow.com/questions/3848343/decode-and-dispatch-interpretation-vs-threaded-interpretation
+
+  - https://stackoverflow.com/questions/75028678/is-it-impossible-to-write-thread-code-in-rust
+  - https://users.rust-lang.org/t/how-can-i-approach-the-performance-of-c-interpreter-that-uses-computed-gotos/6261
+  - https://stackoverflow.com/questions/58774170/how-to-speed-up-dynamic-dispatch-by-20-using-computed-gotos-in-standard-c
+  - https://www.complang.tuwien.ac.at/forth/threaded-code.html
 
 - [NEMU](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9923860&tag=1)
 - Reference: [Dynamic dispatch vs computed gotos](https://stackoverflow.com/questions/58774170/how-to-speed-up-dynamic-dispatch-by-20-using-computed-gotos-in-standard-c)
+
+- Symbolic execution of RISC-V binary code based on formal instruction semantics. https://github.com/agra-uni-bremen/BinSym
+
+#### DBT
+
+- qemu
+
+#### Architectural Description Languages / Generated ISS
+
+- Vienna ADL
+- need to do review of Vienna - someone should look into that
+  - https://arxiv.org/pdf/2402.09087
+  - [Cycle-Accurate Simulator Generator for the VADL Processor Description Language](https://repositum.tuwien.at/bitstream/20.500.12708/17053/1/Schuetzenhoefer%20Hermann%20-%202020%20-%20Cycle-Accurate%20simulator%20generator%20for%20the%20VADL...pdf)
+  - [Optimized Processor Simulation with VADL](https://repositum.tuwien.at/bitstream/20.500.12708/157928/1/Mihaylov%20Hristo%20-%202023%20-%20Optimised%20Processor%20Simulation%20with%20VADL.pdf)
+- CodAL
+- [Versatile and Flexible Modelling of the RISC-V Instruction Set Architecture](https://agra.informatik.uni-bremen.de/doc/konf/TFP23_ST.pdf)
+  - [Extensible implementation of the RISC-V ISA based on FreeMonads - Haskell, Github](https://github.com/agra-uni-bremen/libriscv)
 
 ---
 
 ## Development plans
 
-### SAIL
-
-- Parser: parse SAIL into some in-memory format
-- Logic generation
-
-### Funtional simulator steps (Ansh, Pramath)
+### Functional simulator steps (Safin, Ansh, Pramath)
 
 - [Spike](https://github.com/riscv-software-src/riscv-isa-sim)
     - Make sure you can run baremetal binaries in Spike (riscv-tests are a good start)
@@ -149,10 +197,7 @@ We want to support all these modes both as top and as a library.
     - Support compressed instructions [C extension](https://five-embeddev.com/riscv-user-isa-manual/latest-latex/c.html#compressed)
     - Support atomic instructions [A extension](https://five-embeddev.com/riscv-user-isa-manual/latest-latex/a.html#atomics)
 
-- https://github.com/gnzlbg/bitintrf
-  - Use x86 bitextract intrinsics to speed up instruction decode
-
-## Rearchitecting FESVR (Safin)
+### Rearchitecting FESVR (Safin)
 
 - Front end server (FESVR) background
     - [Chipyard FESVR documentation](https://chipyard.readthedocs.io/en/latest/Advanced-Concepts/Chip-Communication.html)
@@ -190,7 +235,7 @@ We want to support all these modes both as top and as a library.
 
 ---
 
-## Specification language
+## Architectural Definition Language
 
 - Generating rust code: we can use the [syn](https://docs.rs/syn/latest/syn/) library to represent arbitrary Rust ASTs for code generation
 - Scala embedded DSL for the specification language
@@ -282,7 +327,7 @@ case class Add(rs1: UInt, rs2: UInt, rd: UInt, op: (UInt, UInt) => UInt) derives
 
 - Need a way of registering all the possible device models and searching for matching ones from the DTS
 - Need to implement a "bus" struct that has APIs for
-    - Adding new devices on the the bus and register its address range
+    - Adding new devices on the bus and register its address range
     - Receive load/store requests and route them to the correct device
     - When it receives a request with an invalid address, return a response indicating that the request had a invalid address
 - Possible devices includes: cores, DRAM, CLINT, PLIC, NIC, block device, uart, bootrom ...
