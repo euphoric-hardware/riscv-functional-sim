@@ -1,37 +1,170 @@
 # Generated Functional Simulation (SAIL-Spike)
 
----
+## Background and Goals
 
-## Goals
+We want to build a RISC-V instruction set simulator (ISS) from first principles.
 
-- Automate the generation of instruction interpretation logic
-- It should have a basic top that works like Spike, but it should also be a library where users can write their own top
-    - Ganged-simulation, trace generation, sampling (checkpointing), trace-execution mode(?)
-- Cleanup the weird coroutine stuff in FESVR
-    - [tokio](https://docs.rs/tokio/latest/tokio/index.html)
-- High performance
-    - Biggest performance bottleneck of functional simulators are in the instruction decode stage
-    - Need to have a micro-op cache where we maintain decoded instructions
+### Support Many Modes of Operation
 
----
+We want to support all these modes both as top and as a library.
 
-## Background information
+#### Master
 
-### Threaded interpretation vs switch based interpretation
+- ISS executes a binary directly
+- As a library: still master, but can be controlled by custom top
+  - Can dump traces into buffer for top to analyze
+  - Can checkpoint / restore / rewind
+  - Can emulate time from external source (e.g. sampled RTL simulation, uArch perf model)
 
-- [NEMU](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9923860&tag=1)
-- Reference: [Dynamic dispatch vs computed gotos](https://stackoverflow.com/questions/58774170/how-to-speed-up-dynamic-dispatch-by-20-using-computed-gotos-in-standard-c)
+#### Ganged / CoSim
+
+- ISS executes a binary and emulates all arch state, but not as strict master. It receives arch events from RTL simulation and determines whether the next instruction group to commit in RTL sim is legal and matches the expected commit from the ISS.
+- There is a big range of what RTL is verified in ganged simulation based on which SoC components are simulated in the ISS exactly vs simply 'believed' from RTL simulation.
+  - For instance, a DMA engine can be modeled exactly in the ISS, or the transactions to/from the DMA engine in RTL can be simply replayed in the ISS (eliding verification of the DMA engine's behavior itself).
+
+#### Slave
+
+- ISS acts as a trace ingester from RTL sim / trace of another execution
+- All SoC components and arch state are still modeled. The trace can contain partial information about the SoC (e.g. only the core / DRAM state can be reconstructed).
+- In this mode, the ISS is used as a library and the top-level peeks the reconstructed arch state as needed (e.g. for trace-driven profiling / flamegraph construction)
+- We can use this mode to do replay single-stepping of the SoC, a single instruction at a time
+
+#### Symbolic execution
+
+- The modeled arch state is a mix of concrete and symbolic state
+- This works similar to the slave mode, except the state update rules are computed symbolically
+- This is useful for information flow tracking and memory trace reconstruction, among other things
+
+#### Other things
+
+There are a bunch of other use-cases and features we wish to support that are quite iffy in the current spike + Chipyard world.
+
+- **Exact SoC modeling**: all undefined / vague behaviors pinned down. All SoC components and their arch state are modeled.
+  - An identical setup in the ISS that matches the SoC exactly
+  - RTL that's generated should be driving the parameterization of the functional sim (not the other way around)
+  - First-class support for passing a dts and bootrom into the functional sim from the RTL generator
+- **Checkpoint / restore**: deser of arch state + testbench component / IO model state. No loss of information.
+- **Trace analysis**: generic analysis pass writing using a generic ISA IR. Ability to dump execution traces into a trace buffer controlled and drained by a custom top.
+- **Sampled simulation**: a custom top that leverages the above for sampled RTL simulation for accurate performance trace estimation.
+- **Instruction generation**: for DV or fuzzing a RISC-V DUT.
+- **Formal equivalence checking**: similar to [riscv-formal](https://github.com/YosysHQ/riscv-formal).
+- **RTL generation**: targeting a simple single-cycle core model.
+- **Coverage analysis**: given a trace, track code path coverage within the ISS + instruction-level coverage (see [RISC-V ISAC](https://riscv-isac.readthedocs.io/en/0.4.0/overview.html))
+- **High performance disassembler**
+  - Disassembles execution traces into Rust-native structures either based on instruction encoding type (R, I, ...) or semantic instruction type (arithmetic, memory access, control flow, etc.)
+  - Leverage the host's SIMD ISA for high performance decoding
+    - Use [x86 bitextract intrinsics](https://github.com/gnzlbg/bitintrf) to speed up instruction decode
+
+### Unification of Testbench/IO Models
+
+We should unify models between all simulation backends (ISS, RTL simulation, FPGA prototyping, FPGA-based emulation / Firesim, ASIC-based emulation) + reality (testchip bringup).
+This includes: fesvr + IO models + everything on the edge of the RISC-V target.
+The current state of fesvr + IO models is quite unified, but not sufficient since we need exact state checkpointing and restore (and ideally no more C++).
+
+There are some challenges like accurate checkpointing + restore for stateful non-DUT components, especially if we use Rust's coroutines.
+On the Chipyard RTL simulation side, we also need to make top-level ports explicit (no internal DPIs).
+
+### EZ Custom Tops
+
+We should have a basic top that works like Spike, but we should support library usage where users can write their own top.
+
+Custom tops with spike are a pain.
+We want to simplify it.
+Dromajo does a better job, but we can do even better.
+
+### High Performance
+
+We're sure there are many tricks here (faster instruction decoding, caching, basic block-granularity execution) that are played by NEMU but not spike.
+We anticipate we can build an ISS that can run at 500+ MIPS, which could obviate DBT.
+
+### Principled Discrete Event Simulation
+
+Spike uses an ad-hoc mechanism of multiple host threads and `switch_to()` calls to emulate parallel simulation threads (e.g. between switching between fesvr, IO models, and the target RISC-V core - each with their separate contexts and stacks).
+Ideally, we can leverage an actual discrete event simulation framework (like [DAM](https://github.com/stanford-ppl/DAM-RS)) and remove these host thread switching hacks (or build something on top of [tokio](https://docs.rs/tokio/latest/tokio/index.html)).
+
+One challenge is to integrate this with the Chipyard RTL simulation environment and Firesim.
+This also needs to play nicely with serialization of IO/testbench model state, which seems very tricky, if not impossible.
+Perhaps the only way to make this easy is to force all state to be in the RTL abstraction or serializable software datastructures and keep all the instant update rules as regular arbitrary Rust code.
+This implies that state machines must be explicitly constructed however, which is a big annoyance.
+
+### Generated ISS
+
+Ideally we don't want to build a point implementation, but rather an ISS generator that consumes a formal spec of the ISA.
+We would like to (eventually) avoid a hand-written ISA implementation (like in spike or qemu).
+This is very idealistic and many prior attempts have been made (e.g. riscv-sail, pydrofoil), but none can achieve high performance and ease of integration with custom tops.
+
+### Dynamic Binary Translation (DBT) Mode
+
+For maximum performance, there is no substitute for host-ISA codegen (dynamic binary translation).
+Since we don't need to support multiple ISAs, we can avoid an intermediary layer like in qemu (i.e. TCG-IR).
+Since we're using Rust, it would be great to use the Cranelift IR and JIT!
+
+### Prior Work
+
+#### ISS
+
+- spike ([riscv-isa-sim](https://github.com/riscv-software-src/riscv-isa-sim/))
+  - Considered the 'golden model' for RISC-V
+- [dromajo](https://github.com/chipsalliance/dromajo/tree/master)
+  - Designed by Esperanto for RTL co-simulation for DV. Not actively maintained anymore.
+- [NEMU](https://github.com/NJU-ProjectN/nemu)
+  - Created by the comparch team at Nanjing University.
+  - Contains various performance optimizations discussed in the Xiangshan paper (["Towards Developing High Performance RISC-V Processors Using Agile Methodology"](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9923860))
+  - Uses a threaded interpreter architecture (maybe with it's own internal bytecode which is interpreted)
+  - Some links about threaded interpreters: [Link 1](https://www.complang.tuwien.ac.at/forth/threaded-code.html), [Link 2](https://stackoverflow.com/questions/58774170/how-to-speed-up-dynamic-dispatch-by-20-using-computed-gotos-in-standard-c), [Link 3](https://stackoverflow.com/questions/3848343/decode-and-dispatch-interpretation-vs-threaded-interpretation), [Link 4](https://stackoverflow.com/questions/75028678/is-it-impossible-to-write-thread-code-in-rust), [Link 5](https://users.rust-lang.org/t/how-can-i-approach-the-performance-of-c-interpreter-that-uses-computed-gotos/6261)
+
+#### DBT
+
+- QEMU is the SOTA DBT simulator
+- [Accelerate RISC-V Instruction Set Simulation by Tiered JIT Compilation (VMIL 2024)](https://dl.acm.org/doi/abs/10.1145/3689490.3690399)
+- [Pydrofoil](https://github.com/pydrofoil/pydrofoil)
+  - Uses the Sail RISC-V model and emulates it using PyPy
+  - Uses the [ISLA backend for Sail](https://github.com/rems-project/isla?tab=readme-ov-file) to generate some [representation of the ISA](https://github.com/rems-project/isla-snapshots). This is all very unclear and iffy to me.
+  - [Some notes](https://docs.pydrofoil.org/en/latest/background_optimizations.html) on pydrofoil's optimizations
+  - [Talk: Pydrofoil: A fast RISC-V emulator generated from the Sail model, using PyPy's JIT](https://www.youtube.com/watch?v=dUHWhUdXFJg)
+  - The complexity of this project [is insanely high](https://github.com/pydrofoil/pydrofoil/blob/main/pydrofoil/ir.py) since they are parsing and interpreting the Sail language itself in Python and then doing codegen on top of that
+
+#### Architectural Description Languages / Generated ISS
+
+Background:
+
+- [How to improve the RISC-V specification by Alastair Reid](https://alastairreid.github.io/riscv-spec-issues/)
+  - A great article about the pain of RISC-V specifications
+- [ARM's Architecture Specification Language](https://developer.arm.com/Architectures/Architecture%20Specification%20Language)
+
+Existing tools and languages:
+
+- [Sail](https://github.com/riscv/sail-riscv)
+  - Adopted as the formal spec for RISC-V
+  - Painful to use
+  - [ThinkOpenly / sail](https://github.com/ThinkOpenly/sail) - an attempt to JSON-ify Sail's IR and emit it (but no execution semantics)
+    - [Demo: RISC-V Instruction Information Parsing and Storage for SAIL - Paul Clarke](https://www.youtube.com/watch?v=svMcOfxcy1Y)
+- [Vienna ADL](https://arxiv.org/pdf/2402.09087)
+  - [Cycle-Accurate Simulator Generator for the VADL Processor Description Language](https://repositum.tuwien.at/bitstream/20.500.12708/17053/1/Schuetzenhoefer%20Hermann%20-%202020%20-%20Cycle-Accurate%20simulator%20generator%20for%20the%20VADL...pdf)
+  - [Optimized Processor Simulation with VADL](https://repositum.tuwien.at/bitstream/20.500.12708/157928/1/Mihaylov%20Hristo%20-%202023%20-%20Optimised%20Processor%20Simulation%20with%20VADL.pdf)
+  - [A pred-LL(*) Parsable Typed Higher-Order Macro System for Architecture Description Languages (Video, GPCE 2023)](https://www.youtube.com/watch?v=jopIILxxNbQ)
+  - VADL isn't open source, but the base rv64ui spec is available. They're working on OpenVADL, but it is a ways away.
+- [CodAL](https://codasip.com/2021/02/26/what-is-codal/)
+  - Codasip's ADL - seems quite nice, but it is a custom language and the compiler for it is of course proprietary
+- [riscv-unified-db](https://github.com/riscv-software-src/riscv-unified-db)
+  - Derek Hower and Qualcomm people's attempt at building a formal spec for RISC-V that is easier to use than Sail
+  - Based on [yaml files that encode every instruction](https://github.com/riscv-software-src/riscv-unified-db/blob/main/arch/README.adoc) and extensions
+  - Some way to define concrete behaviors of undefined behavior in the spec
+  - Instruction semantics are provided in IDL ([Interface Definition Language](https://www.omg.org/spec/IDL)) which is parsed/interpreted [in Ruby](https://github.com/RemedyIT/ridl)
+  - They wish for this project to replace Sail, spike, and hand-written ISA specs
+- [Versatile and Flexible Modelling of the RISC-V Instruction Set Architecture](https://agra.informatik.uni-bremen.de/doc/konf/TFP23_ST.pdf)
+  - [libriscv - Extensible implementation of the RISC-V ISA based on FreeMonads - Haskell, Github](https://github.com/agra-uni-bremen/libriscv)
+  - [BinSym](https://github.com/agra-uni-bremen/BinSym): Symbolic execution of RISC-V binary code based on formal instruction semantics
+- [A Multipurpose Formal RISC-V Specification Without Creating New Tools (MIT people)](https://people.csail.mit.edu/bthom/riscv-spec.pdf)
+- [MicroTESK](http://www.microtesk.org/)
+  - This is an abandoned project
+  - [Machine-Readable Specifications of RISC-V ISA](https://riscv.org/wp-content/uploads/2018/12/Machine-Readable-Specifications-of-RISC-V-ISA-Kamkin-Tatarnikov.pdf)
 
 ---
 
 ## Development plans
 
-### SAIL
-
-- Parser: parse SAIL into some in-memory format
-- Logic generation
-
-### Funtional simulator steps (Ansh, Pramath)
+### Functional simulator steps (Safin, Ansh, Pramath)
 
 - [Spike](https://github.com/riscv-software-src/riscv-isa-sim)
     - Make sure you can run baremetal binaries in Spike (riscv-tests are a good start)
@@ -107,7 +240,7 @@
     - Support compressed instructions [C extension](https://five-embeddev.com/riscv-user-isa-manual/latest-latex/c.html#compressed)
     - Support atomic instructions [A extension](https://five-embeddev.com/riscv-user-isa-manual/latest-latex/a.html#atomics)
 
-## Rearchitecting FESVR (Safin)
+### Rearchitecting FESVR (Safin)
 
 - Front end server (FESVR) background
     - [Chipyard FESVR documentation](https://chipyard.readthedocs.io/en/latest/Advanced-Concepts/Chip-Communication.html)
@@ -145,20 +278,20 @@
 
 ---
 
-## Specification language
+## Architectural Definition Language
 
 - Generating rust code: we can use the [syn](https://docs.rs/syn/latest/syn/) library to represent arbitrary Rust ASTs for code generation
 - Scala embedded DSL for the specification language
-    - Need a way of interpretting the language to generate code for functional simulation
+    - Need a way of interpreting the language to generate code for functional simulation
         - An add instruction cannot be represented as an Scala add as we must interpret the operation for code gen
     - Need a clear separation of architectural state and update rules
         - For unprivileged instructions, this is straightforward
         - Privileged instructions are where this might become challenging
             - Virtual memory: this seems quite doable. Need to write rules for SATP & TLB updates
             - Interrupt & exception handling
-            - Expressing the behaviors of PLIC & CLINT 
+            - Expressing the behaviors of PLIC & CLINT
 
-### Approach 1: Use Chisel as the frontend, but build a custom interpretter
+### Approach 1: Use Chisel as the frontend, but build a custom interpreter
 
 - Can reuse a lot of the Chisel constructs like `Vec`, `Bundle`, `UInt`
 - Bridge the in-memory representation of CIRCT into FIRRTL2 and write FIRRTL passes that will emit components for the functional simulation
@@ -237,7 +370,7 @@ case class Add(rs1: UInt, rs2: UInt, rd: UInt, op: (UInt, UInt) => UInt) derives
 
 - Need a way of registering all the possible device models and searching for matching ones from the DTS
 - Need to implement a "bus" struct that has APIs for
-    - Adding new devices on the the bus and register its address range
+    - Adding new devices on the bus and register its address range
     - Receive load/store requests and route them to the correct device
     - When it receives a request with an invalid address, return a response indicating that the request had a invalid address
 - Possible devices includes: cores, DRAM, CLINT, PLIC, NIC, block device, uart, bootrom ...
