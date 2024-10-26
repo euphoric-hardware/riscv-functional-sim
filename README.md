@@ -1,7 +1,5 @@
 # Generated Functional Simulation (SAIL-Spike)
 
----
-
 ## Background and Goals
 
 We want to build a RISC-V instruction set simulator (ISS) from first principles.
@@ -10,71 +8,98 @@ We want to build a RISC-V instruction set simulator (ISS) from first principles.
 
 We want to support all these modes both as top and as a library.
 
-- **Master**: ISS executes a binary directly
-  - As library: still master, but can be controlled by custom top. Can dump traces into buffer for top to analyze. Can checkpoint / restore / rewind. Can emulate time from external source (e.g. sampled RTL simulation, uArch perf model).
-- **Ganged / CoSim**: ISS executes a binary and emulates all arch state, but not as strict master. It receives arch events from RTL simulation and determines whether the next instruction group to commit in RTL sim is legal and matches the expected commit from the ISS.
-  - There is a big range of what RTL is verified in ganged simulation based on which SoC components are simulated in the ISS exactly vs simply 'believed' from RTL simulation. For instance, a DMA engine can be modeled exactly in the ISS, or the transactions to/from the DMA engine in RTL can be simply replayed in the ISS (eliding verification of the DMA engine's behavior itself).
-- **Slave**: ISS acts as a trace ingester from RTL sim / trace of another execution
-  - All SoC components and arch state are still modeled. The trace can contain partial information about the SoC (e.g. only the core / DRAM state can be reconstructed).
-  - In this mode, the ISS is used as a library and the top-level peeks the reconstructed arch state as needed (e.g. for trace-driven profiling / flamegraph construction)
-  - We can use this mode to do replay single-stepping of the SoC, a single instruction at a time
-- **Symbolic execution**: The modeled arch state is a mix of concrete and symbolic state
-  - This works similar to the slave mode, except the state update rules are computed symbolically
-  - This is useful for information flow tracking and memory trace reconstruction, among other things
-- **Other things**: There are a bunch of other usecases and features we wish to support that are quite iffy in the current spike + Chipyard world
-  - **Exact SoC modeling**: all undefined / vague behaviors pinned down. All SoC components and their arch state are modeled.
-    - An identical setup in the ISS that matches the SoC exactly
-    - RTL that's generated should be driving the parameterization of the functional sim (not the other way around)
-    - First-class support for passing a dts and bootrom into the functional sim from the RTL generator
-  - **Checkpoint / restore**: deser of arch state + testbench component / IO model state. No loss of information.
-  - **Trace analysis**: generic analysis pass writing using a generic ISA IR. Ability to dump execution traces into a trace buffer controlled and drained by a custom top.
-  - **Sampled simulation**: a custom top that leverages the above for sampled RTL simulation for accurate performance trace estimation.
-  - **Instruction generation**: for DV or fuzzing a RISC-V DUT.
-  - **Formal equivalence checking**: similar to [riscv-formal](https://github.com/YosysHQ/riscv-formal).
-  - **RTL generation**: targeting a simple single-cycle core model.
-  - **Coverage analysis**: given a trace, track code path coverage within the ISS + instruction-level coverage (see [RISC-V ISAC](https://riscv-isac.readthedocs.io/en/0.4.0/overview.html))
-  - **High performance disassembler**
-    - Disassembles execution traces into Rust-native structures either based on instruction encoding type (R, I, ...) or semantic instruction type (arithmetic, memory access, control flow, etc.)
-    - Leverage the host's SIMD ISA for high performance decoding
-      - https://github.com/gnzlbg/bitintrf
-      - Use x86 bitextract intrinsics to speed up instruction decode
+#### Master
+
+- ISS executes a binary directly
+- As a library: still master, but can be controlled by custom top
+  - Can dump traces into buffer for top to analyze
+  - Can checkpoint / restore / rewind
+  - Can emulate time from external source (e.g. sampled RTL simulation, uArch perf model)
+
+#### Ganged / CoSim
+
+- ISS executes a binary and emulates all arch state, but not as strict master. It receives arch events from RTL simulation and determines whether the next instruction group to commit in RTL sim is legal and matches the expected commit from the ISS.
+- There is a big range of what RTL is verified in ganged simulation based on which SoC components are simulated in the ISS exactly vs simply 'believed' from RTL simulation.
+  - For instance, a DMA engine can be modeled exactly in the ISS, or the transactions to/from the DMA engine in RTL can be simply replayed in the ISS (eliding verification of the DMA engine's behavior itself).
+
+#### Slave
+
+- ISS acts as a trace ingester from RTL sim / trace of another execution
+- All SoC components and arch state are still modeled. The trace can contain partial information about the SoC (e.g. only the core / DRAM state can be reconstructed).
+- In this mode, the ISS is used as a library and the top-level peeks the reconstructed arch state as needed (e.g. for trace-driven profiling / flamegraph construction)
+- We can use this mode to do replay single-stepping of the SoC, a single instruction at a time
+
+#### Symbolic execution
+
+- The modeled arch state is a mix of concrete and symbolic state
+- This works similar to the slave mode, except the state update rules are computed symbolically
+- This is useful for information flow tracking and memory trace reconstruction, among other things
+
+#### Other things
+
+There are a bunch of other use-cases and features we wish to support that are quite iffy in the current spike + Chipyard world.
+
+- **Exact SoC modeling**: all undefined / vague behaviors pinned down. All SoC components and their arch state are modeled.
+  - An identical setup in the ISS that matches the SoC exactly
+  - RTL that's generated should be driving the parameterization of the functional sim (not the other way around)
+  - First-class support for passing a dts and bootrom into the functional sim from the RTL generator
+- **Checkpoint / restore**: deser of arch state + testbench component / IO model state. No loss of information.
+- **Trace analysis**: generic analysis pass writing using a generic ISA IR. Ability to dump execution traces into a trace buffer controlled and drained by a custom top.
+- **Sampled simulation**: a custom top that leverages the above for sampled RTL simulation for accurate performance trace estimation.
+- **Instruction generation**: for DV or fuzzing a RISC-V DUT.
+- **Formal equivalence checking**: similar to [riscv-formal](https://github.com/YosysHQ/riscv-formal).
+- **RTL generation**: targeting a simple single-cycle core model.
+- **Coverage analysis**: given a trace, track code path coverage within the ISS + instruction-level coverage (see [RISC-V ISAC](https://riscv-isac.readthedocs.io/en/0.4.0/overview.html))
+- **High performance disassembler**
+  - Disassembles execution traces into Rust-native structures either based on instruction encoding type (R, I, ...) or semantic instruction type (arithmetic, memory access, control flow, etc.)
+  - Leverage the host's SIMD ISA for high performance decoding
+    - Use [x86 bitextract intrinsics](https://github.com/gnzlbg/bitintrf) to speed up instruction decode
 
 ### Unification of Testbench/IO Models
 
-- Unify models between all simulation backends (ISS, RTL simulation, FPGA prototyping, FPGA-based emulation / Firesim, ASIC-based emulation) + reality (testchip)
-  - Includes: fesvr + IO models + everything on the edge of the RISC-V target
-  - Accurate checkpoint + restore is also critical for all stateful non-DUT components (but this is really hard, maybe impossible)
-  - On the RTL side, we need to make top-level ports explicit (no internal DPIs)
-- Current state of fesvr + IO models is quite unified, but not sufficient since we need exact state snapshotting (+ ideally no C++)
+We should unify models between all simulation backends (ISS, RTL simulation, FPGA prototyping, FPGA-based emulation / Firesim, ASIC-based emulation) + reality (testchip bringup).
+This includes: fesvr + IO models + everything on the edge of the RISC-V target.
+The current state of fesvr + IO models is quite unified, but not sufficient since we need exact state checkpointing and restore (and ideally no more C++).
+
+There are some challenges like accurate checkpointing + restore for stateful non-DUT components, especially if we use Rust's coroutines.
+On the Chipyard RTL simulation side, we also need to make top-level ports explicit (no internal DPIs).
 
 ### EZ Custom Tops
 
-- It should have a basic top that works like Spike, but it should also be a library where users can write their own top
-    - Ganged-simulation, trace generation, sampling (checkpointing), trace-execution mode(?)
+We should have a basic top that works like Spike, but we should support library usage where users can write their own top.
 
-### Generated ISS
-
-- specification first interpreter/jit generator for ISA simulation
-- Automate the generation of instruction interpretation logic
-  - Avoid hand-written ISA implementations (like in spike or qemu)
-  - Use a formal ISA spec (maybe Sail, maybe something else) to generate
+Custom tops with spike are a pain.
+We want to simplify it.
+Dromajo does a better job, but we can do even better.
 
 ### High Performance
 
-- High performance
-    - Biggest performance bottleneck of functional simulators are in the instruction decode stage
-    - Need to have a micro-op cache where we maintain decoded instructions
+We're sure there are many tricks here (faster instruction decoding, caching, basic block-granularity execution) that are played by NEMU but not spike.
+We anticipate we can build an ISS that can run at 500+ MIPS, which could obviate DBT.
 
 ### Principled Discrete Event Simulation
 
-- Cleanup the weird coroutine stuff in FESVR
-    - [tokio](https://docs.rs/tokio/latest/tokio/index.html)
+Spike uses an ad-hoc mechanism of multiple host threads and `switch_to()` calls to emulate parallel simulation threads (e.g. between switching between fesvr, IO models, and the target RISC-V core - each with their separate contexts and stacks).
+Ideally, we can leverage an actual discrete event simulation framework (like [DAM](https://github.com/stanford-ppl/DAM-RS)) and remove these host thread switching hacks (or build something on top of [tokio](https://docs.rs/tokio/latest/tokio/index.html)).
+
+One challenge is to integrate this with the Chipyard RTL simulation environment and Firesim.
+This also needs to play nicely with serialization of IO/testbench model state, which seems very tricky, if not impossible.
+Perhaps the only way to make this easy is to force all state to be in the RTL abstraction or serializable software datastructures and keep all the instant update rules as regular arbitrary Rust code.
+This implies that state machines must be explicitly constructed however, which is a big annoyance.
+
+### Generated ISS
+
+Ideally we don't want to build a point implementation, but rather an ISS generator that consumes a formal spec of the ISA.
+We would like to (eventually) avoid a hand-written ISA implementation (like in spike or qemu).
+This is very idealistic and many prior attempts have been made (e.g. riscv-sail, pydrofoil), but none can achieve high performance and ease of integration with custom tops.
 
 ### Dynamic Binary Translation (DBT) Mode
 
+For maximum performance, there is no substitute for host-ISA codegen (dynamic binary translation).
+Since we don't need to support multiple ISAs, we can avoid an intermediary layer like in qemu (i.e. TCG-IR).
+
 
 - DBT using cranelift JIT
-- dynamic binary translation for even higher performance (like qemu, but tailored for RISC-V specifically, leverage cranelift)
 
 ### Prior Work
 
