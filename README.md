@@ -97,50 +97,68 @@ This is very idealistic and many prior attempts have been made (e.g. riscv-sail,
 
 For maximum performance, there is no substitute for host-ISA codegen (dynamic binary translation).
 Since we don't need to support multiple ISAs, we can avoid an intermediary layer like in qemu (i.e. TCG-IR).
-
-
-- DBT using cranelift JIT
+Since we're using Rust, it would be great to use the Cranelift IR and JIT!
 
 ### Prior Work
 
 #### ISS
 
-- spike (riscv-isa-sim)
-- dromajo
-
-- NEMU
-https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9923860
-Look at this paper, in particular the section "NEMU: Fast Interpreter for Performance Evaluation"
-
-Get familiar with threaded interpreters
-https://www.complang.tuwien.ac.at/forth/threaded-code.html
-https://stackoverflow.com/questions/58774170/how-to-speed-up-dynamic-dispatch-by-20-using-computed-gotos-in-standard-c
-https://stackoverflow.com/questions/3848343/decode-and-dispatch-interpretation-vs-threaded-interpretation
-
-  - https://stackoverflow.com/questions/75028678/is-it-impossible-to-write-thread-code-in-rust
-  - https://users.rust-lang.org/t/how-can-i-approach-the-performance-of-c-interpreter-that-uses-computed-gotos/6261
-  - https://stackoverflow.com/questions/58774170/how-to-speed-up-dynamic-dispatch-by-20-using-computed-gotos-in-standard-c
-  - https://www.complang.tuwien.ac.at/forth/threaded-code.html
-
-- [NEMU](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9923860&tag=1)
-- Reference: [Dynamic dispatch vs computed gotos](https://stackoverflow.com/questions/58774170/how-to-speed-up-dynamic-dispatch-by-20-using-computed-gotos-in-standard-c)
-
-- Symbolic execution of RISC-V binary code based on formal instruction semantics. https://github.com/agra-uni-bremen/BinSym
+- spike ([riscv-isa-sim](https://github.com/riscv-software-src/riscv-isa-sim/))
+  - Considered the 'golden model' for RISC-V
+- [dromajo](https://github.com/chipsalliance/dromajo/tree/master)
+  - Designed by Esperanto for RTL co-simulation for DV. Not actively maintained anymore.
+- [NEMU](https://github.com/NJU-ProjectN/nemu)
+  - Created by the comparch team at Nanjing University.
+  - Contains various performance optimizations discussed in the Xiangshan paper (["Towards Developing High Performance RISC-V Processors Using Agile Methodology"](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9923860))
+  - Uses a threaded interpreter architecture (maybe with it's own internal bytecode which is interpreted)
+  - Some links about threaded interpreters: [Link 1](https://www.complang.tuwien.ac.at/forth/threaded-code.html), [Link 2](https://stackoverflow.com/questions/58774170/how-to-speed-up-dynamic-dispatch-by-20-using-computed-gotos-in-standard-c), [Link 3](https://stackoverflow.com/questions/3848343/decode-and-dispatch-interpretation-vs-threaded-interpretation), [Link 4](https://stackoverflow.com/questions/75028678/is-it-impossible-to-write-thread-code-in-rust), [Link 5](https://users.rust-lang.org/t/how-can-i-approach-the-performance-of-c-interpreter-that-uses-computed-gotos/6261)
 
 #### DBT
 
-- qemu
+- QEMU is the SOTA DBT simulator
+- [Accelerate RISC-V Instruction Set Simulation by Tiered JIT Compilation (VMIL 2024)](https://dl.acm.org/doi/abs/10.1145/3689490.3690399)
+- [Pydrofoil](https://github.com/pydrofoil/pydrofoil)
+  - Uses the Sail RISC-V model and emulates it using PyPy
+  - Uses the [ISLA backend for Sail](https://github.com/rems-project/isla?tab=readme-ov-file) to generate some [representation of the ISA](https://github.com/rems-project/isla-snapshots). This is all very unclear and iffy to me.
+  - [Some notes](https://docs.pydrofoil.org/en/latest/background_optimizations.html) on pydrofoil's optimizations
+  - [Talk: Pydrofoil: A fast RISC-V emulator generated from the Sail model, using PyPy's JIT](https://www.youtube.com/watch?v=dUHWhUdXFJg)
+  - The complexity of this project [is insanely high](https://github.com/pydrofoil/pydrofoil/blob/main/pydrofoil/ir.py) since they are parsing and interpreting the Sail language itself in Python and then doing codegen on top of that
 
 #### Architectural Description Languages / Generated ISS
 
-- Vienna ADL
-- need to do review of Vienna - someone should look into that
-  - https://arxiv.org/pdf/2402.09087
+Background:
+
+- [How to improve the RISC-V specification by Alastair Reid](https://alastairreid.github.io/riscv-spec-issues/)
+  - A great article about the pain of RISC-V specifications
+- [ARM's Architecture Specification Language](https://developer.arm.com/Architectures/Architecture%20Specification%20Language)
+
+Existing tools and languages:
+
+- [Sail](https://github.com/riscv/sail-riscv)
+  - Adopted as the formal spec for RISC-V
+  - Painful to use
+  - [ThinkOpenly / sail](https://github.com/ThinkOpenly/sail) - an attempt to JSON-ify Sail's IR and emit it (but no execution semantics)
+    - [Demo: RISC-V Instruction Information Parsing and Storage for SAIL - Paul Clarke](https://www.youtube.com/watch?v=svMcOfxcy1Y)
+- [Vienna ADL](https://arxiv.org/pdf/2402.09087)
   - [Cycle-Accurate Simulator Generator for the VADL Processor Description Language](https://repositum.tuwien.at/bitstream/20.500.12708/17053/1/Schuetzenhoefer%20Hermann%20-%202020%20-%20Cycle-Accurate%20simulator%20generator%20for%20the%20VADL...pdf)
   - [Optimized Processor Simulation with VADL](https://repositum.tuwien.at/bitstream/20.500.12708/157928/1/Mihaylov%20Hristo%20-%202023%20-%20Optimised%20Processor%20Simulation%20with%20VADL.pdf)
-- CodAL
+  - [A pred-LL(*) Parsable Typed Higher-Order Macro System for Architecture Description Languages (Video, GPCE 2023)](https://www.youtube.com/watch?v=jopIILxxNbQ)
+  - VADL isn't open source, but the base rv64ui spec is available. They're working on OpenVADL, but it is a ways away.
+- [CodAL](https://codasip.com/2021/02/26/what-is-codal/)
+  - Codasip's ADL - seems quite nice, but it is a custom language and the compiler for it is of course proprietary
+- [riscv-unified-db](https://github.com/riscv-software-src/riscv-unified-db)
+  - Derek Hower and Qualcomm people's attempt at building a formal spec for RISC-V that is easier to use than Sail
+  - Based on [yaml files that encode every instruction](https://github.com/riscv-software-src/riscv-unified-db/blob/main/arch/README.adoc) and extensions
+  - Some way to define concrete behaviors of undefined behavior in the spec
+  - Instruction semantics are provided in IDL ([Interface Definition Language](https://www.omg.org/spec/IDL)) which is parsed/interpreted [in Ruby](https://github.com/RemedyIT/ridl)
+  - They wish for this project to replace Sail, spike, and hand-written ISA specs
 - [Versatile and Flexible Modelling of the RISC-V Instruction Set Architecture](https://agra.informatik.uni-bremen.de/doc/konf/TFP23_ST.pdf)
-  - [Extensible implementation of the RISC-V ISA based on FreeMonads - Haskell, Github](https://github.com/agra-uni-bremen/libriscv)
+  - [libriscv - Extensible implementation of the RISC-V ISA based on FreeMonads - Haskell, Github](https://github.com/agra-uni-bremen/libriscv)
+  - [BinSym](https://github.com/agra-uni-bremen/BinSym): Symbolic execution of RISC-V binary code based on formal instruction semantics
+- [A Multipurpose Formal RISC-V Specification Without Creating New Tools (MIT people)](https://people.csail.mit.edu/bthom/riscv-spec.pdf)
+- [MicroTESK](http://www.microtesk.org/)
+  - This is an abandoned project
+  - [Machine-Readable Specifications of RISC-V ISA](https://riscv.org/wp-content/uploads/2018/12/Machine-Readable-Specifications-of-RISC-V-ISA-Kamkin-Tatarnikov.pdf)
 
 ---
 
@@ -264,7 +282,7 @@ https://stackoverflow.com/questions/3848343/decode-and-dispatch-interpretation-v
 
 - Generating rust code: we can use the [syn](https://docs.rs/syn/latest/syn/) library to represent arbitrary Rust ASTs for code generation
 - Scala embedded DSL for the specification language
-    - Need a way of interpretting the language to generate code for functional simulation
+    - Need a way of interpreting the language to generate code for functional simulation
         - An add instruction cannot be represented as an Scala add as we must interpret the operation for code gen
     - Need a clear separation of architectural state and update rules
         - For unprivileged instructions, this is straightforward
@@ -273,7 +291,7 @@ https://stackoverflow.com/questions/3848343/decode-and-dispatch-interpretation-v
             - Interrupt & exception handling
             - Expressing the behaviors of PLIC & CLINT
 
-### Approach 1: Use Chisel as the frontend, but build a custom interpretter
+### Approach 1: Use Chisel as the frontend, but build a custom interpreter
 
 - Can reuse a lot of the Chisel constructs like `Vec`, `Bundle`, `UInt`
 - Bridge the in-memory representation of CIRCT into FIRRTL2 and write FIRRTL passes that will emit components for the functional simulation
