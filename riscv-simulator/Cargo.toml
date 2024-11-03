@@ -6,3 +6,5 @@ edition = "2021"
 [dependencies]
 bitfield = "0.17.0"
 modular-bitfield = "=0.11.2"
+serde = {version = "1.0.214", features = ["derive"]}
+serde_json = "1.0.132"

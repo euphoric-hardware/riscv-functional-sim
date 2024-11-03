@@ -1,13 +1,12 @@
 #![allow(warnings)]
-use crate::instruction_memory::{self, InstructionMemory};
 use crate::instructions::{BType, IType, JType, RType, SType, UType};
 use crate::processor::Processor;
-pub struct Disassembler<'a> {
-    instruction_memory: &'a InstructionMemory,
+pub struct Disassembler {
+    instruction_memory: Vec<u8>,
 }
 
-impl<'a> Disassembler<'a> {
-    pub fn new_disassembler(instruction_memory: &'a InstructionMemory) -> Self {
+impl Disassembler{
+    pub fn new_disassembler(instruction_memory: Vec<u8>) -> Self {
         return Disassembler {
             instruction_memory: instruction_memory,
         };
@@ -241,7 +240,7 @@ impl<'a> Disassembler<'a> {
 
     pub fn get_trace(&self, pc: usize) -> String {
         // decode instruction based on opcode - currently implementing RV32E instruction set
-        let instruction: u32 = self.instruction_memory.read(pc);
+        let instruction: u32 = (self.instruction_memory[pc as usize + 3] as u32) << 24 | (self.instruction_memory[pc as usize + 2] as u32) << 16 | (self.instruction_memory[pc as usize + 1] as u32) << 8 | (self.instruction_memory[pc as usize] as u32);
         match instruction & 0x7F {
             // i-type arithmetic
             0x13 => {

@@ -101,6 +101,6 @@ if __name__ == "__main__":
     
     with open(sys.argv[1], "wb") as binary_file:
         for instruction in instructions:
-            binary_file.write(struct.pack('>I', instruction))
+            binary_file.write(struct.pack('<I', instruction))
     binary_file.close()
     print("Wrote", sys.argv[2], "instructions to", sys.argv[1] + "!")
