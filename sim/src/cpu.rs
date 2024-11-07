@@ -1,8 +1,37 @@
-#[derive(Default, Debug)]
+use crate::{
+    bus::{self, Bus, Device},
+    csrs::Csrs,
+};
+
+#[derive(Debug, Default)]
 pub struct Cpu {
     pub regs: [u64; 32],
     pub pc: u64,
-    pub dram: Vec<u8>,
+    pub csrs: Csrs,
+}
+
+pub enum Error {
+    UnknownInsn,
+    BusError(bus::Error),
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
+
+impl Cpu {
+    pub fn new() -> Cpu {
+        Default::default()
+    }
+
+    pub fn step(&mut self, bus: &mut Bus) {
+        let mut bytes = [0; std::mem::size_of::<u32>()];
+        let _ = bus.read(self.pc, &mut bytes); // cpu should handle bus error?
+        let insn = Insn::from_bytes(&bytes);
+        if let Ok(pc) = self.execute_insn(insn, bus) {
+            self.pc = pc;
+        } else {
+            // cpu SHOULD handle insn error (exception)
+        }
+    }
 }
 
 #[derive(Clone, Copy)]

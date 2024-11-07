@@ -45,9 +45,9 @@ fn generate_instruction_files(out_dir: &Path, config: &BTreeMap<String, ParsedIn
             ""
         };
         let raw = format!(
-            r#"use crate::cpu::{{Cpu, Insn}};
+            r#"use crate::{{cpu::{{self, Cpu, Insn}}, bus::Bus}};
 
-pub fn {insn_name}(insn: Insn, cpu: &mut Cpu) {{
+pub fn {insn_name}(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {{
     crate::trace_insn!("{insn_name}"{comma_if}{trace_args});{newline_if}
     {field_bindings}{newline_if}
     todo!();
@@ -84,32 +84,34 @@ fn generate_cpu_execute_arms(out_dir: &Path, config: &BTreeMap<String, ParsedIns
         .expect("cpu_execute.rs");
 
     let base = r#"use crate::{
-    cpu::{Cpu, Insn},
+    cpu::{self, Cpu, Insn},
+    bus::Bus,
     insn_impl,
 };
 
 impl Cpu {
-    pub fn execute(&mut self, insn: Insn) {
+    pub fn execute_insn(&mut self, insn: Insn, bus: &mut Bus) -> cpu::Result<u64> {
         let bits = insn.bits();"#;
 
     writeln!(handle, "{}", base).expect("write");
 
-    for (insn_name, insn) in config.iter() {
+    for (idx, (insn_name, insn)) in config.iter().enumerate() {
         writeln!(
             handle,
             r#"
-        if bits & {} == {} {{
-            insn_impl::{insn_name}::{insn_name}(insn, self);
-            return;
+        {}if bits & {} == {} {{
+            insn_impl::{insn_name}::{insn_name}(insn, self, bus)
         }}"#,
-            insn.mask, insn.i_match
+            if idx != 0 { "else " } else { "" },
+            insn.mask,
+            insn.i_match
         )
         .expect("write");
     }
 
     let end = r#"
         else {
-            panic!("unknown instruction!")
+            Err(cpu::Error::UnknownInsn)
         }
     }
 }
@@ -158,22 +160,30 @@ fn main() {
 
     let spec_dir = out_dir.join("..").join("riscv-opcodes");
     println!(
-        "cargo:rerun-if-changed={}",
+        "cargo::rerun-if-changed={}",
         spec_dir.canonicalize().unwrap().to_string_lossy()
     );
+
+    let mut path = env::var("PATH").expect("reading PATH failed");
+    if let Ok(venv_path) = env::var("VIRTUAL_ENV") {
+        path = format!("{}/bin:{}", venv_path, path);
+        println!("cargo::warning={}", path);
+    }
 
     let cmd = Command::new("make")
         .arg("EXTENSIONS=rv_i rv64_i")
         .current_dir(&spec_dir)
+        .env("PATH", path)
         .output()
         .expect("running make failed");
+
     // commented out because of my intellisense/pyenv shenanigans
-    // if !cmd.status.success() {
-    //     panic!(
-    //         "make failed with output: {}",
-    //         String::from_utf8_lossy(&cmd.stderr)
-    //     );
-    // }
+    if !cmd.status.success() {
+        panic!(
+            "make failed with output: {}",
+            String::from_utf8_lossy(&cmd.stderr)
+        );
+    }
 
     let config: BTreeMap<String, ParsedInsn> = serde_yaml::from_reader(
         File::open(&spec_dir.join("instr_dict.yaml")).expect("instr_dict.yaml not found"),

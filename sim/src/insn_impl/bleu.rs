@@ -1,6 +1,6 @@
-use crate::cpu::{Cpu, Insn};
+use crate::{cpu::{self, Cpu, Insn}, bus::Bus};
 
-pub fn bleu(insn: Insn, cpu: &mut Cpu) {
+pub fn bleu(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     crate::trace_insn!("bleu", bimm12hi = insn.bimm12hi(), rs2 = insn.rs2(), rs1 = insn.rs1(), bimm12lo = insn.bimm12lo());
 
     let bimm12hi = insn.bimm12hi();

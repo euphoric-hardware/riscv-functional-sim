@@ -1,4 +1,4 @@
 [workspace]
 
-members = ["fesvr-rs", "sim", "riscv-simulator"]
+members = ["fesvr", "sim"]
 resolver = "2"
