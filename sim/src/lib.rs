@@ -4,6 +4,7 @@
 
 mod bus;
 mod cpu;
+mod csr; // alternate csr implementation
 mod csrs;
 mod generated;
 mod insn_impl;
