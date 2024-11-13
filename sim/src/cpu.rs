@@ -1,5 +1,6 @@
 use crate::{
     bus::{self, Bus, Device},
+    csr::CSR, // alternate CSR implementation with fields/permissions
     csrs::Csrs,
 };
 
@@ -7,7 +8,7 @@ use crate::{
 pub struct Cpu {
     pub regs: [u64; 32],
     pub pc: u64,
-    pub csrs: Csrs,
+    pub csrs: Vec<CSR>,
 }
 
 pub enum Error {
