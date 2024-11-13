@@ -2,17 +2,23 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 
+mod bus;
 mod cpu;
+mod csrs;
 mod generated;
 mod insn_impl;
 mod log;
+mod plic;
+mod system;
 
 use generated::cpu_execute as _;
 pub use log::*;
 
 #[cfg(test)]
 mod tests {
-    use super::cpu::{Cpu, Insn};
+    use fesvr::frontend::Frontend;
+
+    use super::system::System;
 
     use std::{fs, sync::Once};
 
@@ -24,28 +30,21 @@ mod tests {
     }
 
     #[test]
-    fn it_works() {
-        setup();
-
-        let mut cpu = Cpu::default();
-        cpu.regs[1] = 123;
-        cpu.regs[2] = 456;
-        cpu.execute(Insn(0x002082b3)); // add x5, x1, x2
-
-        assert_eq!(cpu.regs[5], 123 + 456)
-    }
-
-    #[test]
     fn run_rom() {
         setup();
 
-        let mut cpu = Cpu::default();
-        let rom = fs::read("test_rom").expect("test_rom not found");
+        let mut system = System::new();
+        let mut frontend = Frontend::try_new("rv64ui-p-simple").unwrap();
+        frontend.write_elf(&mut system).unwrap();
 
-        while cpu.pc < rom.len() as u64 {
-            // just handle standard 32-bit wide insns right now
-            let insn = Insn::from_bytes(&rom[cpu.pc as usize..cpu.pc as usize + 4]);
-            cpu.execute(insn);
+        let mut i = 0;
+        loop {
+            system.tick();
+            if i % 5000 == 0 {
+                frontend.process(&mut system).expect("htif");
+            }
+
+            i += 1;
         }
     }
 }

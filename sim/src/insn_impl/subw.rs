@@ -1,6 +1,9 @@
-use crate::cpu::{Cpu, Insn};
+use crate::{
+    bus::Bus,
+    cpu::{self, Cpu, Insn},
+};
 
-pub fn subw(insn: Insn, cpu: &mut Cpu) {
+pub fn subw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     crate::trace_insn!("subw", rd = insn.rd(), rs1 = insn.rs1(), rs2 = insn.rs2());
 
     let rd = insn.rd();
@@ -11,5 +14,5 @@ pub fn subw(insn: Insn, cpu: &mut Cpu) {
         (cpu.regs[rs1 as usize] as u32).wrapping_sub(cpu.regs[rs2 as usize] as u32) as u64,
         32,
     ) as u64;
-    cpu.pc += 4;
+    Ok(cpu.pc + 4)
 }

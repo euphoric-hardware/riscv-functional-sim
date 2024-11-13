@@ -20,6 +20,9 @@ pub enum Error {
 
     #[error("host I/O error")]
     IoError(#[from] io::Error),
+
+    #[error("misc")]
+    Misc,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

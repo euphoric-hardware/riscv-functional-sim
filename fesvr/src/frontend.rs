@@ -6,29 +6,26 @@ use std::{
     io::Write,
     os::fd::FromRawFd as _,
     path::Path,
-    time::Duration,
 };
 
 pub trait Htif {
-    fn read(&self, ptr: u64, buf: &mut [u8]) -> Result<u64>;
-    fn write(&self, ptr: u64, buf: &[u8]) -> Result<u64>;
+    fn read(&mut self, ptr: u64, buf: &mut [u8]) -> Result<()>;
+    fn write(&mut self, ptr: u64, buf: &[u8]) -> Result<()>;
 }
 
-pub struct Frontend<H> {
-    htif: H,
+pub struct Frontend {
     elf: RiscvElf,
     to_host: u64, // pointers
     from_host: u64,
 }
 
-impl<H: Htif> Frontend<H> {
-    pub fn try_new(htif: H, elf_path: impl AsRef<Path>) -> Result<Self> {
+impl Frontend {
+    pub fn try_new(elf_path: impl AsRef<Path>) -> Result<Self> {
         let elf_data = fs::read(elf_path)?; // add error ctxt later
         let elf = RiscvElf::try_new(elf_data)?;
         let htif_base = elf.extract_htif_base()?;
 
         Ok(Self {
-            htif,
             elf,
             to_host: htif_base,
             from_host: htif_base + size_of::<u64>() as u64,
@@ -36,7 +33,7 @@ impl<H: Htif> Frontend<H> {
     }
 
     // write appropriate sections of elf into memory
-    pub async fn write_elf(&self) -> Result<()> {
+    pub fn write_elf<H: Htif>(&self, htif: &mut H) -> Result<()> {
         let e = self.elf.endianness();
 
         for section in self.elf.sections()?.iter() {
@@ -44,36 +41,32 @@ impl<H: Htif> Frontend<H> {
                 let data = section.data(e, &*self.elf.data)?;
 
                 // const CHUNK_SIZE: u64 = 1024; do .chunks() for progress bar later
-                self.htif.write(section.sh_addr(e) as u64, &data)?;
+                htif.write(section.sh_addr(e) as u64, &data)?;
             }
         }
 
         Ok(())
     }
 
-    // todo(far): abstract this out
-    pub async fn poll(&self, delay: Duration) -> Result<()> {
-        loop {
-            let mut buf = [0; size_of::<Syscall>()];
-            self.htif.read(self.to_host, &mut buf)?;
-            let syscall = Syscall::from_le_bytes(&buf);
+    pub fn process<H: Htif>(&mut self, htif: &mut H) -> Result<()> {
+        let mut buf = [0; size_of::<Syscall>()];
+        htif.read(self.to_host, &mut buf)?;
+        let syscall = Syscall::from_le_bytes(&buf);
 
-            if let Some(syscall) = syscall {
-                self.execute_syscall(syscall)?;
+        if let Some(syscall) = syscall {
+            self.execute_syscall(syscall, htif)?;
 
-                // "signal chip that syscall processed" (taken from pyuartsi, verbatim)
-                self.htif.write(self.to_host, &[0])?;
-                self.htif.write(self.from_host, &[1])?;
-            } else {
-                info!("target attempted invalid syscall: {:?}", syscall);
-            }
-
-            std::thread::sleep(delay);
+            // "signal chip that syscall processed" (taken from pyuartsi, verbatim)
+            htif.write(self.to_host, &[0])?;
+            htif.write(self.from_host, &[1])
+        } else {
+            // nothing there
+            Ok(())
         }
     }
 
     // execute syscall on host
-    fn execute_syscall(&self, syscall: Syscall) -> Result<()> {
+    fn execute_syscall<H: Htif>(&mut self, syscall: Syscall, htif: &mut H) -> Result<()> {
         match syscall.syscall_id {
             SyscallId::Exit => {
                 info!("target requested exit, exiting...");
@@ -83,7 +76,7 @@ impl<H: Htif> Frontend<H> {
                 let (fd, ptr, len) = (syscall.arg0, syscall.arg1, syscall.arg2);
 
                 let mut buf = vec![0; len as usize];
-                self.htif.read(ptr, &mut buf)?;
+                htif.read(ptr, &mut buf)?;
 
                 let fd = fd.try_into().map_err(|_| Error::InvalidSyscallArg {
                     arg_no: 0,

@@ -1,6 +1,9 @@
-use crate::cpu::{Cpu, Insn};
+use crate::{
+    bus::Bus,
+    cpu::{self, Cpu, Insn},
+};
 
-pub fn xor(insn: Insn, cpu: &mut Cpu) {
+pub fn xor(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     crate::trace_insn!("xor", rd = insn.rd(), rs1 = insn.rs1(), rs2 = insn.rs2());
 
     let rd = insn.rd();
@@ -8,5 +11,5 @@ pub fn xor(insn: Insn, cpu: &mut Cpu) {
     let rs2 = insn.rs2();
 
     cpu.regs[rd as usize] = cpu.regs[rs1 as usize] ^ cpu.regs[rs2 as usize];
-    cpu.pc += 4;
+    Ok(cpu.pc + 4)
 }

@@ -1,10 +1,10 @@
-use crate::cpu::{Cpu, Insn};
+use crate::{cpu::{self, Cpu, Insn}, bus::Bus};
 
-pub fn sext_w(insn: Insn, cpu: &mut Cpu) {
+pub fn sext_w(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     crate::trace_insn!("sext_w", rd = insn.rd(), rs1 = insn.rs1());
 
     let rd = insn.rd();
     let rs1 = insn.rs1();
 
-    todo!();
+    Ok(cpu.pc + 4)
 }
