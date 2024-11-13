@@ -275,10 +275,20 @@ fn main() {
         );
     }
 
-    let config: BTreeMap<String, ParsedInsn> = serde_yaml::from_reader(
+    let mut config: BTreeMap<String, ParsedInsn> = serde_yaml::from_reader(
         File::open(&spec_dir.join("instr_dict.yaml")).expect("instr_dict.yaml not found"),
     )
     .expect("yaml deserialize");
+
+    const EXCLUDED_INSNS: &[&str] = &[
+        "mv", "neg", "nop", "zext_b", "ret", "bleu", "bgtu", "ble", "bgez", "blez", "bgt", "bgtz",
+        "bltz", "bnez", "beqz", "seqz", "snez", "sltz", "sgtz", "jr", "j", "sext_w", "csrr",
+        "csrw", "csrs", "csrc", "csrwi", "csrsi", "csrci",
+    ];
+    for insn in EXCLUDED_INSNS {
+        config.remove(insn.to_owned());
+    }
+
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(false)
         .from_path(&spec_dir.join("arg_lut.csv"))
