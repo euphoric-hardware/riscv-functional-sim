@@ -107,7 +107,7 @@ impl Ram {
     fn page_slice(&mut self, ptr: u64, len: u64) -> &mut [u8] {
         let (page_id, page_offset) = (
             ptr >> Self::PAGE_OFFSET_BITS,
-            ptr & (1 << Self::PAGE_OFFSET_BITS - 1),
+            ptr & ((1 << Self::PAGE_OFFSET_BITS) - 1),
         );
 
         &mut self

@@ -323,6 +323,7 @@ version = "0.1.0"
 dependencies = [
  "csv",
  "env_logger",
+ "fesvr",
  "log",
  "serde",
  "serde_yaml",
