@@ -100,6 +100,58 @@ impl Cpu {
             insn_impl::bnez::bnez(insn, self, bus)
         }
 
+        else if bits & 0x7fff == 0x3073 {
+            insn_impl::csrc::csrc(insn, self, bus)
+        }
+
+        else if bits & 0x7fff == 0x7073 {
+            insn_impl::csrci::csrci(insn, self, bus)
+        }
+
+        else if bits & 0xff07f == 0x2073 {
+            insn_impl::csrr::csrr(insn, self, bus)
+        }
+
+        else if bits & 0x707f == 0x3073 {
+            insn_impl::csrrc::csrrc(insn, self, bus)
+        }
+
+        else if bits & 0x707f == 0x7073 {
+            insn_impl::csrrci::csrrci(insn, self, bus)
+        }
+
+        else if bits & 0x707f == 0x2073 {
+            insn_impl::csrrs::csrrs(insn, self, bus)
+        }
+
+        else if bits & 0x707f == 0x6073 {
+            insn_impl::csrrsi::csrrsi(insn, self, bus)
+        }
+
+        else if bits & 0x707f == 0x1073 {
+            insn_impl::csrrw::csrrw(insn, self, bus)
+        }
+
+        else if bits & 0x707f == 0x5073 {
+            insn_impl::csrrwi::csrrwi(insn, self, bus)
+        }
+
+        else if bits & 0x7fff == 0x2073 {
+            insn_impl::csrs::csrs(insn, self, bus)
+        }
+
+        else if bits & 0x7fff == 0x6073 {
+            insn_impl::csrsi::csrsi(insn, self, bus)
+        }
+
+        else if bits & 0x7fff == 0x1073 {
+            insn_impl::csrw::csrw(insn, self, bus)
+        }
+
+        else if bits & 0x7fff == 0x5073 {
+            insn_impl::csrwi::csrwi(insn, self, bus)
+        }
+
         else if bits & 0xffffffff == 0x100073 {
             insn_impl::ebreak::ebreak(insn, self, bus)
         }

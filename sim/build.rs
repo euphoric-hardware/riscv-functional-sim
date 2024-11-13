@@ -154,6 +154,92 @@ impl Insn {"#;
     writeln!(handle, "}}").expect("write");
 }
 
+fn generate_csr_load_store<T: io::Read>(out_dir: &Path, csv_reader: &mut csv::Reader<T>) {
+    let csr_load_store = out_dir
+        .join("src")
+        .join("generated")
+        .join("csr_load_store.rs");
+    if fs::exists(&csr_load_store).unwrap_or(true) {
+        fs::remove_file(&csr_load_store).expect("remove csr_load_store");
+    }
+    let mut handle = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(&csr_load_store)
+        .expect("csr_load_store.rs");
+
+    let records = csv_reader.records().collect::<Vec<_>>();
+
+    let raw = r#"use crate::{csrs::Csrs, cpu::{Error, Result}};
+
+impl Csrs {"#;
+    writeln!(handle, "{}", raw).expect("write");
+
+    for line in &records {
+        let line = line.as_ref().expect("csv parse failed");
+        let address = &line[0];
+        let csr_name = line[1].trim().trim_matches('"').to_uppercase();
+
+        writeln!(handle, "    pub const {csr_name}: u64 = {address};").expect("write");
+    }
+
+    writeln!(
+        handle,
+        r#"
+    fn load(&self, address: u64) -> Result<u64> {{
+        match address {{"#
+    )
+    .expect("write");
+
+    for line in &records {
+        let line = line.as_ref().expect("csv parse failed");
+        let csr_name = line[1].trim().trim_matches('"').to_uppercase();
+
+        writeln!(
+            handle,
+            "            Self::{csr_name} => Ok(self.regs[Self::{csr_name} as usize]),"
+        )
+        .expect("write");
+    }
+
+    writeln!(
+        handle,
+        "            _ => Err(Error::UnknownCsr)
+        }}
+    }}
+"
+    )
+    .expect("write");
+
+    writeln!(
+        handle,
+        r#"
+    fn store(&mut self, address: u64, value: u64) -> Result<()> {{
+        match address {{"#
+    )
+    .expect("write");
+
+    for line in &records {
+        let line = line.as_ref().expect("csv parse failed");
+        let csr_name = line[1].trim().trim_matches('"').to_uppercase();
+
+        writeln!(
+            handle,
+            "            Self::{csr_name} => Ok(self.regs[Self::{csr_name} as usize] = value),"
+        )
+        .expect("write");
+    }
+
+    writeln!(
+        handle,
+        "            _ => Err(Error::UnknownCsr)
+        }}
+    }}
+}}"
+    )
+    .expect("write");
+}
+
 fn main() {
     let out_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let out_dir = Path::new(&out_dir);
@@ -161,7 +247,11 @@ fn main() {
     let spec_dir = out_dir.join("..").join("riscv-opcodes");
     println!(
         "cargo::rerun-if-changed={}",
-        spec_dir.canonicalize().unwrap().to_string_lossy()
+        out_dir
+            .join("../.git/modules/riscv-opcodes/refs/heads/master")
+            .canonicalize()
+            .unwrap()
+            .to_string_lossy()
     );
 
     let mut path = env::var("PATH").expect("reading PATH failed");
@@ -171,7 +261,7 @@ fn main() {
     }
 
     let cmd = Command::new("make")
-        .arg("EXTENSIONS=rv_i rv64_i")
+        .arg("EXTENSIONS=rv_i rv64_i rv_zicsr")
         .current_dir(&spec_dir)
         .env("PATH", path)
         .output()
@@ -193,8 +283,13 @@ fn main() {
         .has_headers(false)
         .from_path(&spec_dir.join("arg_lut.csv"))
         .expect("arg_lut.csv not found");
+    let mut rdr2 = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .from_path(&spec_dir.join("csrs.csv"))
+        .expect("csrs.csv not found");
 
     generate_instruction_files(&out_dir, &config);
     generate_cpu_execute_arms(&out_dir, &config);
     generate_insn_arg_luts(&out_dir, &mut rdr);
+    generate_csr_load_store(&out_dir, &mut rdr2);
 }

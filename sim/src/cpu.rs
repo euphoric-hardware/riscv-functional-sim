@@ -12,6 +12,7 @@ pub struct Cpu {
 
 pub enum Error {
     UnknownInsn,
+    UnknownCsr,
     BusError(bus::Error),
 }
 
@@ -29,7 +30,7 @@ impl Cpu {
         if let Ok(pc) = self.execute_insn(insn, bus) {
             self.pc = pc;
         } else {
-            // cpu SHOULD handle insn error (exception)
+            self.pc = self.csrs.regs[Csrs::MTVEC as usize];
         }
     }
 }
