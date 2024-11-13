@@ -331,7 +331,7 @@ impl Csrs {
     pub const MCONFIGPTR: u64 = 0xF15;
     pub const MTOPI: u64 = 0xFB0;
 
-    fn load(&self, address: u64) -> Result<u64> {
+    pub fn load(&self, address: u64) -> Result<u64> {
         match address {
             Self::FFLAGS => Ok(self.regs[Self::FFLAGS as usize]),
             Self::FRM => Ok(self.regs[Self::FRM as usize]),
@@ -667,7 +667,7 @@ impl Csrs {
     }
 
 
-    fn store(&mut self, address: u64, value: u64) -> Result<()> {
+    pub fn store(&mut self, address: u64, value: u64) -> Result<()> {
         match address {
             Self::FFLAGS => Ok(self.regs[Self::FFLAGS as usize] = value),
             Self::FRM => Ok(self.regs[Self::FRM as usize] = value),

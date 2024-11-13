@@ -186,7 +186,7 @@ impl Csrs {"#;
     writeln!(
         handle,
         r#"
-    fn load(&self, address: u64) -> Result<u64> {{
+    pub fn load(&self, address: u64) -> Result<u64> {{
         match address {{"#
     )
     .expect("write");
@@ -214,7 +214,7 @@ impl Csrs {"#;
     writeln!(
         handle,
         r#"
-    fn store(&mut self, address: u64, value: u64) -> Result<()> {{
+    pub fn store(&mut self, address: u64, value: u64) -> Result<()> {{
         match address {{"#
     )
     .expect("write");

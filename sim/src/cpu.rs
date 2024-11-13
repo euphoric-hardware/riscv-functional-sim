@@ -11,8 +11,8 @@ pub struct Cpu {
 }
 
 pub enum Error {
-    UnknownInsn,
     UnknownCsr,
+    UnknownInsn,
     BusError(bus::Error),
 }
 
@@ -25,12 +25,15 @@ impl Cpu {
 
     pub fn step(&mut self, bus: &mut Bus) {
         let mut bytes = [0; std::mem::size_of::<u32>()];
-        let _ = bus.read(self.pc, &mut bytes); // cpu should handle bus error?
+        bus.read(self.pc, &mut bytes).expect("invalid dram address");
         let insn = Insn::from_bytes(&bytes);
+
         if let Ok(pc) = self.execute_insn(insn, bus) {
             self.pc = pc;
         } else {
-            self.pc = self.csrs.regs[Csrs::MTVEC as usize];
+            self.csrs.store_unchecked(Csrs::MEPC, self.pc);
+            self.csrs.store_unchecked(Csrs::MCAUSE, 0x2); // invalid insn
+            self.pc = self.csrs.load_unchecked(Csrs::MTVEC);
         }
     }
 }
