@@ -6,5 +6,5 @@ pub fn csrw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let csr = insn.csr();
 
-    todo!();
+    Ok(cpu.pc + 4)
 }

@@ -1,11 +1,20 @@
-use crate::{cpu::{self, Cpu, Insn}, bus::Bus};
+use crate::{
+    bus::Bus,
+    cpu::{self, Cpu, Insn},
+};
 
 pub fn slli(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
-    crate::trace_insn!("slli", rd = insn.rd(), rs1 = insn.rs1(), shamtd = insn.shamtd());
+    crate::trace_insn!(
+        "slli",
+        rd = insn.rd(),
+        rs1 = insn.rs1(),
+        shamtd = insn.shamtd()
+    );
 
     let rd = insn.rd();
     let rs1 = insn.rs1();
     let shamtd = insn.shamtd();
 
-    todo!();
+    cpu.regs[rd as usize] = cpu.regs[rs1 as usize] << shamtd;
+    Ok(cpu.pc + 4)
 }

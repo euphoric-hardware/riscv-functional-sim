@@ -7,5 +7,5 @@ pub fn ld(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let imm12 = insn.imm12();
 
-    todo!();
+    Ok(cpu.pc + 4)
 }

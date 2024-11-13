@@ -5,5 +5,5 @@ pub fn jalr_pseudo(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64>
 
     let rs1 = insn.rs1();
 
-    todo!();
+    Ok(cpu.pc + 4)
 }

@@ -6,5 +6,5 @@ pub fn csrwi(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let csr = insn.csr();
     let zimm = insn.zimm();
 
-    todo!();
+    Ok(cpu.pc + 4)
 }

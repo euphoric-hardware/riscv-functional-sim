@@ -7,5 +7,5 @@ pub fn bgez(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let bimm12lo = insn.bimm12lo();
 
-    todo!();
+    Ok(cpu.pc + 4)
 }

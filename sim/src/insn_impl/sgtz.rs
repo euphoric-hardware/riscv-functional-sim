@@ -6,5 +6,5 @@ pub fn sgtz(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rd = insn.rd();
     let rs2 = insn.rs2();
 
-    todo!();
+    Ok(cpu.pc + 4)
 }
