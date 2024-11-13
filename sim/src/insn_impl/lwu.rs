@@ -3,8 +3,13 @@ use crate::{
     cpu::{self, Cpu, Insn},
 };
 
-pub fn lw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
-    crate::trace_insn!("lw", rd = insn.rd(), rs1 = insn.rs1(), imm12 = insn.imm12());
+pub fn lwu(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
+    crate::trace_insn!(
+        "lwu",
+        rd = insn.rd(),
+        rs1 = insn.rs1(),
+        imm12 = insn.imm12()
+    );
 
     let rd = insn.rd();
     let rs1 = insn.rs1();
@@ -18,6 +23,6 @@ pub fn lw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
         .map_err(|e| cpu::Error::BusError(e))?;
     let h = u32::from_le_bytes(raw);
 
-    cpu.regs[rd as usize] = h as u64; // check sign extension
+    cpu.regs[rd as usize] = h as u64;
     Ok(cpu.pc + 4)
 }
