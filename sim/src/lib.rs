@@ -37,10 +37,10 @@ mod tests {
         let mut frontend = Frontend::try_new("rv64ui-p-simple").unwrap();
         frontend.write_elf(&mut system).unwrap();
 
-        let mut i = 0;
+        let mut i = 1;
         loop {
             system.tick();
-            if i % 5000 == 0 {
+            if i % 50 == 0 {
                 frontend.process(&mut system).expect("htif");
             }
 

@@ -17,7 +17,7 @@ pub fn beq(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs2 = insn.rs2();
     let bimm12lo = insn.bimm12lo();
 
-    if (cpu.regs[rs1 as usize] as i64) == (cpu.regs[rs2 as usize] as i64) {
+    if (cpu.regs.load(rs1) as i64) == (cpu.regs.load(rs2) as i64) {
         let bimm12_sign_extended = Insn::sign_extend(
             ((((bimm12hi) & 0x7f) << 5)
                 | ((bimm12lo) & 0x1 << 10)

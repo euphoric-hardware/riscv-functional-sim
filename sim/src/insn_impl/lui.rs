@@ -9,6 +9,6 @@ pub fn lui(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rd = insn.rd();
     let imm20 = insn.imm20();
 
-    cpu.regs[rd as usize] = Insn::sign_extend((imm20 << 12) as u64, 32) as u64;
+    cpu.regs.store(rd, Insn::sign_extend((imm20 << 12) as u64, 32) as u64);
     Ok(cpu.pc + 4)
 }

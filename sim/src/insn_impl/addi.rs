@@ -16,6 +16,9 @@ pub fn addi(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let imm12 = insn.imm12();
 
     let imm12_sign_extended = Insn::sign_extend(imm12 as u64, 12);
-    cpu.regs[rd as usize] = cpu.regs[rs1 as usize].wrapping_add(imm12_sign_extended as u64);
+    cpu.regs.store(
+        rd,
+        cpu.regs.load(rs1).wrapping_add(imm12_sign_extended as u64),
+    );
     Ok(cpu.pc + 4)
 }

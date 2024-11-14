@@ -13,12 +13,12 @@ pub fn csrrc(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let csr_value = cpu.csrs.load(csr)?;
 
     if rs1 != 0 {
-        let rs1_value = cpu.regs[rs1 as usize];
+        let rs1_value = cpu.regs.load(rs1);
         cpu.csrs.store(csr, csr_value & !rs1_value)?;
     }
 
     if rd != 0 {
-        cpu.regs[rd as usize] = csr_value;
+        cpu.regs.store(rd, csr_value);
     }
 
     Ok(cpu.pc + 4)

@@ -1,6 +1,7 @@
 use crate::{Error, Result};
 
 #[derive(Debug)]
+#[repr(u64)]
 pub enum SyscallId {
     Write,
     Exit,

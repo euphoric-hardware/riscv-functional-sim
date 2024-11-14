@@ -148,6 +148,10 @@ impl Cpu {
             insn_impl::lwu::lwu(insn, self, bus)
         }
 
+        else if bits & 0xffffffff == 0x30200073 {
+            insn_impl::mret::mret(insn, self, bus)
+        }
+
         else if bits & 0xfe00707f == 0x6033 {
             insn_impl::or::or(insn, self, bus)
         }
@@ -254,6 +258,10 @@ impl Cpu {
 
         else if bits & 0x707f == 0x2023 {
             insn_impl::sw::sw(insn, self, bus)
+        }
+
+        else if bits & 0xffffffff == 0x10500073 {
+            insn_impl::wfi::wfi(insn, self, bus)
         }
 
         else if bits & 0xfe00707f == 0x4033 {

@@ -22,7 +22,7 @@ pub fn csrrci(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     }
 
     if rd != 0 {
-        cpu.regs[rd as usize] = csr_value;
+        cpu.regs.store(rd, csr_value);
     }
 
     Ok(cpu.pc + 4)

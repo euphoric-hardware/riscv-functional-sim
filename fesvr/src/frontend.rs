@@ -16,19 +16,28 @@ pub trait Htif {
 pub struct Frontend {
     elf: RiscvElf,
     to_host: u64, // pointers
-    from_host: u64,
+    from_host: Option<u64>,
+}
+
+impl std::fmt::Debug for Frontend {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Frontend")
+            .field("to_host", &self.to_host)
+            .field("from_host", &self.from_host)
+            .finish()
+    }
 }
 
 impl Frontend {
     pub fn try_new(elf_path: impl AsRef<Path>) -> Result<Self> {
         let elf_data = fs::read(elf_path)?; // add error ctxt later
         let elf = RiscvElf::try_new(elf_data)?;
-        let htif_base = elf.extract_htif_base()?;
+        let (to_host, from_host) = elf.extract_htif_addresses();
 
         Ok(Self {
             elf,
-            to_host: htif_base,
-            from_host: htif_base + size_of::<u64>() as u64,
+            to_host,
+            from_host,
         })
     }
 
@@ -49,20 +58,29 @@ impl Frontend {
     }
 
     pub fn process<H: Htif>(&mut self, htif: &mut H) -> Result<()> {
-        let mut buf = [0; size_of::<Syscall>()];
+        let mut buf = [0; size_of::<u64>()];
         htif.read(self.to_host, &mut buf)?;
-        let syscall = Syscall::from_le_bytes(&buf);
-
-        if let Some(syscall) = syscall {
-            self.execute_syscall(syscall, htif)?;
-
-            // "signal chip that syscall processed" (taken from pyuartsi, verbatim)
-            htif.write(self.to_host, &[0])?;
-            htif.write(self.from_host, &[1])
+        let tohost = u64::from_le_bytes(buf);
+        // todo: implement all of https://github.com/riscv-software-src/riscv-isa-sim/issues/364#issuecomment-607657754
+        if tohost & 1 == 1 {
+            std::process::exit(0);
         } else {
-            // nothing there
             Ok(())
         }
+
+        // if let Some(syscall) = syscall {
+        //     self.execute_syscall(syscall, htif)?;
+
+        //     // "signal chip that syscall processed" (taken from pyuartsi, verbatim)
+        //     htif.write(self.to_host, &[0])?;
+        //     if let Some(from_host) = self.from_host {
+        //         htif.write(from_host, &[1])?;
+        //     }
+        //     Ok(())
+        // } else {
+        //     // nothing there
+        //     Ok(())
+        // }
     }
 
     // execute syscall on host

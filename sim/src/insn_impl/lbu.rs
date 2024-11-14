@@ -16,13 +16,13 @@ pub fn lbu(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let imm12 = insn.imm12();
 
     let imm12_sign_extended = Insn::sign_extend(imm12 as u64, 12);
-    let address = (cpu.regs[rs1 as usize] as u64).wrapping_add(imm12_sign_extended as u64);
+    let address = (cpu.regs.load(rs1) as u64).wrapping_add(imm12_sign_extended as u64);
 
     let mut raw = [0];
     bus.read(address, &mut raw)
         .map_err(|e| cpu::Error::BusError(e))?;
 
-    cpu.regs[rd as usize] = raw[0] as u64;
+    cpu.regs.store(rd, raw[0] as u64);
 
     Ok(cpu.pc + 4)
 }

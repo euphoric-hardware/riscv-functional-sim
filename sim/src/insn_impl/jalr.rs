@@ -15,9 +15,9 @@ pub fn jalr(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let imm12 = insn.imm12();
 
-    let imm12_sign_extended = Insn::sign_extend(imm12 as u64, 12);
-    let stored_pc = cpu.pc + 4;
-    let new_pc = cpu.regs[rs1 as usize] + imm12_sign_extended as u64;
+    let imm12_sign_extended = Insn::sign_extend(imm12, 12);
+    let new_pc = cpu.regs.load(rs1) + imm12_sign_extended as u64;
+    cpu.regs.store(rd, cpu.pc + 4);
 
-    Ok(stored_pc)
+    Ok(new_pc)
 }

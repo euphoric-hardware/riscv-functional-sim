@@ -5,12 +5,28 @@ use crate::{
 };
 
 #[derive(Debug, Default)]
+pub struct Regfile([u64; 32]);
+
+impl Regfile {
+    pub fn load(&self, reg: u64) -> u64 {
+        self.0[reg as usize]
+    }
+
+    pub fn store(&mut self, reg: u64, value: u64) {
+        if reg != 0 {
+            self.0[reg as usize] = value;
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct Cpu {
-    pub regs: [u64; 32],
+    pub regs: Regfile,
     pub pc: u64,
     pub csrs: Csrs,
 }
 
+#[derive(Debug)]
 pub enum Error {
     UnknownCsr,
     UnknownInsn,
@@ -29,12 +45,11 @@ impl Cpu {
         bus.read(self.pc, &mut bytes).expect("invalid dram address");
         let insn = Insn::from_bytes(&bytes);
 
-        crate::trace!("pc: {}", self.pc);
+        log::trace!("pc: 0x{:x}", self.pc);
         if let Ok(pc) = self.execute_insn(insn, bus) {
             self.pc = pc;
         } else {
             self.csrs.store_unchecked(Csrs::MEPC, self.pc);
-            self.csrs.store_unchecked(Csrs::MCAUSE, 0x2); // invalid insn
             self.pc = self.csrs.load_unchecked(Csrs::MTVEC);
         }
     }

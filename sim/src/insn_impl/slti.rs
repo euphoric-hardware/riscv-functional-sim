@@ -16,10 +16,13 @@ pub fn slti(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let imm12 = insn.imm12();
 
     let imm12_sign_extended = Insn::sign_extend(imm12 as u64, 12);
-    cpu.regs[rd as usize] = if (cpu.regs[rs1 as usize] as i64) < imm12_sign_extended {
-        1
-    } else {
-        0
-    };
+    cpu.regs.store(
+        rd,
+        if (cpu.regs.load(rs1) as i64) < imm12_sign_extended {
+            1
+        } else {
+            0
+        },
+    );
     Ok(cpu.pc + 4)
 }

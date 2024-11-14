@@ -15,6 +15,6 @@ pub fn slli(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let shamtd = insn.shamtd();
 
-    cpu.regs[rd as usize] = cpu.regs[rs1 as usize] << shamtd;
+    cpu.regs.store(rd, cpu.regs.load(rs1) << shamtd);
     Ok(cpu.pc + 4)
 }

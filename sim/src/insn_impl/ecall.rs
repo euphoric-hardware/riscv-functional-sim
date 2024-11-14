@@ -1,7 +1,12 @@
-use crate::{cpu::{self, Cpu, Insn}, bus::Bus};
+use crate::{
+    bus::Bus,
+    cpu::{self, Cpu, Insn},
+    csrs::Csrs,
+};
 
 pub fn ecall(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     crate::trace_insn!("ecall");
-    
-    Ok(cpu.pc + 4)
+
+    cpu.csrs.store_unchecked(Csrs::MCAUSE, 11);
+    Ok(cpu.csrs.load_unchecked(Csrs::MTVEC))
 }

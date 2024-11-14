@@ -17,8 +17,6 @@ pub fn jal(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
         20,
     );
 
-    let stored_pc = cpu.pc + 4;
-    let new_pc = cpu.pc + jimm20_sign_extended as u64;
-    cpu.regs[rd as usize] = stored_pc;
-    Ok(new_pc)
+    cpu.regs.store(rd, cpu.pc + 4);
+    Ok(cpu.pc.wrapping_add(jimm20_sign_extended as u64) as u64)
 }
