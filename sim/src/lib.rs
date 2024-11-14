@@ -34,7 +34,7 @@ mod tests {
         setup();
 
         let mut system = System::new();
-        let mut frontend = Frontend::try_new("rv64ui-p-simple").unwrap();
+        let mut frontend = Frontend::try_new("rv64ui-p-add").unwrap();
         frontend.write_elf(&mut system).unwrap();
 
         let mut i = 0;

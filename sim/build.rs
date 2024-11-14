@@ -91,7 +91,8 @@ fn generate_cpu_execute_arms(out_dir: &Path, config: &BTreeMap<String, ParsedIns
 
 impl Cpu {
     pub fn execute_insn(&mut self, insn: Insn, bus: &mut Bus) -> cpu::Result<u64> {
-        let bits = insn.bits();"#;
+        let bits = insn.bits();
+        let result: cpu::Result<u64>;"#;
 
     writeln!(handle, "{}", base).expect("write");
 
@@ -100,7 +101,8 @@ impl Cpu {
             handle,
             r#"
         {}if bits & {} == {} {{
-            insn_impl::{insn_name}::{insn_name}(insn, self, bus)
+            result = insn_impl::{insn_name}::{insn_name}(insn, self, bus);
+            
         }}"#,
             if idx != 0 { "else " } else { "" },
             insn.mask,
@@ -111,8 +113,10 @@ impl Cpu {
 
     let end = r#"
         else {
-            Err(cpu::Error::UnknownInsn)
+            result = Err(cpu::Error::UnknownInsn);
         }
+        self.regs[0] = 0;
+        return result;
     }
 }
 "#;
@@ -293,10 +297,25 @@ fn main() {
         .has_headers(false)
         .from_path(&spec_dir.join("arg_lut.csv"))
         .expect("arg_lut.csv not found");
+
+    
+    let combine_csr_cmd = format!("cat {} <(tail -n +2 {}) > {}", spec_dir.join("csrs.csv").into_os_string().into_string().unwrap(), spec_dir.join("csrs32.csv").into_os_string().into_string().unwrap(), spec_dir.join("csrs_combined.csv").into_os_string().into_string().unwrap());
+    println!("{}",combine_csr_cmd);
+    let output = Command::new("bash")
+    .arg("-c")
+    .arg(combine_csr_cmd)
+    .output().expect("files not found");
+
+    if !output.status.success() {
+        eprintln!("Command failed with status: {}", output.status);
+        io::stdout().write_all(&output.stdout);
+        io::stderr().write_all(&output.stderr);
+    }
+
     let mut rdr2 = csv::ReaderBuilder::new()
         .has_headers(false)
-        .from_path(&spec_dir.join("csrs.csv"))
-        .expect("csrs.csv not found");
+        .from_path(&spec_dir.join("csrs_combined.csv"))
+        .expect("csrs_combined.csv not found");
 
     generate_instruction_files(&out_dir, &config);
     generate_cpu_execute_arms(&out_dir, &config);
