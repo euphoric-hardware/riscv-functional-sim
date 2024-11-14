@@ -51,6 +51,7 @@ impl Cpu {
         } else {
             self.csrs.store_unchecked(Csrs::MEPC, self.pc);
             self.pc = self.csrs.load_unchecked(Csrs::MTVEC);
+            
         }
     }
 }
@@ -78,7 +79,7 @@ impl Insn {
     pub fn sign_extend(value: u64, length: u8) -> i64 {
         let sign_bit = 1u64 << (length - 1);
         if value & sign_bit != 0 {
-            (value as i64) | !((1 << length) - 1) as i64
+            (value as i64) | !(((1 as u64).overflowing_shl(length as u32).0) - 1) as i64
         } else {
             value as i64
         }

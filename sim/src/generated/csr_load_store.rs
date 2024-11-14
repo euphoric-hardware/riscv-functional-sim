@@ -330,6 +330,132 @@ impl Csrs {
     pub const MHARTID: u64 = 0xF14;
     pub const MCONFIGPTR: u64 = 0xF15;
     pub const MTOPI: u64 = 0xFB0;
+    pub const SIPH: u64 = 0x154;
+    pub const STIMECMPH: u64 = 0x15D;
+    pub const VSIEH: u64 = 0x214;
+    pub const VSIPH: u64 = 0x254;
+    pub const VSTIMECMPH: u64 = 0x25D;
+    pub const HTIMEDELTAH: u64 = 0x615;
+    pub const HIDELEGH: u64 = 0x613;
+    pub const HVIENH: u64 = 0x618;
+    pub const HENVCFGH: u64 = 0x61A;
+    pub const HVIPH: u64 = 0x655;
+    pub const HVIPRIO1H: u64 = 0x656;
+    pub const HVIPRIO2H: u64 = 0x657;
+    pub const HSTATEEN0H: u64 = 0x61C;
+    pub const HSTATEEN1H: u64 = 0x61D;
+    pub const HSTATEEN2H: u64 = 0x61E;
+    pub const HSTATEEN3H: u64 = 0x61F;
+    pub const CYCLEH: u64 = 0xC80;
+    pub const TIMEH: u64 = 0xC81;
+    pub const INSTRETH: u64 = 0xC82;
+    pub const HPMCOUNTER3H: u64 = 0xC83;
+    pub const HPMCOUNTER4H: u64 = 0xC84;
+    pub const HPMCOUNTER5H: u64 = 0xC85;
+    pub const HPMCOUNTER6H: u64 = 0xC86;
+    pub const HPMCOUNTER7H: u64 = 0xC87;
+    pub const HPMCOUNTER8H: u64 = 0xC88;
+    pub const HPMCOUNTER9H: u64 = 0xC89;
+    pub const HPMCOUNTER10H: u64 = 0xC8A;
+    pub const HPMCOUNTER11H: u64 = 0xC8B;
+    pub const HPMCOUNTER12H: u64 = 0xC8C;
+    pub const HPMCOUNTER13H: u64 = 0xC8D;
+    pub const HPMCOUNTER14H: u64 = 0xC8E;
+    pub const HPMCOUNTER15H: u64 = 0xC8F;
+    pub const HPMCOUNTER16H: u64 = 0xC90;
+    pub const HPMCOUNTER17H: u64 = 0xC91;
+    pub const HPMCOUNTER18H: u64 = 0xC92;
+    pub const HPMCOUNTER19H: u64 = 0xC93;
+    pub const HPMCOUNTER20H: u64 = 0xC94;
+    pub const HPMCOUNTER21H: u64 = 0xC95;
+    pub const HPMCOUNTER22H: u64 = 0xC96;
+    pub const HPMCOUNTER23H: u64 = 0xC97;
+    pub const HPMCOUNTER24H: u64 = 0xC98;
+    pub const HPMCOUNTER25H: u64 = 0xC99;
+    pub const HPMCOUNTER26H: u64 = 0xC9A;
+    pub const HPMCOUNTER27H: u64 = 0xC9B;
+    pub const HPMCOUNTER28H: u64 = 0xC9C;
+    pub const HPMCOUNTER29H: u64 = 0xC9D;
+    pub const HPMCOUNTER30H: u64 = 0xC9E;
+    pub const HPMCOUNTER31H: u64 = 0xC9F;
+    pub const MSTATUSH: u64 = 0x310;
+    pub const MIDELEGH: u64 = 0x313;
+    pub const MIEH: u64 = 0x314;
+    pub const MVIENH: u64 = 0x318;
+    pub const MVIPH: u64 = 0x319;
+    pub const MENVCFGH: u64 = 0x31A;
+    pub const MSTATEEN0H: u64 = 0x31C;
+    pub const MSTATEEN1H: u64 = 0x31D;
+    pub const MSTATEEN2H: u64 = 0x31E;
+    pub const MSTATEEN3H: u64 = 0x31F;
+    pub const MIPH: u64 = 0x354;
+    pub const MCYCLECFGH: u64 = 0x721;
+    pub const MINSTRETCFGH: u64 = 0x722;
+    pub const MHPMEVENT3H: u64 = 0x723;
+    pub const MHPMEVENT4H: u64 = 0x724;
+    pub const MHPMEVENT5H: u64 = 0x725;
+    pub const MHPMEVENT6H: u64 = 0x726;
+    pub const MHPMEVENT7H: u64 = 0x727;
+    pub const MHPMEVENT8H: u64 = 0x728;
+    pub const MHPMEVENT9H: u64 = 0x729;
+    pub const MHPMEVENT10H: u64 = 0x72A;
+    pub const MHPMEVENT11H: u64 = 0x72B;
+    pub const MHPMEVENT12H: u64 = 0x72C;
+    pub const MHPMEVENT13H: u64 = 0x72D;
+    pub const MHPMEVENT14H: u64 = 0x72E;
+    pub const MHPMEVENT15H: u64 = 0x72F;
+    pub const MHPMEVENT16H: u64 = 0x730;
+    pub const MHPMEVENT17H: u64 = 0x731;
+    pub const MHPMEVENT18H: u64 = 0x732;
+    pub const MHPMEVENT19H: u64 = 0x733;
+    pub const MHPMEVENT20H: u64 = 0x734;
+    pub const MHPMEVENT21H: u64 = 0x735;
+    pub const MHPMEVENT22H: u64 = 0x736;
+    pub const MHPMEVENT23H: u64 = 0x737;
+    pub const MHPMEVENT24H: u64 = 0x738;
+    pub const MHPMEVENT25H: u64 = 0x739;
+    pub const MHPMEVENT26H: u64 = 0x73A;
+    pub const MHPMEVENT27H: u64 = 0x73B;
+    pub const MHPMEVENT28H: u64 = 0x73C;
+    pub const MHPMEVENT29H: u64 = 0x73D;
+    pub const MHPMEVENT30H: u64 = 0x73E;
+    pub const MHPMEVENT31H: u64 = 0x73F;
+    pub const MNSCRATCH: u64 = 0x740;
+    pub const MNEPC: u64 = 0x741;
+    pub const MNCAUSE: u64 = 0x742;
+    pub const MNSTATUS: u64 = 0x744;
+    pub const MSECCFGH: u64 = 0x757;
+    pub const MCYCLEH: u64 = 0xB80;
+    pub const MINSTRETH: u64 = 0xB82;
+    pub const MHPMCOUNTER3H: u64 = 0xB83;
+    pub const MHPMCOUNTER4H: u64 = 0xB84;
+    pub const MHPMCOUNTER5H: u64 = 0xB85;
+    pub const MHPMCOUNTER6H: u64 = 0xB86;
+    pub const MHPMCOUNTER7H: u64 = 0xB87;
+    pub const MHPMCOUNTER8H: u64 = 0xB88;
+    pub const MHPMCOUNTER9H: u64 = 0xB89;
+    pub const MHPMCOUNTER10H: u64 = 0xB8A;
+    pub const MHPMCOUNTER11H: u64 = 0xB8B;
+    pub const MHPMCOUNTER12H: u64 = 0xB8C;
+    pub const MHPMCOUNTER13H: u64 = 0xB8D;
+    pub const MHPMCOUNTER14H: u64 = 0xB8E;
+    pub const MHPMCOUNTER15H: u64 = 0xB8F;
+    pub const MHPMCOUNTER16H: u64 = 0xB90;
+    pub const MHPMCOUNTER17H: u64 = 0xB91;
+    pub const MHPMCOUNTER18H: u64 = 0xB92;
+    pub const MHPMCOUNTER19H: u64 = 0xB93;
+    pub const MHPMCOUNTER20H: u64 = 0xB94;
+    pub const MHPMCOUNTER21H: u64 = 0xB95;
+    pub const MHPMCOUNTER22H: u64 = 0xB96;
+    pub const MHPMCOUNTER23H: u64 = 0xB97;
+    pub const MHPMCOUNTER24H: u64 = 0xB98;
+    pub const MHPMCOUNTER25H: u64 = 0xB99;
+    pub const MHPMCOUNTER26H: u64 = 0xB9A;
+    pub const MHPMCOUNTER27H: u64 = 0xB9B;
+    pub const MHPMCOUNTER28H: u64 = 0xB9C;
+    pub const MHPMCOUNTER29H: u64 = 0xB9D;
+    pub const MHPMCOUNTER30H: u64 = 0xB9E;
+    pub const MHPMCOUNTER31H: u64 = 0xB9F;
 
     pub fn load(&self, address: u64) -> Result<u64> {
         match address {
@@ -662,6 +788,132 @@ impl Csrs {
             Self::MHARTID => Ok(self.regs[Self::MHARTID as usize]),
             Self::MCONFIGPTR => Ok(self.regs[Self::MCONFIGPTR as usize]),
             Self::MTOPI => Ok(self.regs[Self::MTOPI as usize]),
+            Self::SIPH => Ok(self.regs[Self::SIPH as usize]),
+            Self::STIMECMPH => Ok(self.regs[Self::STIMECMPH as usize]),
+            Self::VSIEH => Ok(self.regs[Self::VSIEH as usize]),
+            Self::VSIPH => Ok(self.regs[Self::VSIPH as usize]),
+            Self::VSTIMECMPH => Ok(self.regs[Self::VSTIMECMPH as usize]),
+            Self::HTIMEDELTAH => Ok(self.regs[Self::HTIMEDELTAH as usize]),
+            Self::HIDELEGH => Ok(self.regs[Self::HIDELEGH as usize]),
+            Self::HVIENH => Ok(self.regs[Self::HVIENH as usize]),
+            Self::HENVCFGH => Ok(self.regs[Self::HENVCFGH as usize]),
+            Self::HVIPH => Ok(self.regs[Self::HVIPH as usize]),
+            Self::HVIPRIO1H => Ok(self.regs[Self::HVIPRIO1H as usize]),
+            Self::HVIPRIO2H => Ok(self.regs[Self::HVIPRIO2H as usize]),
+            Self::HSTATEEN0H => Ok(self.regs[Self::HSTATEEN0H as usize]),
+            Self::HSTATEEN1H => Ok(self.regs[Self::HSTATEEN1H as usize]),
+            Self::HSTATEEN2H => Ok(self.regs[Self::HSTATEEN2H as usize]),
+            Self::HSTATEEN3H => Ok(self.regs[Self::HSTATEEN3H as usize]),
+            Self::CYCLEH => Ok(self.regs[Self::CYCLEH as usize]),
+            Self::TIMEH => Ok(self.regs[Self::TIMEH as usize]),
+            Self::INSTRETH => Ok(self.regs[Self::INSTRETH as usize]),
+            Self::HPMCOUNTER3H => Ok(self.regs[Self::HPMCOUNTER3H as usize]),
+            Self::HPMCOUNTER4H => Ok(self.regs[Self::HPMCOUNTER4H as usize]),
+            Self::HPMCOUNTER5H => Ok(self.regs[Self::HPMCOUNTER5H as usize]),
+            Self::HPMCOUNTER6H => Ok(self.regs[Self::HPMCOUNTER6H as usize]),
+            Self::HPMCOUNTER7H => Ok(self.regs[Self::HPMCOUNTER7H as usize]),
+            Self::HPMCOUNTER8H => Ok(self.regs[Self::HPMCOUNTER8H as usize]),
+            Self::HPMCOUNTER9H => Ok(self.regs[Self::HPMCOUNTER9H as usize]),
+            Self::HPMCOUNTER10H => Ok(self.regs[Self::HPMCOUNTER10H as usize]),
+            Self::HPMCOUNTER11H => Ok(self.regs[Self::HPMCOUNTER11H as usize]),
+            Self::HPMCOUNTER12H => Ok(self.regs[Self::HPMCOUNTER12H as usize]),
+            Self::HPMCOUNTER13H => Ok(self.regs[Self::HPMCOUNTER13H as usize]),
+            Self::HPMCOUNTER14H => Ok(self.regs[Self::HPMCOUNTER14H as usize]),
+            Self::HPMCOUNTER15H => Ok(self.regs[Self::HPMCOUNTER15H as usize]),
+            Self::HPMCOUNTER16H => Ok(self.regs[Self::HPMCOUNTER16H as usize]),
+            Self::HPMCOUNTER17H => Ok(self.regs[Self::HPMCOUNTER17H as usize]),
+            Self::HPMCOUNTER18H => Ok(self.regs[Self::HPMCOUNTER18H as usize]),
+            Self::HPMCOUNTER19H => Ok(self.regs[Self::HPMCOUNTER19H as usize]),
+            Self::HPMCOUNTER20H => Ok(self.regs[Self::HPMCOUNTER20H as usize]),
+            Self::HPMCOUNTER21H => Ok(self.regs[Self::HPMCOUNTER21H as usize]),
+            Self::HPMCOUNTER22H => Ok(self.regs[Self::HPMCOUNTER22H as usize]),
+            Self::HPMCOUNTER23H => Ok(self.regs[Self::HPMCOUNTER23H as usize]),
+            Self::HPMCOUNTER24H => Ok(self.regs[Self::HPMCOUNTER24H as usize]),
+            Self::HPMCOUNTER25H => Ok(self.regs[Self::HPMCOUNTER25H as usize]),
+            Self::HPMCOUNTER26H => Ok(self.regs[Self::HPMCOUNTER26H as usize]),
+            Self::HPMCOUNTER27H => Ok(self.regs[Self::HPMCOUNTER27H as usize]),
+            Self::HPMCOUNTER28H => Ok(self.regs[Self::HPMCOUNTER28H as usize]),
+            Self::HPMCOUNTER29H => Ok(self.regs[Self::HPMCOUNTER29H as usize]),
+            Self::HPMCOUNTER30H => Ok(self.regs[Self::HPMCOUNTER30H as usize]),
+            Self::HPMCOUNTER31H => Ok(self.regs[Self::HPMCOUNTER31H as usize]),
+            Self::MSTATUSH => Ok(self.regs[Self::MSTATUSH as usize]),
+            Self::MIDELEGH => Ok(self.regs[Self::MIDELEGH as usize]),
+            Self::MIEH => Ok(self.regs[Self::MIEH as usize]),
+            Self::MVIENH => Ok(self.regs[Self::MVIENH as usize]),
+            Self::MVIPH => Ok(self.regs[Self::MVIPH as usize]),
+            Self::MENVCFGH => Ok(self.regs[Self::MENVCFGH as usize]),
+            Self::MSTATEEN0H => Ok(self.regs[Self::MSTATEEN0H as usize]),
+            Self::MSTATEEN1H => Ok(self.regs[Self::MSTATEEN1H as usize]),
+            Self::MSTATEEN2H => Ok(self.regs[Self::MSTATEEN2H as usize]),
+            Self::MSTATEEN3H => Ok(self.regs[Self::MSTATEEN3H as usize]),
+            Self::MIPH => Ok(self.regs[Self::MIPH as usize]),
+            Self::MCYCLECFGH => Ok(self.regs[Self::MCYCLECFGH as usize]),
+            Self::MINSTRETCFGH => Ok(self.regs[Self::MINSTRETCFGH as usize]),
+            Self::MHPMEVENT3H => Ok(self.regs[Self::MHPMEVENT3H as usize]),
+            Self::MHPMEVENT4H => Ok(self.regs[Self::MHPMEVENT4H as usize]),
+            Self::MHPMEVENT5H => Ok(self.regs[Self::MHPMEVENT5H as usize]),
+            Self::MHPMEVENT6H => Ok(self.regs[Self::MHPMEVENT6H as usize]),
+            Self::MHPMEVENT7H => Ok(self.regs[Self::MHPMEVENT7H as usize]),
+            Self::MHPMEVENT8H => Ok(self.regs[Self::MHPMEVENT8H as usize]),
+            Self::MHPMEVENT9H => Ok(self.regs[Self::MHPMEVENT9H as usize]),
+            Self::MHPMEVENT10H => Ok(self.regs[Self::MHPMEVENT10H as usize]),
+            Self::MHPMEVENT11H => Ok(self.regs[Self::MHPMEVENT11H as usize]),
+            Self::MHPMEVENT12H => Ok(self.regs[Self::MHPMEVENT12H as usize]),
+            Self::MHPMEVENT13H => Ok(self.regs[Self::MHPMEVENT13H as usize]),
+            Self::MHPMEVENT14H => Ok(self.regs[Self::MHPMEVENT14H as usize]),
+            Self::MHPMEVENT15H => Ok(self.regs[Self::MHPMEVENT15H as usize]),
+            Self::MHPMEVENT16H => Ok(self.regs[Self::MHPMEVENT16H as usize]),
+            Self::MHPMEVENT17H => Ok(self.regs[Self::MHPMEVENT17H as usize]),
+            Self::MHPMEVENT18H => Ok(self.regs[Self::MHPMEVENT18H as usize]),
+            Self::MHPMEVENT19H => Ok(self.regs[Self::MHPMEVENT19H as usize]),
+            Self::MHPMEVENT20H => Ok(self.regs[Self::MHPMEVENT20H as usize]),
+            Self::MHPMEVENT21H => Ok(self.regs[Self::MHPMEVENT21H as usize]),
+            Self::MHPMEVENT22H => Ok(self.regs[Self::MHPMEVENT22H as usize]),
+            Self::MHPMEVENT23H => Ok(self.regs[Self::MHPMEVENT23H as usize]),
+            Self::MHPMEVENT24H => Ok(self.regs[Self::MHPMEVENT24H as usize]),
+            Self::MHPMEVENT25H => Ok(self.regs[Self::MHPMEVENT25H as usize]),
+            Self::MHPMEVENT26H => Ok(self.regs[Self::MHPMEVENT26H as usize]),
+            Self::MHPMEVENT27H => Ok(self.regs[Self::MHPMEVENT27H as usize]),
+            Self::MHPMEVENT28H => Ok(self.regs[Self::MHPMEVENT28H as usize]),
+            Self::MHPMEVENT29H => Ok(self.regs[Self::MHPMEVENT29H as usize]),
+            Self::MHPMEVENT30H => Ok(self.regs[Self::MHPMEVENT30H as usize]),
+            Self::MHPMEVENT31H => Ok(self.regs[Self::MHPMEVENT31H as usize]),
+            Self::MNSCRATCH => Ok(self.regs[Self::MNSCRATCH as usize]),
+            Self::MNEPC => Ok(self.regs[Self::MNEPC as usize]),
+            Self::MNCAUSE => Ok(self.regs[Self::MNCAUSE as usize]),
+            Self::MNSTATUS => Ok(self.regs[Self::MNSTATUS as usize]),
+            Self::MSECCFGH => Ok(self.regs[Self::MSECCFGH as usize]),
+            Self::MCYCLEH => Ok(self.regs[Self::MCYCLEH as usize]),
+            Self::MINSTRETH => Ok(self.regs[Self::MINSTRETH as usize]),
+            Self::MHPMCOUNTER3H => Ok(self.regs[Self::MHPMCOUNTER3H as usize]),
+            Self::MHPMCOUNTER4H => Ok(self.regs[Self::MHPMCOUNTER4H as usize]),
+            Self::MHPMCOUNTER5H => Ok(self.regs[Self::MHPMCOUNTER5H as usize]),
+            Self::MHPMCOUNTER6H => Ok(self.regs[Self::MHPMCOUNTER6H as usize]),
+            Self::MHPMCOUNTER7H => Ok(self.regs[Self::MHPMCOUNTER7H as usize]),
+            Self::MHPMCOUNTER8H => Ok(self.regs[Self::MHPMCOUNTER8H as usize]),
+            Self::MHPMCOUNTER9H => Ok(self.regs[Self::MHPMCOUNTER9H as usize]),
+            Self::MHPMCOUNTER10H => Ok(self.regs[Self::MHPMCOUNTER10H as usize]),
+            Self::MHPMCOUNTER11H => Ok(self.regs[Self::MHPMCOUNTER11H as usize]),
+            Self::MHPMCOUNTER12H => Ok(self.regs[Self::MHPMCOUNTER12H as usize]),
+            Self::MHPMCOUNTER13H => Ok(self.regs[Self::MHPMCOUNTER13H as usize]),
+            Self::MHPMCOUNTER14H => Ok(self.regs[Self::MHPMCOUNTER14H as usize]),
+            Self::MHPMCOUNTER15H => Ok(self.regs[Self::MHPMCOUNTER15H as usize]),
+            Self::MHPMCOUNTER16H => Ok(self.regs[Self::MHPMCOUNTER16H as usize]),
+            Self::MHPMCOUNTER17H => Ok(self.regs[Self::MHPMCOUNTER17H as usize]),
+            Self::MHPMCOUNTER18H => Ok(self.regs[Self::MHPMCOUNTER18H as usize]),
+            Self::MHPMCOUNTER19H => Ok(self.regs[Self::MHPMCOUNTER19H as usize]),
+            Self::MHPMCOUNTER20H => Ok(self.regs[Self::MHPMCOUNTER20H as usize]),
+            Self::MHPMCOUNTER21H => Ok(self.regs[Self::MHPMCOUNTER21H as usize]),
+            Self::MHPMCOUNTER22H => Ok(self.regs[Self::MHPMCOUNTER22H as usize]),
+            Self::MHPMCOUNTER23H => Ok(self.regs[Self::MHPMCOUNTER23H as usize]),
+            Self::MHPMCOUNTER24H => Ok(self.regs[Self::MHPMCOUNTER24H as usize]),
+            Self::MHPMCOUNTER25H => Ok(self.regs[Self::MHPMCOUNTER25H as usize]),
+            Self::MHPMCOUNTER26H => Ok(self.regs[Self::MHPMCOUNTER26H as usize]),
+            Self::MHPMCOUNTER27H => Ok(self.regs[Self::MHPMCOUNTER27H as usize]),
+            Self::MHPMCOUNTER28H => Ok(self.regs[Self::MHPMCOUNTER28H as usize]),
+            Self::MHPMCOUNTER29H => Ok(self.regs[Self::MHPMCOUNTER29H as usize]),
+            Self::MHPMCOUNTER30H => Ok(self.regs[Self::MHPMCOUNTER30H as usize]),
+            Self::MHPMCOUNTER31H => Ok(self.regs[Self::MHPMCOUNTER31H as usize]),
             _ => Err(Error::UnknownCsr)
         }
     }
@@ -998,6 +1250,132 @@ impl Csrs {
             Self::MHARTID => Ok(self.regs[Self::MHARTID as usize] = value),
             Self::MCONFIGPTR => Ok(self.regs[Self::MCONFIGPTR as usize] = value),
             Self::MTOPI => Ok(self.regs[Self::MTOPI as usize] = value),
+            Self::SIPH => Ok(self.regs[Self::SIPH as usize] = value),
+            Self::STIMECMPH => Ok(self.regs[Self::STIMECMPH as usize] = value),
+            Self::VSIEH => Ok(self.regs[Self::VSIEH as usize] = value),
+            Self::VSIPH => Ok(self.regs[Self::VSIPH as usize] = value),
+            Self::VSTIMECMPH => Ok(self.regs[Self::VSTIMECMPH as usize] = value),
+            Self::HTIMEDELTAH => Ok(self.regs[Self::HTIMEDELTAH as usize] = value),
+            Self::HIDELEGH => Ok(self.regs[Self::HIDELEGH as usize] = value),
+            Self::HVIENH => Ok(self.regs[Self::HVIENH as usize] = value),
+            Self::HENVCFGH => Ok(self.regs[Self::HENVCFGH as usize] = value),
+            Self::HVIPH => Ok(self.regs[Self::HVIPH as usize] = value),
+            Self::HVIPRIO1H => Ok(self.regs[Self::HVIPRIO1H as usize] = value),
+            Self::HVIPRIO2H => Ok(self.regs[Self::HVIPRIO2H as usize] = value),
+            Self::HSTATEEN0H => Ok(self.regs[Self::HSTATEEN0H as usize] = value),
+            Self::HSTATEEN1H => Ok(self.regs[Self::HSTATEEN1H as usize] = value),
+            Self::HSTATEEN2H => Ok(self.regs[Self::HSTATEEN2H as usize] = value),
+            Self::HSTATEEN3H => Ok(self.regs[Self::HSTATEEN3H as usize] = value),
+            Self::CYCLEH => Ok(self.regs[Self::CYCLEH as usize] = value),
+            Self::TIMEH => Ok(self.regs[Self::TIMEH as usize] = value),
+            Self::INSTRETH => Ok(self.regs[Self::INSTRETH as usize] = value),
+            Self::HPMCOUNTER3H => Ok(self.regs[Self::HPMCOUNTER3H as usize] = value),
+            Self::HPMCOUNTER4H => Ok(self.regs[Self::HPMCOUNTER4H as usize] = value),
+            Self::HPMCOUNTER5H => Ok(self.regs[Self::HPMCOUNTER5H as usize] = value),
+            Self::HPMCOUNTER6H => Ok(self.regs[Self::HPMCOUNTER6H as usize] = value),
+            Self::HPMCOUNTER7H => Ok(self.regs[Self::HPMCOUNTER7H as usize] = value),
+            Self::HPMCOUNTER8H => Ok(self.regs[Self::HPMCOUNTER8H as usize] = value),
+            Self::HPMCOUNTER9H => Ok(self.regs[Self::HPMCOUNTER9H as usize] = value),
+            Self::HPMCOUNTER10H => Ok(self.regs[Self::HPMCOUNTER10H as usize] = value),
+            Self::HPMCOUNTER11H => Ok(self.regs[Self::HPMCOUNTER11H as usize] = value),
+            Self::HPMCOUNTER12H => Ok(self.regs[Self::HPMCOUNTER12H as usize] = value),
+            Self::HPMCOUNTER13H => Ok(self.regs[Self::HPMCOUNTER13H as usize] = value),
+            Self::HPMCOUNTER14H => Ok(self.regs[Self::HPMCOUNTER14H as usize] = value),
+            Self::HPMCOUNTER15H => Ok(self.regs[Self::HPMCOUNTER15H as usize] = value),
+            Self::HPMCOUNTER16H => Ok(self.regs[Self::HPMCOUNTER16H as usize] = value),
+            Self::HPMCOUNTER17H => Ok(self.regs[Self::HPMCOUNTER17H as usize] = value),
+            Self::HPMCOUNTER18H => Ok(self.regs[Self::HPMCOUNTER18H as usize] = value),
+            Self::HPMCOUNTER19H => Ok(self.regs[Self::HPMCOUNTER19H as usize] = value),
+            Self::HPMCOUNTER20H => Ok(self.regs[Self::HPMCOUNTER20H as usize] = value),
+            Self::HPMCOUNTER21H => Ok(self.regs[Self::HPMCOUNTER21H as usize] = value),
+            Self::HPMCOUNTER22H => Ok(self.regs[Self::HPMCOUNTER22H as usize] = value),
+            Self::HPMCOUNTER23H => Ok(self.regs[Self::HPMCOUNTER23H as usize] = value),
+            Self::HPMCOUNTER24H => Ok(self.regs[Self::HPMCOUNTER24H as usize] = value),
+            Self::HPMCOUNTER25H => Ok(self.regs[Self::HPMCOUNTER25H as usize] = value),
+            Self::HPMCOUNTER26H => Ok(self.regs[Self::HPMCOUNTER26H as usize] = value),
+            Self::HPMCOUNTER27H => Ok(self.regs[Self::HPMCOUNTER27H as usize] = value),
+            Self::HPMCOUNTER28H => Ok(self.regs[Self::HPMCOUNTER28H as usize] = value),
+            Self::HPMCOUNTER29H => Ok(self.regs[Self::HPMCOUNTER29H as usize] = value),
+            Self::HPMCOUNTER30H => Ok(self.regs[Self::HPMCOUNTER30H as usize] = value),
+            Self::HPMCOUNTER31H => Ok(self.regs[Self::HPMCOUNTER31H as usize] = value),
+            Self::MSTATUSH => Ok(self.regs[Self::MSTATUSH as usize] = value),
+            Self::MIDELEGH => Ok(self.regs[Self::MIDELEGH as usize] = value),
+            Self::MIEH => Ok(self.regs[Self::MIEH as usize] = value),
+            Self::MVIENH => Ok(self.regs[Self::MVIENH as usize] = value),
+            Self::MVIPH => Ok(self.regs[Self::MVIPH as usize] = value),
+            Self::MENVCFGH => Ok(self.regs[Self::MENVCFGH as usize] = value),
+            Self::MSTATEEN0H => Ok(self.regs[Self::MSTATEEN0H as usize] = value),
+            Self::MSTATEEN1H => Ok(self.regs[Self::MSTATEEN1H as usize] = value),
+            Self::MSTATEEN2H => Ok(self.regs[Self::MSTATEEN2H as usize] = value),
+            Self::MSTATEEN3H => Ok(self.regs[Self::MSTATEEN3H as usize] = value),
+            Self::MIPH => Ok(self.regs[Self::MIPH as usize] = value),
+            Self::MCYCLECFGH => Ok(self.regs[Self::MCYCLECFGH as usize] = value),
+            Self::MINSTRETCFGH => Ok(self.regs[Self::MINSTRETCFGH as usize] = value),
+            Self::MHPMEVENT3H => Ok(self.regs[Self::MHPMEVENT3H as usize] = value),
+            Self::MHPMEVENT4H => Ok(self.regs[Self::MHPMEVENT4H as usize] = value),
+            Self::MHPMEVENT5H => Ok(self.regs[Self::MHPMEVENT5H as usize] = value),
+            Self::MHPMEVENT6H => Ok(self.regs[Self::MHPMEVENT6H as usize] = value),
+            Self::MHPMEVENT7H => Ok(self.regs[Self::MHPMEVENT7H as usize] = value),
+            Self::MHPMEVENT8H => Ok(self.regs[Self::MHPMEVENT8H as usize] = value),
+            Self::MHPMEVENT9H => Ok(self.regs[Self::MHPMEVENT9H as usize] = value),
+            Self::MHPMEVENT10H => Ok(self.regs[Self::MHPMEVENT10H as usize] = value),
+            Self::MHPMEVENT11H => Ok(self.regs[Self::MHPMEVENT11H as usize] = value),
+            Self::MHPMEVENT12H => Ok(self.regs[Self::MHPMEVENT12H as usize] = value),
+            Self::MHPMEVENT13H => Ok(self.regs[Self::MHPMEVENT13H as usize] = value),
+            Self::MHPMEVENT14H => Ok(self.regs[Self::MHPMEVENT14H as usize] = value),
+            Self::MHPMEVENT15H => Ok(self.regs[Self::MHPMEVENT15H as usize] = value),
+            Self::MHPMEVENT16H => Ok(self.regs[Self::MHPMEVENT16H as usize] = value),
+            Self::MHPMEVENT17H => Ok(self.regs[Self::MHPMEVENT17H as usize] = value),
+            Self::MHPMEVENT18H => Ok(self.regs[Self::MHPMEVENT18H as usize] = value),
+            Self::MHPMEVENT19H => Ok(self.regs[Self::MHPMEVENT19H as usize] = value),
+            Self::MHPMEVENT20H => Ok(self.regs[Self::MHPMEVENT20H as usize] = value),
+            Self::MHPMEVENT21H => Ok(self.regs[Self::MHPMEVENT21H as usize] = value),
+            Self::MHPMEVENT22H => Ok(self.regs[Self::MHPMEVENT22H as usize] = value),
+            Self::MHPMEVENT23H => Ok(self.regs[Self::MHPMEVENT23H as usize] = value),
+            Self::MHPMEVENT24H => Ok(self.regs[Self::MHPMEVENT24H as usize] = value),
+            Self::MHPMEVENT25H => Ok(self.regs[Self::MHPMEVENT25H as usize] = value),
+            Self::MHPMEVENT26H => Ok(self.regs[Self::MHPMEVENT26H as usize] = value),
+            Self::MHPMEVENT27H => Ok(self.regs[Self::MHPMEVENT27H as usize] = value),
+            Self::MHPMEVENT28H => Ok(self.regs[Self::MHPMEVENT28H as usize] = value),
+            Self::MHPMEVENT29H => Ok(self.regs[Self::MHPMEVENT29H as usize] = value),
+            Self::MHPMEVENT30H => Ok(self.regs[Self::MHPMEVENT30H as usize] = value),
+            Self::MHPMEVENT31H => Ok(self.regs[Self::MHPMEVENT31H as usize] = value),
+            Self::MNSCRATCH => Ok(self.regs[Self::MNSCRATCH as usize] = value),
+            Self::MNEPC => Ok(self.regs[Self::MNEPC as usize] = value),
+            Self::MNCAUSE => Ok(self.regs[Self::MNCAUSE as usize] = value),
+            Self::MNSTATUS => Ok(self.regs[Self::MNSTATUS as usize] = value),
+            Self::MSECCFGH => Ok(self.regs[Self::MSECCFGH as usize] = value),
+            Self::MCYCLEH => Ok(self.regs[Self::MCYCLEH as usize] = value),
+            Self::MINSTRETH => Ok(self.regs[Self::MINSTRETH as usize] = value),
+            Self::MHPMCOUNTER3H => Ok(self.regs[Self::MHPMCOUNTER3H as usize] = value),
+            Self::MHPMCOUNTER4H => Ok(self.regs[Self::MHPMCOUNTER4H as usize] = value),
+            Self::MHPMCOUNTER5H => Ok(self.regs[Self::MHPMCOUNTER5H as usize] = value),
+            Self::MHPMCOUNTER6H => Ok(self.regs[Self::MHPMCOUNTER6H as usize] = value),
+            Self::MHPMCOUNTER7H => Ok(self.regs[Self::MHPMCOUNTER7H as usize] = value),
+            Self::MHPMCOUNTER8H => Ok(self.regs[Self::MHPMCOUNTER8H as usize] = value),
+            Self::MHPMCOUNTER9H => Ok(self.regs[Self::MHPMCOUNTER9H as usize] = value),
+            Self::MHPMCOUNTER10H => Ok(self.regs[Self::MHPMCOUNTER10H as usize] = value),
+            Self::MHPMCOUNTER11H => Ok(self.regs[Self::MHPMCOUNTER11H as usize] = value),
+            Self::MHPMCOUNTER12H => Ok(self.regs[Self::MHPMCOUNTER12H as usize] = value),
+            Self::MHPMCOUNTER13H => Ok(self.regs[Self::MHPMCOUNTER13H as usize] = value),
+            Self::MHPMCOUNTER14H => Ok(self.regs[Self::MHPMCOUNTER14H as usize] = value),
+            Self::MHPMCOUNTER15H => Ok(self.regs[Self::MHPMCOUNTER15H as usize] = value),
+            Self::MHPMCOUNTER16H => Ok(self.regs[Self::MHPMCOUNTER16H as usize] = value),
+            Self::MHPMCOUNTER17H => Ok(self.regs[Self::MHPMCOUNTER17H as usize] = value),
+            Self::MHPMCOUNTER18H => Ok(self.regs[Self::MHPMCOUNTER18H as usize] = value),
+            Self::MHPMCOUNTER19H => Ok(self.regs[Self::MHPMCOUNTER19H as usize] = value),
+            Self::MHPMCOUNTER20H => Ok(self.regs[Self::MHPMCOUNTER20H as usize] = value),
+            Self::MHPMCOUNTER21H => Ok(self.regs[Self::MHPMCOUNTER21H as usize] = value),
+            Self::MHPMCOUNTER22H => Ok(self.regs[Self::MHPMCOUNTER22H as usize] = value),
+            Self::MHPMCOUNTER23H => Ok(self.regs[Self::MHPMCOUNTER23H as usize] = value),
+            Self::MHPMCOUNTER24H => Ok(self.regs[Self::MHPMCOUNTER24H as usize] = value),
+            Self::MHPMCOUNTER25H => Ok(self.regs[Self::MHPMCOUNTER25H as usize] = value),
+            Self::MHPMCOUNTER26H => Ok(self.regs[Self::MHPMCOUNTER26H as usize] = value),
+            Self::MHPMCOUNTER27H => Ok(self.regs[Self::MHPMCOUNTER27H as usize] = value),
+            Self::MHPMCOUNTER28H => Ok(self.regs[Self::MHPMCOUNTER28H as usize] = value),
+            Self::MHPMCOUNTER29H => Ok(self.regs[Self::MHPMCOUNTER29H as usize] = value),
+            Self::MHPMCOUNTER30H => Ok(self.regs[Self::MHPMCOUNTER30H as usize] = value),
+            Self::MHPMCOUNTER31H => Ok(self.regs[Self::MHPMCOUNTER31H as usize] = value),
             _ => Err(Error::UnknownCsr)
         }
     }
