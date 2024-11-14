@@ -273,7 +273,7 @@ impl Cpu {
         }
 
         else {
-            Err(cpu::Error::UnknownInsn)
+            Err(cpu::Exception::IllegalInstruction)
         }
     }
 }

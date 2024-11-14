@@ -1,15 +1,9 @@
+use crate::cpu::{Exception, Result};
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::Debug,
     fs,
 };
-
-#[derive(Debug)]
-pub enum Error {
-    InvalidAccess,
-}
-
-pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Clone, Copy, Default, Debug)]
 struct MemoryRange {
@@ -71,7 +65,7 @@ impl<'b> Bus<'b> {
             .rev()
             .find(|(range, _)| range.contains(addr)) // should be first
             .map(|(r, device)| (r, &mut **device))
-            .ok_or(Error::InvalidAccess)
+            .ok_or(Exception::LoadAccessFault)
     }
 
     pub fn register(&mut self, device: Box<dyn Device>, base_address: u64, size: u64) {

@@ -111,7 +111,7 @@ impl Cpu {
 
     let end = r#"
         else {
-            Err(cpu::Error::UnknownInsn)
+            Err(cpu::Exception::IllegalInstruction)
         }
     }
 }
@@ -170,7 +170,7 @@ fn generate_csr_load_store<T: io::Read>(out_dir: &Path, csv_reader: &mut csv::Re
 
     let records = csv_reader.records().collect::<Vec<_>>();
 
-    let raw = r#"use crate::{csrs::Csrs, cpu::{Error, Result}};
+    let raw = r#"use crate::{csrs::Csrs, cpu::{Exception, Result}};
 
 impl Csrs {"#;
     writeln!(handle, "{}", raw).expect("write");
@@ -204,7 +204,7 @@ impl Csrs {"#;
 
     writeln!(
         handle,
-        "            _ => Err(Error::UnknownCsr)
+        "            _ => Err(Exception::IllegalInstruction)
         }}
     }}
 "
@@ -232,7 +232,7 @@ impl Csrs {"#;
 
     writeln!(
         handle,
-        "            _ => Err(Error::UnknownCsr)
+        "            _ => Err(Exception::IllegalInstruction)
         }}
     }}
 }}"

@@ -1,4 +1,4 @@
-use crate::{csrs::Csrs, cpu::{Error, Result}};
+use crate::{csrs::Csrs, cpu::{Exception, Result}};
 
 impl Csrs {
     pub const FFLAGS: u64 = 0x001;
@@ -662,7 +662,7 @@ impl Csrs {
             Self::MHARTID => Ok(self.regs[Self::MHARTID as usize]),
             Self::MCONFIGPTR => Ok(self.regs[Self::MCONFIGPTR as usize]),
             Self::MTOPI => Ok(self.regs[Self::MTOPI as usize]),
-            _ => Err(Error::UnknownCsr)
+            _ => Err(Exception::IllegalInstruction)
         }
     }
 
@@ -998,7 +998,7 @@ impl Csrs {
             Self::MHARTID => Ok(self.regs[Self::MHARTID as usize] = value),
             Self::MCONFIGPTR => Ok(self.regs[Self::MCONFIGPTR as usize] = value),
             Self::MTOPI => Ok(self.regs[Self::MTOPI as usize] = value),
-            _ => Err(Error::UnknownCsr)
+            _ => Err(Exception::IllegalInstruction)
         }
     }
 }

@@ -19,8 +19,7 @@ pub fn lhu(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let address = (cpu.regs.load(rs1) as u64).wrapping_add(imm12_sign_extended as u64);
 
     let mut raw = [0, 0];
-    bus.read(address, &mut raw)
-        .map_err(|e| cpu::Error::BusError(e))?;
+    bus.read(address, &mut raw)?;
     let h = u16::from_le_bytes(raw);
 
     cpu.regs.store(rd, h as u64); // check sign extension

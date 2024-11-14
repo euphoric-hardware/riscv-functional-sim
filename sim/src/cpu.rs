@@ -27,13 +27,24 @@ pub struct Cpu {
 }
 
 #[derive(Debug)]
-pub enum Error {
-    UnknownCsr,
-    UnknownInsn,
-    BusError(bus::Error),
+pub enum Exception {
+    InstructionAddressMisaligned = 0,
+    InstructionAccessFault = 1,
+    IllegalInstruction = 2,
+    Breakpoint = 3,
+    LoadAccessMisaligned = 4,
+    LoadAccessFault = 5,
+    StoreAMOAddressMisaligned = 6,
+    StoreAMOAccessFault = 7,
+    EnvironmentCallFromUMode = 8,
+    EnvironmentCallFromSMode = 9,
+    EnvironmentCallFromMMode = 11,
+    InstructionPageFault = 12,
+    LoadPageFault = 13,
+    StoreAMOPageFault = 15,
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Exception>;
 
 impl Cpu {
     pub fn new() -> Cpu {
@@ -46,11 +57,13 @@ impl Cpu {
         let insn = Insn::from_bytes(&bytes);
 
         log::trace!("pc: 0x{:x}", self.pc);
-        if let Ok(pc) = self.execute_insn(insn, bus) {
-            self.pc = pc;
-        } else {
-            self.csrs.store_unchecked(Csrs::MEPC, self.pc);
-            self.pc = self.csrs.load_unchecked(Csrs::MTVEC);
+        match self.execute_insn(insn, bus) {
+            Ok(pc) => self.pc = pc,
+            Err(e) => {
+                self.csrs.store_unchecked(Csrs::MCAUSE, e as u64);
+                self.csrs.store_unchecked(Csrs::MEPC, self.pc);
+                self.pc = self.csrs.load_unchecked(Csrs::MTVEC);
+            }
         }
     }
 }
