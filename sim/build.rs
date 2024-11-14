@@ -265,7 +265,7 @@ fn main() {
     }
 
     let cmd = Command::new("make")
-        .arg("EXTENSIONS=rv_i rv64_i rv_zicsr")
+        .arg("EXTENSIONS=rv_i rv64_i rv_zicsr rv_system")
         .current_dir(&spec_dir)
         .env("PATH", path)
         .output()
