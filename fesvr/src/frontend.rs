@@ -62,10 +62,10 @@ impl Frontend {
         htif.read(self.to_host, &mut buf)?;
         let tohost = u64::from_le_bytes(buf);
         // todo: implement all of https://github.com/riscv-software-src/riscv-isa-sim/issues/364#issuecomment-607657754
-        if tohost & 1 == 1 {
-            Ok(true)
-        } else {
-            Ok(false)
+        match tohost {
+            1 => Ok(true),
+            0 => Ok(false),
+            _ => Err(Error::Misc),
         }
 
         // if let Some(syscall) = syscall {

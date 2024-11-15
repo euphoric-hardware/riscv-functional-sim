@@ -56,7 +56,6 @@ impl Cpu {
         bus.read(self.pc, &mut bytes).expect("invalid dram address");
         let insn = Insn::from_bytes(&bytes);
 
-        log::trace!("pc: 0x{:x}", self.pc);
         match self.execute_insn(insn, bus) {
             Ok(pc) => self.pc = pc,
             Err(e) => {

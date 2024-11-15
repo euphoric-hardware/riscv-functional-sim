@@ -53,4 +53,6 @@ fn main() {
             i += 1;
         }
     }
+
+    println!("rv64ui-p-* tests passed!");
 }

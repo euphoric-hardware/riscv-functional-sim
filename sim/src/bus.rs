@@ -1,5 +1,6 @@
 use crate::cpu::{Exception, Result};
 use std::{
+    cmp,
     collections::{BTreeMap, HashMap},
     fmt::Debug,
     fs,
@@ -32,8 +33,8 @@ impl Ord for MemoryRange {
 }
 
 impl MemoryRange {
-    fn contains(&self, addr: u64) -> bool {
-        addr >= self.base_address && addr < self.base_address + self.size
+    fn contains(&self, addr: u64, len: u64) -> bool {
+        addr >= self.base_address && addr + len < self.base_address + self.size
     }
 }
 
@@ -54,7 +55,11 @@ impl<'b> Bus<'b> {
         }
     }
 
-    fn get_device(&mut self, addr: u64) -> Result<(&MemoryRange, &mut (dyn Device + 'b))> {
+    fn get_device(
+        &mut self,
+        addr: u64,
+        len: u64,
+    ) -> Result<(&MemoryRange, &mut (dyn Device + 'b))> {
         self.devices
             .range_mut(
                 ..=MemoryRange {
@@ -63,7 +68,7 @@ impl<'b> Bus<'b> {
                 },
             )
             .rev()
-            .find(|(range, _)| range.contains(addr)) // should be first
+            .find(|(range, _)| range.contains(addr, len)) // should be first
             .map(|(r, device)| (r, &mut **device))
             .ok_or(Exception::LoadAccessFault)
     }
@@ -76,12 +81,12 @@ impl<'b> Bus<'b> {
 
 impl Device for Bus<'_> {
     fn read(&mut self, ptr: u64, buf: &mut [u8]) -> Result<()> {
-        let (memory_range, device) = self.get_device(ptr)?;
+        let (memory_range, device) = self.get_device(ptr, buf.len() as u64)?;
         device.read(ptr - memory_range.base_address, buf)
     }
 
     fn write(&mut self, ptr: u64, buf: &[u8]) -> Result<()> {
-        let (memory_range, device) = self.get_device(ptr)?;
+        let (memory_range, device) = self.get_device(ptr, buf.len() as u64)?;
         device.write(ptr - memory_range.base_address, buf)
     }
 }
@@ -114,12 +119,42 @@ impl Ram {
 
 impl Device for Ram {
     fn read(&mut self, ptr: u64, buf: &mut [u8]) -> Result<()> {
-        buf.copy_from_slice(&self.page_slice(ptr, buf.len() as u64));
+        let mut ptr = ptr;
+        let mut remaining = buf;
+
+        while !remaining.is_empty() {
+            let page_offset = ptr & ((1 << Self::PAGE_OFFSET_BITS) - 1);
+
+            let bytes_in_page = Self::PAGE_SIZE as usize - page_offset as usize;
+            let to_read = cmp::min(remaining.len(), bytes_in_page);
+            let (chunk, rest) = remaining.split_at_mut(to_read);
+
+            chunk.copy_from_slice(self.page_slice(ptr, to_read as u64));
+
+            ptr += to_read as u64;
+            remaining = rest;
+        }
+
         Ok(())
     }
 
     fn write(&mut self, ptr: u64, buf: &[u8]) -> Result<()> {
-        self.page_slice(ptr, buf.len() as u64).copy_from_slice(&buf);
+        let mut ptr = ptr;
+        let mut remaining = buf;
+
+        while !remaining.is_empty() {
+            let page_offset = ptr & ((1 << Self::PAGE_OFFSET_BITS) - 1);
+
+            let bytes_in_page = Self::PAGE_SIZE as usize - page_offset as usize;
+            let to_write = cmp::min(remaining.len(), bytes_in_page);
+            let (chunk, rest) = remaining.split_at(to_write);
+
+            self.page_slice(ptr, to_write as u64).copy_from_slice(chunk);
+
+            ptr += to_write as u64;
+            remaining = rest;
+        }
+
         Ok(())
     }
 }
