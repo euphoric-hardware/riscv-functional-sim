@@ -38,3 +38,15 @@ pub struct BType {
     pub rs2: B5,
     pub imm_upper:B7
 }
+
+#[bitfield]
+// For fused instructions
+pub struct R4Type {
+    pub opcode: B7,  // Opcode (7 bits)
+    pub rd: B5,      // Destination register (5 bits)
+    pub funct3: B3,  // Function field (3 bits)
+    pub rs1: B5,     // Source register 1 (5 bits)
+    pub rs2: B5,     // Source register 2 (5 bits)
+    pub rs3: B5,     // Source register 3 (5 bits)
+    pub funct2: B2,  // Additional function field (2 bits)
+}

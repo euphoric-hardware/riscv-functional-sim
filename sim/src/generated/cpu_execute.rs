@@ -1,6 +1,7 @@
 use crate::{
-    cpu::{Cpu, Insn},
+    cpu::{Cpu, Insn, Instruction},
     insn_impl,
+    fpu_inst,
 };
 
 impl Cpu {
@@ -331,5 +332,48 @@ impl Cpu {
             panic!("unknown instruction!")
         }
     }
+
+    pub fn execute(&mut self, instruction: Instruction) {
+        match instruction.opcode() {
+            0b1010011 => self.execute_floating_point(instruction),
+            _ => panic!("Unsupported opcode: {:#b}", instruction.opcode()),
+        }
+    }
+
+    fn execute_floating_point(&mut self, instruction: Instruction) {
+        match instruction.funct7() {
+            0b0000000 => match instruction.funct3() {
+                0b000 => instruction::inst::fadd(instruction, self),
+                0b001 => instruction::inst::fsub(instruction, self),
+                0b010 => instruction::inst::fmul(instruction, self),
+                0b011 => instruction::inst::fdiv(instruction, self),
+                _ => panic!("Unsupported funct3: {:#b}", instruction.funct3()),
+            },
+            0b0000001 => match instruction.funct3() {
+                0b000 => instruction::inst::feq(instruction, self),
+                0b001 => instruction::inst::flt(instruction, self),
+                0b010 => instruction::inst::fle(instruction, self),
+                _ => panic!("Unsupported funct3: {:#b}", instruction.funct3()),
+            },
+            0b0000101 => match instruction.funct3() {
+                0b000 => instruction::inst::fsqrt(instruction, self),
+                _ => panic!("Unsupported funct3: {:#b}", instruction.funct3()),
+            },
+            0b0001000 => match instruction.funct3() {
+                0b000 => instruction::inst::fcvt_w_s(instruction, self),
+                0b001 => instruction::inst::fcvt_s_w(instruction, self),
+                _ => panic!("Unsupported funct3: {:#b}", instruction.funct3()),
+            },
+            0b0010000 => match instruction.funct3() {
+                0b000 => instruction::inst::fmadd(instruction, self),   
+                0b001 => instruction::inst::fmsub(instruction, self),   
+                0b010 => instruction::inst::fnmadd(instruction, self),
+                0b011 => instruction::inst::fnmsub(instruction, self),
+                _ => panic!("Unsupported funct3: {:#b}", instruction.funct3()),
+            },
+            _ => panic!("Unsupported funct7: {:#b}", instruction.funct7()),
+        }
+    }
+    
 }
 
