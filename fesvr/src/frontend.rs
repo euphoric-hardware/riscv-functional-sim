@@ -57,15 +57,15 @@ impl Frontend {
         Ok(())
     }
 
-    pub fn process<H: Htif>(&mut self, htif: &mut H) -> Result<()> {
+    pub fn process<H: Htif>(&mut self, htif: &mut H) -> Result<bool> {
         let mut buf = [0; size_of::<u64>()];
         htif.read(self.to_host, &mut buf)?;
         let tohost = u64::from_le_bytes(buf);
         // todo: implement all of https://github.com/riscv-software-src/riscv-isa-sim/issues/364#issuecomment-607657754
         if tohost & 1 == 1 {
-            std::process::exit(0);
+            Ok(true)
         } else {
-            Ok(())
+            Ok(false)
         }
 
         // if let Some(syscall) = syscall {
