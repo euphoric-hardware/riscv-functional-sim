@@ -1,10 +1,10 @@
 use crate::{
     bus::Bus,
-    cpu::{self, Cpu, Insn},
+    cpu::{self, Cpu, Exception, Insn, InsnType},
 };
 
 pub fn ebreak(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
-    crate::trace_insn!("ebreak");
+    crate::trace_insn("ecall", InsnType::Privileged);
 
-    Ok(cpu.pc + 4)
+    Err(Exception::Breakpoint)
 }

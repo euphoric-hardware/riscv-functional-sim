@@ -1,3 +1,5 @@
+use std::fmt::{write, Display};
+
 use crate::{
     bus::{self, Bus, Device},
     csrs::Csrs,
@@ -93,6 +95,79 @@ impl Insn {
             (value as i64) | !((1 << length) - 1) as i64
         } else {
             value as i64
+        }
+    }
+}
+
+// FOR TRACING PURPOSES
+
+pub const REGISTER_NAMES: [&str; 32] = [
+    "zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0", "a1", "a2", "a3", "a4",
+    "a5", "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4",
+    "t5", "t6",
+];
+
+#[derive(Debug)]
+pub enum InsnType {
+    R { rd: u8, rs1: u8, rs2: u8 },
+    I { rd: u8, rs1: u8, imm: i64 },
+    S { rs1: u8, rs2: u8, imm: i64 },
+    B { rs1: u8, rs2: u8, offset: i64 },
+    U { rd: u8, imm: i64 },
+    J { rd: u8, offset: i64 },
+    CsrReg { rd: u8, csr: u16, rs1: u8 },
+    CsrImm { rd: u8, csr: u16, imm: u8 },
+    Privileged,
+}
+
+#[rustfmt::skip]
+mod insn_type_macros {
+    macro_rules! r_type { ($rd:expr, $rs1:expr, $rs2:expr) => { crate::cpu::InsnType::R { rd: $rd as u8, rs1: $rs1 as u8, rs2: $rs2 as u8 } }; }
+    macro_rules! i_type { ($rd:expr, $rs1:expr, $imm:expr) => { crate::cpu::InsnType::I { rd: $rd as u8, rs1: $rs1 as u8, imm: $imm as i64 } }; }
+    macro_rules! s_type { ($rs1:expr, $rs2:expr, $imm:expr) => { crate::cpu::InsnType::S { rs1: $rs1 as u8, rs2: $rs2 as u8, imm: $imm as i64 } }; }
+    macro_rules! b_type { ($rs1:expr, $rs2:expr, $offset:expr) => { crate::cpu::InsnType::B { rs1: $rs1 as u8, rs2: $rs2 as u8, offset: $offset as i64 } }; }
+    macro_rules! u_type { ($rd:expr, $imm:expr) => { crate::cpu::InsnType::U { rd: $rd as u8, imm: $imm as i64 } }; }
+    macro_rules! j_type { ($rd:expr, $offset:expr) => { crate::cpu::InsnType::J { rd: $rd as u8, offset: $offset as i64 } }; }
+    macro_rules! csr_reg_type { ($rd:expr, $csr:expr, $rs1:expr) => { crate::cpu::InsnType::CsrReg { rd: $rd as u8, csr: $csr as u16, rs1: $rs1 as u8 } }; }
+    macro_rules! csr_imm_type { ($rd:expr, $csr:expr, $imm:expr) => { crate::cpu::InsnType::CsrImm { rd: $rd as u8, csr: $csr as u16, imm: $imm as u8 } }; }
+
+    pub(crate) use csr_imm_type;
+    pub(crate) use csr_reg_type;
+    pub(crate) use i_type;
+    pub(crate) use j_type;
+    pub(crate) use r_type;
+    pub(crate) use b_type;
+    pub(crate) use s_type;
+    pub(crate) use u_type;
+}
+
+pub(crate) use insn_type_macros::*;
+
+impl Display for InsnType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use InsnType::*;
+
+        #[inline]
+        fn r(reg: &u8) -> &'static str {
+            REGISTER_NAMES[*reg as usize]
+        }
+
+        match self {
+            R { rd, rs1, rs2 } => write!(f, "{}, {}, {}", r(rd), r(rs1), r(rs2)),
+            I { rd, rs1, imm } => write!(f, "{}, {}, {:#x}", r(rd), r(rs1), imm),
+            S { rs1, rs2, imm } => write!(f, "{}, {}({})", r(rs1), imm, r(rs2)),
+            B { rs1, rs2, offset } => write!(f, "{}, {}, {}", r(rs1), r(rs2), offset),
+            U { rd, imm } => write!(f, "{}, {:#x}", r(rd), imm),
+            J { rd, offset } => write!(
+                f,
+                "{}, pc {} {}",
+                r(rd),
+                if *offset >= 0 { '+' } else { '-' },
+                offset.abs()
+            ),
+            CsrReg { rd, csr, rs1 } => write!(f, "{}, {:#x}, {}", r(rd), csr, r(rs1)),
+            CsrImm { rd, csr, imm } => write!(f, "{}, {:#x}, {}", r(rd), csr, imm),
+            Privileged => write!(f, ""),
         }
     }
 }

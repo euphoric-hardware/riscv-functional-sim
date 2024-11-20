@@ -96,24 +96,12 @@ impl Cpu {
             insn_impl::fence::fence(insn, self, bus)
         }
 
-        else if bits & 0xfff0707f == 0x8330000f {
-            insn_impl::fence_tso::fence_tso(insn, self, bus)
-        }
-
         else if bits & 0x7f == 0x6f {
             insn_impl::jal::jal(insn, self, bus)
         }
 
-        else if bits & 0xfff == 0xef {
-            insn_impl::jal_pseudo::jal_pseudo(insn, self, bus)
-        }
-
         else if bits & 0x707f == 0x67 {
             insn_impl::jalr::jalr(insn, self, bus)
-        }
-
-        else if bits & 0xfff07fff == 0xe7 {
-            insn_impl::jalr_pseudo::jalr_pseudo(insn, self, bus)
         }
 
         else if bits & 0x707f == 0x3 {
@@ -160,20 +148,8 @@ impl Cpu {
             insn_impl::ori::ori(insn, self, bus)
         }
 
-        else if bits & 0xffffffff == 0x100000f {
-            insn_impl::pause::pause(insn, self, bus)
-        }
-
         else if bits & 0x707f == 0x23 {
             insn_impl::sb::sb(insn, self, bus)
-        }
-
-        else if bits & 0xffffffff == 0x100073 {
-            insn_impl::sbreak::sbreak(insn, self, bus)
-        }
-
-        else if bits & 0xffffffff == 0x73 {
-            insn_impl::scall::scall(insn, self, bus)
         }
 
         else if bits & 0x707f == 0x3023 {

@@ -283,7 +283,7 @@ fn main() {
     const EXCLUDED_INSNS: &[&str] = &[
         "mv", "neg", "nop", "zext_b", "ret", "bleu", "bgtu", "ble", "bgez", "blez", "bgt", "bgtz",
         "bltz", "bnez", "beqz", "seqz", "snez", "sltz", "sgtz", "jr", "j", "sext_w", "csrr",
-        "csrw", "csrs", "csrc", "csrwi", "csrsi", "csrci",
+        "csrw", "csrs", "csrc", "csrwi", "csrsi", "csrci", "jal_pseudo", "jalr_pseudo", "fence_tso", "scall", "sbreak", "pause"
     ];
     for insn in EXCLUDED_INSNS {
         config.remove(insn.to_owned());

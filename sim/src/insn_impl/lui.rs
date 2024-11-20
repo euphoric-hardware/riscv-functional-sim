@@ -1,14 +1,15 @@
 use crate::{
     bus::Bus,
-    cpu::{self, Cpu, Insn},
+    cpu::{self, u_type, Cpu, Insn},
 };
 
 pub fn lui(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
-    crate::trace_insn!("lui", rd = insn.rd(), imm20 = insn.imm20());
-
     let rd = insn.rd();
     let imm20 = insn.imm20();
 
-    cpu.regs.store(rd, Insn::sign_extend((imm20 << 12) as u64, 32) as u64);
+    let imm = Insn::sign_extend((imm20 << 12) as u64, 32) as u64;
+    crate::trace_insn("lui", u_type!(rd, imm));
+
+    cpu.regs.store(rd, imm);
     Ok(cpu.pc + 4)
 }

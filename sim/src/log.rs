@@ -1,5 +1,7 @@
 // https://stackoverflow.com/a/34539114
 
+use crate::cpu;
+
 #[cfg(debug_assertions)]
 #[macro_export]
 macro_rules! info {
@@ -41,20 +43,13 @@ macro_rules! warn {
 }
 
 #[cfg(debug_assertions)]
-#[macro_export]
-macro_rules! trace_insn {
-    ($insn:expr $(, $argname:ident = $argval:expr)* $(,)?) => {{
-        crate::trace!(
-            concat!(
-                "[{}]",
-                $(
-                    " ", stringify!($argname), "=", "{}",
-                )*
-            ),
-            $insn
-            $(, $argval)*
-        );
-    }};
+#[inline(always)]
+pub fn trace_insn(name: &str, form: cpu::InsnType) {
+    crate::trace!(
+        "core   0: 0x0000000080000040 (0xfc3f2223) {}     {}",
+        name,
+        form
+    );
 }
 
 // non debug
@@ -91,6 +86,4 @@ macro_rules! warn {
 
 #[cfg(not(debug_assertions))]
 #[macro_export]
-macro_rules! trace_insn {
-    ($insn:expr, $($argname:ident = $argval:expr),* $(,)?) => {};
-}
+pub fn trace_insn(name: &str, form: cpu::InsnType) {}

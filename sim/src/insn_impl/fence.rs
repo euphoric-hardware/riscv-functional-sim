@@ -4,7 +4,7 @@ use crate::{
 };
 
 pub fn fence(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
-    crate::trace_insn!("fence", fm = insn.fm(), pred = insn.pred(), succ = insn.succ(), rs1 = insn.rs1(), rd = insn.rd());
+    // crate::trace_insn!("fence", fm = insn.fm(), pred = insn.pred(), succ = insn.succ(), rs1 = insn.rs1(), rd = insn.rd());
 
     let fm = insn.fm();
     let pred = insn.pred();
