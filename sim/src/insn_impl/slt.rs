@@ -10,9 +10,6 @@ pub fn slt(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let rs2 = insn.rs2();
 
-    cpu.regs.store(
-        rd,
-        ((cpu.regs.load(rs1) as i64) < (cpu.regs.load(rs2) as i64)) as u64,
-    );
+    cpu.regs.store(rd, ((cpu.regs.load(rs1) as i64) < (cpu.regs.load(rs2) as i64)) as u64);
     Ok(cpu.pc + 4)
 }

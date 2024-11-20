@@ -9,8 +9,7 @@ pub fn auipc(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rd = insn.rd();
     let imm20 = insn.imm20();
 
-    cpu.regs
-        .store(rd, cpu.pc.wrapping_add((imm20 as u64) << 12));
+    cpu.regs.store(rd, cpu.pc.wrapping_add((imm20 as u64) << 12));
 
     Ok(cpu.pc + 4)
 }

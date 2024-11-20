@@ -4,12 +4,7 @@ use crate::{
 };
 
 pub fn lbu(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
-    crate::trace_insn!(
-        "lbu",
-        rd = insn.rd(),
-        rs1 = insn.rs1(),
-        imm12 = insn.imm12()
-    );
+    crate::trace_insn!("lbu", rd = insn.rd(), rs1 = insn.rs1(), imm12 = insn.imm12());
 
     let rd = insn.rd();
     let rs1 = insn.rs1();
