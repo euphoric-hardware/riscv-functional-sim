@@ -10,7 +10,6 @@ pub fn sub(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     crate::trace_insn("sub", r_type!(rd, rs1, rs2));
 
-    cpu.regs
-        .store(rd, cpu.regs.load(rs1).wrapping_sub(cpu.regs.load(rs2)));
+    cpu.store(rd, cpu.load(rs1).wrapping_sub(cpu.load(rs2)));
     Ok(cpu.pc + 4)
 }

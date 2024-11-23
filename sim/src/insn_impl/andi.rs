@@ -13,6 +13,6 @@ pub fn andi(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     log::trace_insn("andi", i_type!(rd, rs1, imm));
 
-    cpu.regs.store(rd, cpu.regs.load(rs1) & imm as u64);
+    cpu.store(rd, cpu.load(rs1) & imm as u64);
     Ok(cpu.pc + 4)
 }

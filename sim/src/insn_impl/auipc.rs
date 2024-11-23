@@ -11,7 +11,7 @@ pub fn auipc(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     crate::trace_insn("auipc", u_type!(rd, imm));
 
-    cpu.regs.store(rd, cpu.pc.wrapping_add(imm));
+    cpu.store(rd, cpu.pc.wrapping_add(imm));
 
     Ok(cpu.pc + 4)
 }

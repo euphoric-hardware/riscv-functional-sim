@@ -13,7 +13,7 @@ pub fn sw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     crate::trace_insn("sw", s_type!(rs1, rs2, offset));
 
-    let address = cpu.regs.load(rs1).wrapping_add(offset as u64);
-    bus.write(address, &(cpu.regs.load(rs2) as u32).to_le_bytes())?;
+    let address = cpu.load(rs1).wrapping_add(offset as u64);
+    bus.write(address, &(cpu.load(rs2) as u32).to_le_bytes())?;
     Ok(cpu.pc + 4)
 }

@@ -17,6 +17,6 @@ pub fn jal(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     crate::trace_insn("jal", j_type!(rd, offset));
 
-    cpu.regs.store(rd, cpu.pc + 4);
+    cpu.store(rd, cpu.pc + 4);
     Ok(cpu.pc.wrapping_add(offset as u64) as u64)
 }

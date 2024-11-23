@@ -1,4 +1,8 @@
-use std::fmt::{write, Display};
+use std::{
+    collections::BTreeMap,
+    default,
+    fmt::{write, Display},
+};
 
 use crate::{
     bus::{self, Bus, Device},
@@ -7,25 +11,98 @@ use crate::{
 };
 
 #[derive(Debug, Default)]
-pub struct Regfile([u64; 32]);
+pub enum MemData {
+    DoubleWord(u64),
+    Word(u32),
+    HalfWord(u16),
+    Byte(u8),
+    #[default]
+    Empty,
+}
 
-impl Regfile {
-    pub fn load(&self, reg: u64) -> u64 {
-        self.0[reg as usize]
+impl MemData {
+    // SAFETY: slice must be 8, 4, 2, or 1 byte long
+    pub fn from_le_bytes(buf: &[u8]) -> Self {
+        use MemData::*;
+        match buf.len() {
+            8 => DoubleWord(u64::from_le_bytes([
+                buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7],
+            ])),
+            4 => Word(u32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]])),
+            2 => HalfWord(u16::from_le_bytes([buf[0], buf[1]])),
+            1 => Byte(buf[0]),
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl Display for MemData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use MemData::*;
+        match self {
+            DoubleWord(dw) => write!(f, "0x{:016x}", dw),
+            Word(w) => write!(f, "0x{:08x}", w),
+            HalfWord(hw) => write!(f, "0x{:04x}", hw),
+            Byte(b) => write!(f, "0x{:02x}", b),
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Commits {
+    // reg, data
+    pub reg_write: BTreeMap<u64, u64>,
+    // addr, data
+    pub mem_write: BTreeMap<u64, MemData>,
+    pub mem_read: BTreeMap<u64, MemData>,
+}
+
+impl Commits {
+    pub fn is_load(&self) -> bool {
+        !self.mem_read.is_empty()
     }
 
-    pub fn store(&mut self, reg: u64, value: u64) {
-        if reg != 0 {
-            self.0[reg as usize] = value;
+    pub fn is_store(&self) -> bool {
+        !self.mem_write.is_empty()
+    }
+
+    pub fn modified_regs(&self) -> bool {
+        !self.reg_write.is_empty()
+    }
+}
+
+#[repr(u8)]
+#[derive(Clone, Copy)]
+pub enum PrivilegeMode {
+    User = 0,
+    Supervisor = 1,
+    Machine = 3,
+}
+
+impl Display for PrivilegeMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", *self as u8)
+    }
+}
+
+impl From<u8> for PrivilegeMode {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => Self::User,
+            1 => Self::Supervisor,
+            3 => Self::Machine,
+            _ => unreachable!(),
         }
     }
 }
 
 #[derive(Debug, Default)]
 pub struct Cpu {
-    pub regs: Regfile,
+    pub regs: [u64; 32],
     pub pc: u64,
     pub csrs: Csrs,
+    pub commits: Commits,
 }
 
 #[derive(Debug)]
@@ -53,13 +130,54 @@ impl Cpu {
         Default::default()
     }
 
+    pub fn load(&self, reg: u64) -> u64 {
+        self.regs[reg as usize]
+    }
+
+    pub fn store(&mut self, reg: u64, value: u64) {
+        if reg != 0 {
+            self.regs[reg as usize] = value;
+            self.commits.reg_write.insert(reg, value);
+        }
+    }
+
+    pub fn privilege_mode(&self) -> PrivilegeMode {
+        let mstatus = self.csrs.load_unchecked(Csrs::MSTATUS);
+        let mpp = ((mstatus >> 11) & 0b11) as u8;
+        PrivilegeMode::from(mpp)
+    }
+
     pub fn step(&mut self, bus: &mut Bus) {
         let mut bytes = [0; std::mem::size_of::<u32>()];
         bus.read(self.pc, &mut bytes).expect("invalid dram address");
         let insn = Insn::from_bytes(&bytes);
 
         match self.execute_insn(insn, bus) {
-            Ok(pc) => self.pc = pc,
+            Ok(pc) => {
+                print!(
+                    "core   0: {} 0x{:016x} (0x{:08x})",
+                    self.privilege_mode(),
+                    self.pc,
+                    insn.bits()
+                );
+                if self.commits.modified_regs() {
+                    while let Some((reg, val)) = self.commits.reg_write.pop_first() {
+                        print!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
+                    }
+                }
+                if self.commits.is_load() {
+                    while let Some((addr, _)) = self.commits.mem_read.pop_first() {
+                        print!(" mem 0x{:016x}", addr);
+                    }
+                } else if self.commits.is_store() {
+                    while let Some((addr, val)) = self.commits.mem_write.pop_first() {
+                        print!(" mem 0x{:016x} {}", addr, val);
+                    }
+                }
+                println!();
+
+                self.pc = pc
+            }
             Err(e) => {
                 self.csrs.store_unchecked(Csrs::MCAUSE, e as u64);
                 self.csrs.store_unchecked(Csrs::MEPC, self.pc);
@@ -92,7 +210,7 @@ impl Insn {
     pub fn sign_extend(value: u64, length: u8) -> i64 {
         let sign_bit = 1u64 << (length - 1);
         if value & sign_bit != 0 {
-            (value as i64) | !((1 << length) - 1) as i64
+            (value as i64) | !((1u64 << length) - 1) as i64
         } else {
             value as i64
         }
@@ -101,10 +219,10 @@ impl Insn {
 
 // FOR TRACING PURPOSES
 
-pub const REGISTER_NAMES: [&str; 32] = [
-    "zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0", "a1", "a2", "a3", "a4",
-    "a5", "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4",
-    "t5", "t6",
+static REGISTER_NAMES: [&str; 32] = [
+    "x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14",
+    "x15", "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27",
+    "x28", "x29", "x30", "x31",
 ];
 
 #[derive(Debug)]

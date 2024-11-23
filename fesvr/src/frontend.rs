@@ -65,7 +65,10 @@ impl Frontend {
         match tohost {
             1 => Ok(true),
             0 => Ok(false),
-            _ => Err(Error::Misc),
+            a => {
+                println!("{}", a);
+                Err(Error::Misc)
+            }
         }
 
         // if let Some(syscall) = syscall {

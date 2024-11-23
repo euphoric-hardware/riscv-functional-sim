@@ -10,6 +10,6 @@ pub fn srli(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     crate::trace_insn("srli", i_type!(rd, rs1, shamtd));
 
-    cpu.regs.store(rd, cpu.regs.load(rs1) >> shamtd);
+    cpu.store(rd, cpu.load(rs1) >> shamtd);
     Ok(cpu.pc + 4)
 }

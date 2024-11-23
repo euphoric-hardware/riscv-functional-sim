@@ -13,7 +13,6 @@ pub fn addi(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     log::trace_insn("addi", i_type!(rd, rs1, imm));
 
-    cpu.regs
-        .store(rd, cpu.regs.load(rs1).wrapping_add(imm as u64));
+    cpu.store(rd, cpu.load(rs1).wrapping_add(imm as u64));
     Ok(cpu.pc + 4)
 }

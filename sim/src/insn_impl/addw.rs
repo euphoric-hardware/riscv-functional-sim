@@ -10,10 +10,10 @@ pub fn addw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     crate::trace_insn("addw", r_type!(rd, rs1, rs2));
 
-    cpu.regs.store(
+    cpu.store(
         rd,
         Insn::sign_extend(
-            (cpu.regs.load(rs1) as u32).wrapping_add(cpu.regs.load(rs2) as u32) as u64,
+            (cpu.load(rs1) as u32).wrapping_add(cpu.load(rs2) as u32) as u64,
             32,
         ) as u64,
     );

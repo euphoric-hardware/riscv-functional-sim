@@ -12,10 +12,10 @@ pub fn ld(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     crate::trace_insn("ld", i_type!(rd, rs1, imm));
 
-    let address = (cpu.regs.load(rs1) as u64).wrapping_add(imm as u64);
+    let address = (cpu.load(rs1) as u64).wrapping_add(imm as u64);
     let mut raw = [0; size_of::<u64>()];
     bus.read(address, &mut raw)?;
-    cpu.regs.store(rd, (raw[0] as i64) as u64); // check sign extension, does casting the byte work?
+    cpu.store(rd, (raw[0] as i64) as u64); // check sign extension, does casting the byte work?
 
     Ok(cpu.pc + 4)
 }

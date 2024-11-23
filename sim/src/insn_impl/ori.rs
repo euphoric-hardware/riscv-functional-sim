@@ -12,6 +12,6 @@ pub fn ori(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     crate::trace_insn("ori", i_type!(rd, rs1, imm));
 
-    cpu.regs.store(rd, cpu.regs.load(rs1) | (imm as u64));
+    cpu.store(rd, cpu.load(rs1) | (imm as u64));
     Ok(cpu.pc + 4)
 }

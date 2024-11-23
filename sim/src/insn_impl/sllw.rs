@@ -10,10 +10,10 @@ pub fn sllw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     crate::trace_insn("sllw", r_type!(rd, rs1, rs2));
 
-    cpu.regs.store(
+    cpu.store(
         rd,
         Insn::sign_extend(
-            (cpu.regs.load(rs1) as u32).wrapping_shl((cpu.regs.load(rs2) & 0x31) as u32) as u64,
+            (cpu.load(rs1) as u32).wrapping_shl((cpu.load(rs2) & 0x31) as u32) as u64,
             32,
         ) as u64,
     );

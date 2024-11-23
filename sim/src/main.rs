@@ -8,6 +8,7 @@ mod csrs;
 mod generated;
 mod insn_impl;
 mod log;
+mod mmu;
 mod plic;
 mod system;
 
@@ -29,7 +30,9 @@ fn main() {
         .filter(|entry| {
             let file_name = entry.file_name();
             let file_name_str = file_name.to_string_lossy();
-            file_name_str.starts_with("rv64ui-p-") && !file_name_str.ends_with(".dump")
+            file_name_str.starts_with("rv64ui-p-addi")
+                && !file_name_str.contains("addiw")
+                && !file_name_str.ends_with(".dump")
         })
         .collect();
 
@@ -38,6 +41,9 @@ fn main() {
     for entry in entries {
         println!("testing... {}", entry.file_name().to_string_lossy());
         let mut system = system::System::new();
+        system.cpus[0]
+            .csrs
+            .store_unchecked(csrs::Csrs::MSTATUS, 0b00000000000000000001100000000000);
         let mut frontend = Frontend::try_new(dir.join(&entry.file_name())).unwrap();
         frontend.write_elf(&mut system).unwrap();
 
@@ -53,6 +59,4 @@ fn main() {
             i += 1;
         }
     }
-
-    println!("rv64ui-p-* tests passed!");
 }

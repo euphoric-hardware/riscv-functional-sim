@@ -12,6 +12,6 @@ pub fn csrrsi(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     let csr_value = cpu.csrs.load(csr)?;
     cpu.csrs.store(csr, csr_value | zimm)?;
-    cpu.regs.store(rd, csr_value);
+    cpu.store(rd, csr_value);
     Ok(cpu.pc + 4)
 }

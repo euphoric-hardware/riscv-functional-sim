@@ -12,10 +12,10 @@ pub fn lw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     crate::trace_insn("lw", i_type!(rd, rs1, imm));
 
-    let address = (cpu.regs.load(rs1) as u64).wrapping_add(imm as u64);
+    let address = (cpu.load(rs1) as u64).wrapping_add(imm as u64);
     let mut raw = [0; size_of::<i32>()];
     bus.read(address, &mut raw)?;
     let h = i32::from_le_bytes(raw);
-    cpu.regs.store(rd, h as i32 as u64); // check sign extension
+    cpu.store(rd, h as i32 as u64); // check sign extension
     Ok(cpu.pc + 4)
 }
