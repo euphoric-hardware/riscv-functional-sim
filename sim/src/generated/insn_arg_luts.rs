@@ -1,5 +1,6 @@
 use crate::cpu::Insn;
 
+#[rustfmt::skip]
 impl Insn {
     pub fn rd(&self) -> u64 { self.bit_range(7, 5) }
     pub fn rt(&self) -> u64 { self.bit_range(15, 5) }

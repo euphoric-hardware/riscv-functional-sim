@@ -1,0 +1,16 @@
+use crate::{
+    bus::Bus,
+    cpu::{Cpu, Exception, Insn, Result},
+    insn_impl,
+};
+
+#[rustfmt::skip]
+impl Cpu {
+    pub fn execute_insn(&mut self, insn: Insn, bus: &mut Bus) -> Result<u64> {
+        let bits = insn.bits();
+
+        {insn_cases}
+
+        else { Err(Exception::IllegalInstruction) }
+    }
+}

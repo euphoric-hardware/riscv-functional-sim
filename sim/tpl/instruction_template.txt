@@ -1,0 +1,16 @@
+use crate::{
+    bus::Bus,
+    cpu::{self, X_type, Cpu, Insn},
+};
+
+pub fn {insn_name}(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
+    {insn_fields}
+
+    // Perform further bit extraction/manipulation/decoding
+
+    crate::trace_insn("{insn_names}", X_type!());
+
+    // Instruction logic
+
+    Ok(cpu.pc + 4)
+}

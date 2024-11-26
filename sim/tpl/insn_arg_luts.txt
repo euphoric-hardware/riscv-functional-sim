@@ -1,0 +1,6 @@
+use crate::cpu::Insn;
+
+#[rustfmt::skip]
+impl Insn {
+    {arg_lut_fns}
+}
