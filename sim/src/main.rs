@@ -30,8 +30,8 @@ fn main() {
         .filter(|entry| {
             let file_name = entry.file_name();
             let file_name_str = file_name.to_string_lossy();
-            file_name_str.starts_with("rv64ui-p-addi")
-                && !file_name_str.contains("addiw")
+            file_name_str.starts_with("rv64ui-p-sb")
+                && file_name_str.contains("")
                 && !file_name_str.ends_with(".dump")
         })
         .collect();
