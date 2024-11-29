@@ -154,27 +154,27 @@ impl Cpu {
 
         match self.execute_insn(insn, bus) {
             Ok(pc) => {
-                print!(
-                    "core   0: {} 0x{:016x} (0x{:08x})",
-                    self.privilege_mode(),
-                    self.pc,
-                    insn.bits()
-                );
-                if self.commits.modified_regs() {
-                    while let Some((reg, val)) = self.commits.reg_write.pop_first() {
-                        print!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
-                    }
-                }
-                if self.commits.is_load() {
-                    while let Some((addr, _)) = self.commits.mem_read.pop_first() {
-                        print!(" mem 0x{:016x}", addr);
-                    }
-                } else if self.commits.is_store() {
-                    while let Some((addr, val)) = self.commits.mem_write.pop_first() {
-                        print!(" mem 0x{:016x} {}", addr, val);
-                    }
-                }
-                println!();
+                // print!(
+                //     "core   0: {} 0x{:016x} (0x{:08x})",
+                //     self.privilege_mode(),
+                //     self.pc,
+                //     insn.bits()
+                // );
+                // if self.commits.modified_regs() {
+                //     while let Some((reg, val)) = self.commits.reg_write.pop_first() {
+                //         print!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
+                //     }
+                // }
+                // if self.commits.is_load() {
+                //     while let Some((addr, _)) = self.commits.mem_read.pop_first() {
+                //         print!(" mem 0x{:016x}", addr);
+                //     }
+                // } else if self.commits.is_store() {
+                //     while let Some((addr, val)) = self.commits.mem_write.pop_first() {
+                //         print!(" mem 0x{:016x} {}", addr, val);
+                //     }
+                // }
+                // println!();
 
                 self.pc = pc
             }
@@ -233,6 +233,16 @@ pub enum InsnType {
     B { rs1: u8, rs2: u8, offset: i64 },
     U { rd: u8, imm: i64 },
     J { rd: u8, offset: i64 },
+    CR { rd_rs1: u8, rs2: u8 },
+    CI { rd_rs1: u8, imm: i64 },
+    CSS { rs2: u8, imm: i64 },
+    CIW { rd: u8, imm: i64 },
+    CL { rd: u8, rs1: u8, imm: i64 },
+    CS { rs1: u8, rs2: u8, imm: i64 },
+    CA { rd_rs1: u8, rs2: u8 },
+    CB { rd_rs1: u8, imm: i64 },
+    CJ { imm: i64 },
+
     CsrReg { rd: u8, csr: u16, rs1: u8 },
     CsrImm { rd: u8, csr: u16, imm: u8 },
     Privileged,
@@ -246,6 +256,16 @@ mod insn_type_macros {
     macro_rules! b_type { ($rs1:expr, $rs2:expr, $offset:expr) => { crate::cpu::InsnType::B { rs1: $rs1 as u8, rs2: $rs2 as u8, offset: $offset as i64 } }; }
     macro_rules! u_type { ($rd:expr, $imm:expr) => { crate::cpu::InsnType::U { rd: $rd as u8, imm: $imm as i64 } }; }
     macro_rules! j_type { ($rd:expr, $offset:expr) => { crate::cpu::InsnType::J { rd: $rd as u8, offset: $offset as i64 } }; }
+    macro_rules! cr_type { ($rd_rs1:expr, $rs2: expr) => { crate::cpu::InsnType::CR { rd_rs1: $rd_rs1 as u8, rs2: $rs2 as u8 } }; }
+    macro_rules! ci_type { ($rd_rs1:expr, $imm: expr) => { crate::cpu::InsnType::CI { rd_rs1: $rd_rs1 as u8, imm: $imm as i8 as i64 } }; }
+    macro_rules! css_type { ($rs2:expr, $imm: expr) => { crate::cpu::InsnType::CSS { rs2: $rs2 as u8, imm: $imm as i8 as i64 } }; }
+    macro_rules! ciw_type { ($rd:expr, $imm: expr) => { crate::cpu::InsnType::CIW { rd: $rd as u8, imm: $imm as i16 as i64 } }; }
+    macro_rules! cl_type { ($rd:expr, $rs1:expr, $imm: expr) => { crate::cpu::InsnType::CL { rd: $rd as u8, rs1: $rs1 as u8, imm: $imm as i8 as i64 } }; }
+    macro_rules! cs_type { ($rs1:expr, $rs2:expr, $imm: expr) => { crate::cpu::InsnType::CS { rs1: $rs1 as u8, rs2: $rs2 as u8, imm: $imm as i8 as i64 } }; }
+    macro_rules! ca_type { ($rd_rs1:expr, $rs2:expr) => { crate::cpu::InsnType::CA { rd_rs1: $rd_rs1 as u8, rs2: $rs2 as u8} }; }
+    macro_rules! cb_type { ($rd_rs1:expr, $imm: expr) => { crate::cpu::InsnType::CB { rd_rs1: $rd_rs1 as u8, imm: $imm as i8 as i64 } }; }
+    macro_rules! cj_type { ($imm: expr) => { crate::cpu::InsnType::CJ { imm: $imm as i16 as i64 } }; }
+
     macro_rules! csr_reg_type { ($rd:expr, $csr:expr, $rs1:expr) => { crate::cpu::InsnType::CsrReg { rd: $rd as u8, csr: $csr as u16, rs1: $rs1 as u8 } }; }
     macro_rules! csr_imm_type { ($rd:expr, $csr:expr, $imm:expr) => { crate::cpu::InsnType::CsrImm { rd: $rd as u8, csr: $csr as u16, imm: $imm as u8 } }; }
 
@@ -257,6 +277,16 @@ mod insn_type_macros {
     pub(crate) use b_type;
     pub(crate) use s_type;
     pub(crate) use u_type;
+    pub(crate) use cr_type;
+    pub(crate) use ci_type;
+    pub(crate) use css_type;
+    pub(crate) use ciw_type;
+    pub(crate) use cl_type;
+    pub(crate) use cs_type;
+    pub(crate) use ca_type;
+    pub(crate) use cb_type;
+    pub(crate) use cj_type;
+
 }
 
 pub(crate) use insn_type_macros::*;
@@ -283,6 +313,15 @@ impl Display for InsnType {
                 if *offset >= 0 { '+' } else { '-' },
                 offset.abs()
             ),
+            CR { rd_rs1, rs2 } => write!(f, "{}, 0({})", r(rs2), r(rd_rs1)),
+            CI { rd_rs1, imm } => write!(f, "{}, {}", r(rd_rs1), imm),
+            CSS { rs2, imm } => write!(f, "{}, {}(sp)", r(rs2), imm),
+            CIW { rd, imm } => write!(f, "{}, sp, {}", r(rd), imm),
+            CL { rd, rs1, imm } => write!(f, "{}, {}({})", r(rd), r(rs1), imm),
+            CS { rs1, rs2, imm } => write!(f, "{}, {}({})", r(rs2), imm, r(rs2)),
+            CA { rd_rs1, rs2 } => write!(f, "{}, {}, {}", r(rd_rs1), r(rd_rs1), r(rs2)),
+            CB { rd_rs1, imm } => write!(f, "{}, {}", r(rd_rs1), imm),
+            CJ { imm } => write!(f, "{}", imm),
             CsrReg { rd, csr, rs1 } => write!(f, "{}, {:#x}, {}", r(rd), csr, r(rs1)),
             CsrImm { rd, csr, imm } => write!(f, "{}, {:#x}, {}", r(rd), csr, imm),
             Privileged => write!(f, ""),

@@ -60,6 +60,142 @@ impl Cpu {
             insn_impl::bne::bne(insn, self, bus)
         }
 
+        else if bits & 0xf003 == 0x9002 {
+            insn_impl::c_add::c_add(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0x1 {
+            insn_impl::c_addi::c_addi(insn, self, bus)
+        }
+
+        else if bits & 0xef83 == 0x6101 {
+            insn_impl::c_addi16sp::c_addi16sp(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0x0 {
+            insn_impl::c_addi4spn::c_addi4spn(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0x2001 {
+            insn_impl::c_addiw::c_addiw(insn, self, bus)
+        }
+
+        else if bits & 0xfc63 == 0x9c21 {
+            insn_impl::c_addw::c_addw(insn, self, bus)
+        }
+
+        else if bits & 0xfc63 == 0x8c61 {
+            insn_impl::c_and::c_and(insn, self, bus)
+        }
+
+        else if bits & 0xec03 == 0x8801 {
+            insn_impl::c_andi::c_andi(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0xc001 {
+            insn_impl::c_beqz::c_beqz(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0xe001 {
+            insn_impl::c_bnez::c_bnez(insn, self, bus)
+        }
+
+        else if bits & 0xffff == 0x9002 {
+            insn_impl::c_ebreak::c_ebreak(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0xa001 {
+            insn_impl::c_j::c_j(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0x2001 {
+            insn_impl::c_jal::c_jal(insn, self, bus)
+        }
+
+        else if bits & 0xf07f == 0x9002 {
+            insn_impl::c_jalr::c_jalr(insn, self, bus)
+        }
+
+        else if bits & 0xf07f == 0x8002 {
+            insn_impl::c_jr::c_jr(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0x6000 {
+            insn_impl::c_ld::c_ld(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0x6002 {
+            insn_impl::c_ldsp::c_ldsp(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0x4001 {
+            insn_impl::c_li::c_li(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0x6001 {
+            insn_impl::c_lui::c_lui(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0x4000 {
+            insn_impl::c_lw::c_lw(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0x4002 {
+            insn_impl::c_lwsp::c_lwsp(insn, self, bus)
+        }
+
+        else if bits & 0xf003 == 0x8002 {
+            insn_impl::c_mv::c_mv(insn, self, bus)
+        }
+
+        else if bits & 0xef83 == 0x1 {
+            insn_impl::c_nop::c_nop(insn, self, bus)
+        }
+
+        else if bits & 0xfc63 == 0x8c41 {
+            insn_impl::c_or::c_or(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0xe000 {
+            insn_impl::c_sd::c_sd(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0xe002 {
+            insn_impl::c_sdsp::c_sdsp(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0x2 {
+            insn_impl::c_slli::c_slli(insn, self, bus)
+        }
+
+        else if bits & 0xec03 == 0x8401 {
+            insn_impl::c_srai::c_srai(insn, self, bus)
+        }
+
+        else if bits & 0xec03 == 0x8001 {
+            insn_impl::c_srli::c_srli(insn, self, bus)
+        }
+
+        else if bits & 0xfc63 == 0x8c01 {
+            insn_impl::c_sub::c_sub(insn, self, bus)
+        }
+
+        else if bits & 0xfc63 == 0x9c01 {
+            insn_impl::c_subw::c_subw(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0xc000 {
+            insn_impl::c_sw::c_sw(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0xc002 {
+            insn_impl::c_swsp::c_swsp(insn, self, bus)
+        }
+
+        else if bits & 0xfc63 == 0x8c21 {
+            insn_impl::c_xor::c_xor(insn, self, bus)
+        }
+
         else if bits & 0x707f == 0x3073 {
             insn_impl::csrrc::csrrc(insn, self, bus)
         }

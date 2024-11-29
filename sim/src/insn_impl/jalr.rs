@@ -10,7 +10,7 @@ pub fn jalr(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     let imm = Insn::sign_extend(imm12, 12);
 
-    crate::trace_insn("jalr", i_type!(rd, rs1, imm));
+    crate::trace_insn(cpu.pc, insn.bits(), "jalr", i_type!(rd, rs1, imm));
 
     let new_pc = cpu.load(rs1) + imm as u64;
     cpu.store(rd, cpu.pc + 4);

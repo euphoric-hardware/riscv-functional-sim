@@ -10,7 +10,7 @@ pub fn lh(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     let imm = Insn::sign_extend(imm12 as u64, 12);
 
-    crate::trace_insn("lh", i_type!(rd, rs1, imm));
+    crate::trace_insn(cpu.pc, insn.bits(), "lh", i_type!(rd, rs1, imm));
 
     let address = (cpu.load(rs1) as u64).wrapping_add(imm as u64);
 

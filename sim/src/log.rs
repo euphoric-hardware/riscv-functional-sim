@@ -44,9 +44,11 @@ macro_rules! warn {
 
 #[cfg(debug_assertions)]
 #[inline(always)]
-pub fn trace_insn(name: &str, form: cpu::InsnType) {
+pub fn trace_insn(pc: u64, bits: u64, name: &str, form: cpu::InsnType) {
     crate::trace!(
-        "core   0: 0x0000000080000040 (0xfc3f2223) {}     {}",
+        "core   0: {:#016x} ({:#08x}) {}     {}",
+        pc,
+        bits as u32,
         name,
         form
     );

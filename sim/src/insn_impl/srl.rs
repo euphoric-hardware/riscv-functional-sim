@@ -8,7 +8,7 @@ pub fn srl(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let rs2 = insn.rs2();
 
-    crate::trace_insn("srl", r_type!(rd, rs1, rs2));
+    crate::trace_insn(cpu.pc, insn.bits(), "srl", r_type!(rd, rs1, rs2));
 
     cpu.store(
         rd,

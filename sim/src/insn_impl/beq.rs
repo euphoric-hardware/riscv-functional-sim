@@ -17,7 +17,7 @@ pub fn beq(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
         12,
     );
 
-    crate::trace_insn("beq", b_type!(rs1, rs2, offset));
+    crate::trace_insn(cpu.pc, insn.bits(), "beq", b_type!(rs1, rs2, offset));
 
     if cpu.load(rs1) == cpu.load(rs2) {
         Ok((cpu.pc as i64 + offset) as u64)

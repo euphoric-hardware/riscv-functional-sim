@@ -17,7 +17,7 @@ pub fn bge(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
         12,
     );
 
-    crate::trace_insn("bge", b_type!(rs1, rs2, offset));
+    crate::trace_insn(cpu.pc, insn.bits(), "bge", b_type!(rs1, rs2, offset));
 
     if cpu.load(rs1) as i64 >= cpu.load(rs2) as i64 {
         Ok((cpu.pc as i64 + offset) as u64)

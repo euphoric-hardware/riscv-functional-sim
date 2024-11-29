@@ -261,7 +261,7 @@ fn main() {
     }
 
     let cmd = Command::new("make")
-        .arg("EXTENSIONS=rv_i rv64_i rv_zicsr rv_system")
+        .arg("EXTENSIONS=rv_i rv64_i rv_zicsr rv_system rv_c rv32_c rv64_C")
         .current_dir(&spec_dir)
         .env("PATH", path)
         .output()
@@ -276,9 +276,9 @@ fn main() {
     }
 
     let mut config: BTreeMap<String, ParsedInsn> = serde_yaml::from_reader(
-        File::open(&spec_dir.join("instr_dict.yaml")).expect("instr_dict.yaml not found"),
+        File::open(&spec_dir.join("instr_dict.json")).expect("instr_dict.json not found"),
     )
-    .expect("yaml deserialize");
+    .expect("json deserialize");
 
     const EXCLUDED_INSNS: &[&str] = &[
         "mv", "neg", "nop", "zext_b", "ret", "bleu", "bgtu", "ble", "bgez", "blez", "bgt", "bgtz",

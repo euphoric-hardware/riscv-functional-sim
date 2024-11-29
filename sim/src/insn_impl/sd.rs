@@ -11,7 +11,7 @@ pub fn sd(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     let offset = Insn::sign_extend((imm12hi << 5 | imm12lo) as u64, 12);
 
-    crate::trace_insn("sd", s_type!(rs1, rs2, offset));
+    crate::trace_insn(cpu.pc, insn.bits(), "sd", s_type!(rs1, rs2, offset));
 
     let address = cpu.load(rs1) + offset as u64;
     bus.write(address, &cpu.load(rs2).to_le_bytes())?;

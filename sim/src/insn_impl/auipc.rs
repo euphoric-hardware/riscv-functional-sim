@@ -9,7 +9,7 @@ pub fn auipc(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     let imm = (imm20 as u64) << 12;
 
-    crate::trace_insn("auipc", u_type!(rd, imm));
+    crate::trace_insn(cpu.pc, insn.bits(), "auipc", u_type!(rd, imm));
 
     cpu.store(rd, cpu.pc.wrapping_add(imm));
 

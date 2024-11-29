@@ -8,7 +8,7 @@ pub fn addw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let rs2 = insn.rs2();
 
-    crate::trace_insn("addw", r_type!(rd, rs1, rs2));
+    crate::trace_insn(cpu.pc, insn.bits(), "addw", r_type!(rd, rs1, rs2));
 
     cpu.store(
         rd,

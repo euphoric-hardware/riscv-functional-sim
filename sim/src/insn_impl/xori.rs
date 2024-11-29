@@ -10,7 +10,7 @@ pub fn xori(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     let imm = Insn::sign_extend(imm12 as u64, 12);
 
-    crate::trace_insn("xori", i_type!(rd, rs1, imm));
+    crate::trace_insn(cpu.pc, insn.bits(), "xori", i_type!(rd, rs1, imm));
 
     cpu.store(rd, cpu.load(rs1) ^ (imm as u64));
     Ok(cpu.pc + 4)
