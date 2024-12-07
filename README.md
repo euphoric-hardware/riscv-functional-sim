@@ -112,6 +112,17 @@ Since we're using Rust, it would be great to use the Cranelift IR and JIT!
   - Contains various performance optimizations discussed in the Xiangshan paper (["Towards Developing High Performance RISC-V Processors Using Agile Methodology"](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9923860))
   - Uses a threaded interpreter architecture (maybe with it's own internal bytecode which is interpreted)
   - Some links about threaded interpreters: [Link 1](https://www.complang.tuwien.ac.at/forth/threaded-code.html), [Link 2](https://stackoverflow.com/questions/58774170/how-to-speed-up-dynamic-dispatch-by-20-using-computed-gotos-in-standard-c), [Link 3](https://stackoverflow.com/questions/3848343/decode-and-dispatch-interpretation-vs-threaded-interpretation), [Link 4](https://stackoverflow.com/questions/75028678/is-it-impossible-to-write-thread-code-in-rust), [Link 5](https://users.rust-lang.org/t/how-can-i-approach-the-performance-of-c-interpreter-that-uses-computed-gotos/6261)
+- [Greg Chadwick: Building a RISC-V simulator in Rust - Part 1](https://gregchadwick.co.uk/blog/building-rrs-pt1/)
+  - [GregAC/rss](https://github.com/GregAC/rrs) (untouched in one year)
+- [d0iasm/rvemu](https://github.com/d0iasm/rvemu) (rvemu: RISC-V Emulator) (untouched in one year)
+  - Quite feature complete: "RV64GC ISA (RV64IMAFD, Zicsr, Zifencei, RV64C), privileged ISA, CSRs, virtual memory system (Sv39), peripheral devices (UART, CLINT, PLIC, Virtio), and device tree"
+  - [Writing a RISC-V Emulator in Rust](https://book.rvemu.app/)
+- [mateocabanal/riscvm](https://github.com/mateocabanal/riscvm)
+  - RV64GC unprivileged userspace emulator (directly proxies syscalls, no OS boot support). Mostly a fun project.
+- [siriusdemon/Rare](https://github.com/siriusdemon/Rare)
+  - Rust RISC-V emulator based on [Asami's tutorial](https://book.rvemu.app/)
+- [theonlymrcat/rivet](https://sr.ht/~theonlymrcat/rivet/)
+  - RISC-V emulator written in Zig
 
 #### DBT
 
@@ -132,7 +143,7 @@ Background:
   - A great article about the pain of RISC-V specifications
 - [ARM's Architecture Specification Language](https://developer.arm.com/Architectures/Architecture%20Specification%20Language)
 
-Existing tools and languages:
+Existing tools and languages (an overview of [existing machine readable specs](https://five-embeddev.com/quickref/machine-readable.html)):
 
 - [Sail](https://github.com/riscv/sail-riscv)
   - Adopted as the formal spec for RISC-V
@@ -152,6 +163,8 @@ Existing tools and languages:
   - Some way to define concrete behaviors of undefined behavior in the spec
   - Instruction semantics are provided in IDL ([Interface Definition Language](https://www.omg.org/spec/IDL)) which is parsed/interpreted [in Ruby](https://github.com/RemedyIT/ridl)
   - They wish for this project to replace Sail, spike, and hand-written ISA specs
+- [riscv-isa-data](https://github.com/five-embeddev/riscv-isa-data/tree/master)
+  - Aspects of the RISC-V ISA as static YAML files. They appear to be manually written.
 - [Versatile and Flexible Modelling of the RISC-V Instruction Set Architecture](https://agra.informatik.uni-bremen.de/doc/konf/TFP23_ST.pdf)
   - [libriscv - Extensible implementation of the RISC-V ISA based on FreeMonads - Haskell, Github](https://github.com/agra-uni-bremen/libriscv)
   - [BinSym](https://github.com/agra-uni-bremen/BinSym): Symbolic execution of RISC-V binary code based on formal instruction semantics
