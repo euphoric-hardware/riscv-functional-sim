@@ -44,7 +44,7 @@ impl Frontend {
     }
 
     pub fn reset<H: Htif>(&self, htif: &mut H) -> Result<()> {
-        htif.write(Self::MSIP_BASE, &vec![1])?;
+        htif.write(Self::MSIP_BASE, &[1])?;
         Ok(())
     }
 
