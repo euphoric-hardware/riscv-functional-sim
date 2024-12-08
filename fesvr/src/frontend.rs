@@ -29,6 +29,8 @@ impl std::fmt::Debug for Frontend {
 }
 
 impl Frontend {
+    const MSIP_BASE: u64 = 0x2000000;
+
     pub fn try_new(elf_path: impl AsRef<Path>) -> Result<Self> {
         let elf_data = fs::read(elf_path)?; // add error ctxt later
         let elf = RiscvElf::try_new(elf_data)?;
@@ -39,6 +41,11 @@ impl Frontend {
             to_host,
             from_host,
         })
+    }
+
+    pub fn reset<H: Htif>(&self, htif: &mut H) -> Result<()> {
+        htif.write(Self::MSIP_BASE, &vec![1])?;
+        Ok(())
     }
 
     // write appropriate sections of elf into memory
