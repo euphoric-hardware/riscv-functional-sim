@@ -30,6 +30,7 @@ impl std::fmt::Debug for Frontend {
 
 impl Frontend {
     const MSIP_BASE: u64 = 0x2000000;
+    const CHUNK_SIZE_BYTES: u64 = 1024;
 
     pub fn try_new(elf_path: impl AsRef<Path>) -> Result<Self> {
         let elf_data = fs::read(elf_path)?; // add error ctxt later
@@ -56,8 +57,12 @@ impl Frontend {
             if section.sh_type(e) == SHT_PROGBITS && section.sh_addr(e) > 0 {
                 let data = section.data(e, &*self.elf.data)?;
 
-                // const CHUNK_SIZE: u64 = 1024; do .chunks() for progress bar later
-                htif.write(section.sh_addr(e) as u64, &data)?;
+                let data_chunks = data.chunks(Self::CHUNK_SIZE_BYTES as usize);
+                let mut addr = section.sh_addr(e) as u64;
+                for chunk in data_chunks {
+                    htif.write(addr, &chunk)?;
+                    addr += chunk.len() as u64;
+                }
             }
         }
 
