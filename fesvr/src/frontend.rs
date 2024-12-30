@@ -79,7 +79,25 @@ impl Frontend {
             0 => Ok(false),
             a => {
                 println!("{}", a);
-                Err(Error::Misc)
+
+                htif.write(self.to_host, &[0; size_of::<u64>()])?;
+
+                self.dispatch_syscall(&buf, htif)?;
+
+                // FIXME: Currently, instead of queueing up the fromhost requests and handling them in the
+                // future, spin until the fromhost signal is cleared and write synchronously.
+                // Assuming that there isn't aren't multiple syscalls in flight, this is fine.
+                // Fix this later...
+                'fromhost_clear: loop {
+                    let mut buf = [0; size_of::<u64>()];
+                    htif.read(self.from_host.unwrap(), &mut buf)?;
+                    let fromhost = u64::from_le_bytes(buf);
+                    if fromhost == 0 {
+                        break 'fromhost_clear;
+                    }
+                }
+                htif.write(self.from_host.unwrap(), &[1])?;
+                Ok(true)
             }
         }
 
@@ -98,8 +116,28 @@ impl Frontend {
         // }
     }
 
+    fn dispatch_syscall<H: Htif>(&mut self, tohost: &[u8], htif: &mut H) -> Result<()> {
+        let addr = u64::from_le_bytes(tohost[0..8].try_into().unwrap());
+        let mut magicmem = [0u8; 64];
+        htif.read(addr, &mut magicmem)?;
+
+        let sc_opt = Syscall::from_le_bytes(&magicmem);
+        match sc_opt {
+            Some(sc) => {
+                let rc = self.execute_syscall(sc, htif)?;
+                magicmem[0..8].copy_from_slice(&rc.to_le_bytes());
+                htif.write(addr, &mut magicmem)?;
+            }
+            _ => {
+                return Err(Error::Misc);
+            }
+        }
+
+        return Ok(());
+    }
+
     // execute syscall on host
-    fn execute_syscall<H: Htif>(&mut self, syscall: Syscall, htif: &mut H) -> Result<()> {
+    fn execute_syscall<H: Htif>(&mut self, syscall: Syscall, htif: &mut H) -> Result<u64> {
         match syscall.syscall_id {
             SyscallId::Exit => {
                 info!("target requested exit, exiting...");
@@ -117,8 +155,14 @@ impl Frontend {
                 })?;
                 let mut f = unsafe { File::from_raw_fd(fd) };
 
-                f.write_all(&buf)
-                    .map_err(|io_error| Error::SyscallFailed { io_error, syscall })
+                match f.write_all(&buf) {
+                    Ok(_) => {
+                        Ok(len)
+                    }
+                    Err(io_error) => {
+                        Err(Error::SyscallFailed { io_error, syscall })
+                    }
+                }
             }
         }
     }
