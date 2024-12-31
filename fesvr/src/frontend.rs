@@ -40,7 +40,7 @@ impl Frontend {
         Ok(Self {
             elf,
             to_host,
-            from_host,
+            from_host
         })
     }
 
@@ -78,10 +78,7 @@ impl Frontend {
             1 => Ok(true),
             0 => Ok(false),
             a => {
-                println!("{}", a);
-
                 htif.write(self.to_host, &[0; size_of::<u64>()])?;
-
                 self.dispatch_syscall(&buf, htif)?;
 
                 // FIXME: Currently, instead of queueing up the fromhost requests and handling them in the
@@ -100,20 +97,6 @@ impl Frontend {
                 Ok(true)
             }
         }
-
-        // if let Some(syscall) = syscall {
-        //     self.execute_syscall(syscall, htif)?;
-
-        //     // "signal chip that syscall processed" (taken from pyuartsi, verbatim)
-        //     htif.write(self.to_host, &[0])?;
-        //     if let Some(from_host) = self.from_host {
-        //         htif.write(from_host, &[1])?;
-        //     }
-        //     Ok(())
-        // } else {
-        //     // nothing there
-        //     Ok(())
-        // }
     }
 
     fn dispatch_syscall<H: Htif>(&mut self, tohost: &[u8], htif: &mut H) -> Result<()> {
@@ -122,6 +105,7 @@ impl Frontend {
         htif.read(addr, &mut magicmem)?;
 
         let sc_opt = Syscall::from_le_bytes(&magicmem);
+
         match sc_opt {
             Some(sc) => {
                 let rc = self.execute_syscall(sc, htif)?;
@@ -148,21 +132,26 @@ impl Frontend {
 
                 let mut buf = vec![0; len as usize];
                 htif.read(ptr, &mut buf)?;
+                println!("{:X?}", buf);
 
-                let fd = fd.try_into().map_err(|_| Error::InvalidSyscallArg {
-                    arg_no: 0,
-                    value: syscall.arg0,
-                })?;
-                let mut f = unsafe { File::from_raw_fd(fd) };
+                // FIXME: when opening a file with a descriptor of one, the opened
+                // file overwrites (?) stdout. This makes all the following
+                // print messages to go missing.
+// let fd = fd.try_into().map_err(|_| Error::InvalidSyscallArg {
+// arg_no: 0,
+// value: syscall.arg0,
+// })?;
+// let mut f = unsafe { File::from_raw_fd(fd) };
 
-                match f.write_all(&buf) {
-                    Ok(_) => {
-                        Ok(len)
-                    }
-                    Err(io_error) => {
-                        Err(Error::SyscallFailed { io_error, syscall })
-                    }
-                }
+// match f.write_all(&buf) {
+// Ok(_) => {
+// Ok(len)
+// }
+// Err(io_error) => {
+// Err(Error::SyscallFailed { io_error, syscall })
+// }
+// }
+                return Ok(len);
             }
         }
     }
