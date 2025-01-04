@@ -5,12 +5,108 @@ use std::{
     fs::{self, File},
     io::Write,
     os::fd::FromRawFd as _,
+    cmp::min,
     path::Path,
 };
 
 pub trait Htif {
-    fn read(&mut self, ptr: u64, buf: &mut [u8]) -> Result<()>;
-    fn write(&mut self, ptr: u64, buf: &[u8]) -> Result<()>;
+    /// Chunk up read transactions based on the address alignment scheme that the target expects
+    /// - verbatim from memif.cc in spike
+    fn read(&mut self, ptr: u64, buf: &mut [u8]) -> Result<()> {
+        let mut len = buf.len();
+        let mut addr = ptr;
+        let mut buf_ = buf;
+
+        // chunk start
+        if (len > 0) && (addr & (self.align() - 1) != 0) {
+            let this_len = min(len, (self.align() - (addr & (self.align() - 1))) as usize);
+            let mut chunk = vec![0u8; self.align() as usize];
+            self.read_chunk(addr & !(self.align() - 1), &mut chunk)?;
+            for i in 0..this_len {
+                buf_[i] = chunk[(addr & (self.align() - 1)) as usize + i];
+            }
+
+            addr += this_len as u64;
+            len -= this_len;
+            buf_ = &mut buf_[this_len..];
+        }
+
+        // chunk end
+        if len as u64 & (self.align() - 1) != 0 {
+            let this_len = len as u64 & (self.align() - 1);
+            let start = len as u64 - this_len;
+            let mut chunk = vec![0u8; self.align() as usize];
+            self.read_chunk(addr + start, &mut chunk)?;
+            for i in 0..this_len {
+                buf_[(start + i) as usize] = chunk[i as usize];
+            }
+            len -= this_len as usize;
+        }
+
+        // aligned parts
+        for pos in (0..len).step_by(self.max_chunk_bytes() as usize) {
+            let start = addr + pos as u64;
+            let cur_len = min(self.max_chunk_bytes() as usize, len - pos) as usize;
+            self.read_chunk(start, &mut buf_[pos..pos + cur_len])?;
+        }
+
+        return Ok(())
+    }
+
+    /// Chunk up write transactions based on the address alignment scheme that the target expects
+    /// - verbatim from memif.cc in spike
+    fn write(&mut self, ptr: u64, buf: &[u8]) -> Result<()> {
+        let mut buf_ = buf;
+        let mut len = buf.len();
+        let mut addr = ptr;
+
+        // chunk start
+        if (len > 0) && (addr & (self.align() - 1) != 0) {
+            let this_len = min(len, (self.align() - (addr & (self.align() - 1))) as usize);
+            let mut chunk = vec![0u8; self.align() as usize];
+            self.read_chunk(addr & !(self.align() - 1), &mut chunk)?;
+            for i in 0..this_len {
+                chunk[(addr & (self.align() - 1)) as usize + i] = buf_[i];
+            }
+            self.write_chunk(addr & !(self.align() - 1), &chunk)?;
+
+            buf_ = &buf[this_len..];
+            addr += this_len as u64;
+            len -= this_len;
+        }
+
+        // chunk end
+        if len as u64 & (self.align() - 1) != 0 {
+            let this_len = len as u64 & (self.align() - 1);
+            let start = len as u64 - this_len;
+            let mut chunk = vec![0u8; self.align() as usize];
+            self.read_chunk(addr + start, &mut chunk)?;
+            for i in 0..this_len {
+                chunk[i as usize] = buf_[(start + i) as usize];
+            }
+            self.write_chunk(addr + start, &chunk)?;
+            len -= this_len as usize;
+        }
+
+
+        // aligned
+        for pos in (0..len).step_by(self.max_chunk_bytes() as usize) {
+            let start = addr + pos as u64;
+            let cur_len = min(self.max_chunk_bytes() as usize, len - pos) as usize;
+            self.write_chunk(start, &buf_[pos..pos + cur_len])?;
+        }
+
+        return Ok(());
+    }
+
+    /// Target expects that the read/write addresses align with this value
+    fn align(&self) -> u64;
+
+    /// Maximum bytes that a transaction can handle
+    fn max_chunk_bytes(&self) -> u64;
+
+    fn read_chunk(&mut self, ptr: u64, buf: &mut [u8]) -> Result<()>;
+    fn write_chunk(&mut self, ptr: u64, buf: &[u8]) -> Result<()>;
 }
 
 pub struct Frontend {
