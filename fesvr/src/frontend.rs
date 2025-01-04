@@ -2,11 +2,7 @@ use crate::{elf::RiscvElf, syscall::SyscallId, Error, Result, Syscall};
 use log::info;
 use object::{elf::SHT_PROGBITS, read::elf::SectionHeader as _};
 use std::{
-    fs::{self, File},
-    io::Write,
-    os::fd::FromRawFd as _,
-    cmp::min,
-    path::Path,
+    cmp::min, fs::{self, File}, io::{self, Write}, os::fd::FromRawFd as _, path::Path
 };
 
 pub trait Htif {
@@ -228,26 +224,33 @@ impl Frontend {
 
                 let mut buf = vec![0; len as usize];
                 htif.read(ptr, &mut buf)?;
-                println!("{:X?}", buf);
 
-                // FIXME: when opening a file with a descriptor of one, the opened
-                // file overwrites (?) stdout. This makes all the following
-                // print messages to go missing.
-// let fd = fd.try_into().map_err(|_| Error::InvalidSyscallArg {
-// arg_no: 0,
-// value: syscall.arg0,
-// })?;
-// let mut f = unsafe { File::from_raw_fd(fd) };
-
-// match f.write_all(&buf) {
-// Ok(_) => {
-// Ok(len)
-// }
-// Err(io_error) => {
-// Err(Error::SyscallFailed { io_error, syscall })
-// }
-// }
+                if fd == 1 {
+                    let mut f = io::stdout();
+                    self.write_buf(&mut f, &buf)?;
+                } else if fd == 2 {
+                    let mut f = io::stderr();
+                    self.write_buf(&mut f, &buf)?;
+                } else {
+                    let fd = fd.try_into().map_err(|_| Error::InvalidSyscallArg {
+                        arg_no: 0,
+                        value: syscall.arg0,
+                    })?;
+                    let mut f = unsafe { File::from_raw_fd(fd) };
+                    self.write_buf(&mut f, &buf)?;
+                }
                 return Ok(len);
+            }
+        }
+    }
+
+    fn write_buf<Wr: Write>(&self, f: &mut Wr, buf: &[u8]) -> Result<u64> {
+        match f.write_all(&buf) {
+            Ok(_) => {
+                Ok(buf.len() as u64)
+            }
+            Err(io_error) => {
+                Err(Error::IoError(io_error))
             }
         }
     }
