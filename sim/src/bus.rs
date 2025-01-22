@@ -34,7 +34,7 @@ impl Ord for MemoryRange {
 
 impl MemoryRange {
     fn contains(&self, addr: u64, len: u64) -> bool {
-        addr >= self.base_address && addr + len < self.base_address + self.size
+        addr >= self.base_address && addr.wrapping_add(len) < self.base_address + self.size
     }
 }
 
@@ -86,7 +86,7 @@ impl Device for Bus<'_> {
     }
 
     fn write(&mut self, ptr: u64, buf: &[u8]) -> Result<()> {
-        let (memory_range, device) = self.get_device(ptr, buf.len() as u64)?;
+        let (memory_range, device) = self.get_device(ptr, buf.len() as u64).expect("device does not exist");
         device.write(ptr - memory_range.base_address, buf)
     }
 }

@@ -7,7 +7,6 @@ pub fn c_mv(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let c_rs2_n0 = insn.c_rs2_n0();
 
     crate::trace_insn(cpu.pc, insn.bits(), "c.mv", cr_type!(rd_n0, c_rs2_n0));
-
     cpu.store(rd_n0, cpu.load(c_rs2_n0));
 
     Ok(cpu.pc + 2)

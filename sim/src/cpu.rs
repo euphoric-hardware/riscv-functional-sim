@@ -176,7 +176,9 @@ impl Cpu {
                 // }
                 // println!();
 
-                self.pc = pc
+                self.pc = pc;
+                // TODO - fix MCYCLE magic number
+                self.csrs.store(0xB00, self.csrs.load_unchecked(0xB00) + 1);
             }
             Err(e) => {
                 self.csrs.store_unchecked(Csrs::MCAUSE, e as u64);
@@ -235,7 +237,7 @@ pub enum InsnType {
     J { rd: u8, offset: i64 },
     CR { rd_rs1: u8, rs2: u8 },
     CI { rd_rs1: u8, imm: i64 },
-    CSS { rs2: u8, imm: i64 },
+    CSS { rs2: u8, imm: u64 },
     CIW { rd: u8, imm: i64 },
     CL { rd: u8, rs1: u8, imm: i64 },
     CS { rs1: u8, rs2: u8, imm: i64 },
@@ -258,7 +260,7 @@ mod insn_type_macros {
     macro_rules! j_type { ($rd:expr, $offset:expr) => { crate::cpu::InsnType::J { rd: $rd as u8, offset: $offset as i64 } }; }
     macro_rules! cr_type { ($rd_rs1:expr, $rs2: expr) => { crate::cpu::InsnType::CR { rd_rs1: $rd_rs1 as u8, rs2: $rs2 as u8 } }; }
     macro_rules! ci_type { ($rd_rs1:expr, $imm: expr) => { crate::cpu::InsnType::CI { rd_rs1: $rd_rs1 as u8, imm: $imm as i8 as i64 } }; }
-    macro_rules! css_type { ($rs2:expr, $imm: expr) => { crate::cpu::InsnType::CSS { rs2: $rs2 as u8, imm: $imm as i8 as i64 } }; }
+    macro_rules! css_type { ($rs2:expr, $imm: expr) => { crate::cpu::InsnType::CSS { rs2: $rs2 as u8, imm: $imm as u8 as u64 } }; }
     macro_rules! ciw_type { ($rd:expr, $imm: expr) => { crate::cpu::InsnType::CIW { rd: $rd as u8, imm: $imm as i16 as i64 } }; }
     macro_rules! cl_type { ($rd:expr, $rs1:expr, $imm: expr) => { crate::cpu::InsnType::CL { rd: $rd as u8, rs1: $rs1 as u8, imm: $imm as i8 as i64 } }; }
     macro_rules! cs_type { ($rs1:expr, $rs2:expr, $imm: expr) => { crate::cpu::InsnType::CS { rs1: $rs1 as u8, rs2: $rs2 as u8, imm: $imm as i8 as i64 } }; }
@@ -303,7 +305,7 @@ impl Display for InsnType {
         match self {
             R { rd, rs1, rs2 } => write!(f, "{}, {}, {}", r(rd), r(rs1), r(rs2)),
             I { rd, rs1, imm } => write!(f, "{}, {}, {:#x}", r(rd), r(rs1), imm),
-            S { rs1, rs2, imm } => write!(f, "{}, {}({})", r(rs1), imm, r(rs2)),
+            S { rs1, rs2, imm } => write!(f, "{}, {}({})", r(rs2), imm, r(rs1)),
             B { rs1, rs2, offset } => write!(f, "{}, {}, {}", r(rs1), r(rs2), offset),
             U { rd, imm } => write!(f, "{}, {:#x}", r(rd), imm),
             J { rd, offset } => write!(

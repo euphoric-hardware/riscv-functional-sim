@@ -7,7 +7,8 @@ pub fn c_ldsp(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let c_uimm9sphi = insn.c_uimm9sphi();
     let c_uimm9splo = insn.c_uimm9splo();
 
-    let imm = c_uimm9splo & 0x7 << 6| c_uimm9sphi << 5 | c_uimm9splo & 0x18;
+    let imm = (c_uimm9splo & 0x7) << 6 | c_uimm9sphi << 5 | (c_uimm9splo & 0x18);
+    // println!("c.ldsp @ pc = {:#08x}, x2 = {}, offset = {}", cpu.pc, cpu.load(2), imm);
 
     crate::trace_insn(cpu.pc, insn.bits(), "c.ldsp", ci_type!(rd_n0, imm));
     

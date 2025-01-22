@@ -220,6 +220,22 @@ impl Cpu {
             insn_impl::csrrwi::csrrwi(insn, self, bus)
         }
 
+        else if bits & 0xfe00707f == 0x2004033 {
+            insn_impl::div::div(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x2005033 {
+            insn_impl::divu::divu(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x200503b {
+            insn_impl::divuw::divuw(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x200403b {
+            insn_impl::divw::divw(insn, self, bus)
+        }
+
         else if bits & 0xffffffff == 0x100073 {
             insn_impl::ebreak::ebreak(insn, self, bus)
         }
@@ -276,12 +292,48 @@ impl Cpu {
             insn_impl::mret::mret(insn, self, bus)
         }
 
+        else if bits & 0xfe00707f == 0x2000033 {
+            insn_impl::mul::mul(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x2001033 {
+            insn_impl::mulh::mulh(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x2002033 {
+            insn_impl::mulhsu::mulhsu(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x2003033 {
+            insn_impl::mulhu::mulhu(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x200003b {
+            insn_impl::mulw::mulw(insn, self, bus)
+        }
+
         else if bits & 0xfe00707f == 0x6033 {
             insn_impl::or::or(insn, self, bus)
         }
 
         else if bits & 0x707f == 0x6013 {
             insn_impl::ori::ori(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x2006033 {
+            insn_impl::rem::rem(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x2007033 {
+            insn_impl::remu::remu(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x200703b {
+            insn_impl::remuw::remuw(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x200603b {
+            insn_impl::remw::remw(insn, self, bus)
         }
 
         else if bits & 0x707f == 0x23 {

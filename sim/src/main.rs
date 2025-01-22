@@ -22,7 +22,7 @@ use fesvr::frontend::Frontend;
 fn main() {
     env_logger::init();
 
-    let dir = Path::new("../../riscv-tests/isa/");
+    let dir = Path::new("benchmarks");
 
     let mut entries: Vec<_> = std::fs::read_dir(dir)
         .unwrap()
@@ -30,9 +30,9 @@ fn main() {
         .filter(|entry| {
             let file_name = entry.file_name();
             let file_name_str = file_name.to_string_lossy();
-            file_name_str.starts_with("rv64ui-p-sb")
+            file_name_str.starts_with("dhrystone")
                 && file_name_str.contains("")
-                && !file_name_str.ends_with(".dump")
+                && file_name_str.ends_with(".riscv")
         })
         .collect();
 
@@ -55,8 +55,12 @@ fn main() {
                     break;
                 }
             }
+            let minstret = system.cpus[0].csrs.load(csrs::Csrs::MINSTRET).expect("nonexistent csr!");
+            system.cpus[0].csrs.store(csrs::Csrs::MINSTRET, minstret + 1);
 
             i += 1;
         }
+        // println!("minstret = {}", system.cpus[0].csrs.load(csrs::Csrs::MINSTRET).expect("nonexistent csr!"));
     }
+    
 }

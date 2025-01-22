@@ -14,7 +14,7 @@ impl System<'_> {
         let mut bus = Bus::new();
         let ram = Ram::default();
 
-        bus.register(Box::new(ram), 0x80000000, 0x10000);
+        bus.register(Box::new(ram), 0x80000000, 0x100000);
 
         let mut cpu = Cpu::new();
         cpu.pc = 0x80000000;

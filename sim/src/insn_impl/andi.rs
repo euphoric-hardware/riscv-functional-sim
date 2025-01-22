@@ -9,7 +9,7 @@ pub fn andi(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let imm12 = insn.imm12();
 
-    let imm = Insn::sign_extend(20, 12);
+    let imm = Insn::sign_extend(imm12, 12);
 
     crate::trace_insn(cpu.pc, insn.bits(), "andi", i_type!(rd, rs1, imm));
 

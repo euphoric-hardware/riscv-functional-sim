@@ -6,5 +6,7 @@ pub fn c_jr(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     crate::trace_insn(cpu.pc, insn.bits(), "c.jr", cr_type!(rs1_n0, 0));
     
     let new_pc= cpu.load(rs1_n0);
+    // println!("new pc: {:#16x}", new_pc);
+
     Ok(new_pc)
 }
