@@ -159,6 +159,7 @@ Existing tools and languages (an overview of [existing machine readable specs](h
   - [Optimized Processor Simulation with VADL](https://repositum.tuwien.at/bitstream/20.500.12708/157928/1/Mihaylov%20Hristo%20-%202023%20-%20Optimised%20Processor%20Simulation%20with%20VADL.pdf)
   - [A pred-LL(*) Parsable Typed Higher-Order Macro System for Architecture Description Languages (Video, GPCE 2023)](https://www.youtube.com/watch?v=jopIILxxNbQ)
   - VADL isn't open source, but the base rv64ui spec is available. They're working on OpenVADL, but it is a ways away.
+  - [Efficient parsing of OpenVADL](http://www.complang.tuwien.ac.at/vadl/papers/NestlerFinal.pdf) (A BS thesis with a good description of VADL)
 - [CodAL](https://codasip.com/2021/02/26/what-is-codal/)
   - Codasip's ADL - seems quite nice, but it is a custom language and the compiler for it is of course proprietary
 - [riscv-unified-db](https://github.com/riscv-software-src/riscv-unified-db)
