@@ -42,4 +42,20 @@ impl Htif for System<'_> {
     fn write(&mut self, ptr: u64, buf: &[u8]) -> fesvr::Result<()> {
         self.bus.write(ptr, buf).map_err(|_| fesvr::Error::Misc)
     }
+
+    fn align(&self) -> u64 {
+        todo!()
+    }
+
+    fn max_chunk_bytes(&self) -> u64 {
+        todo!()
+    }
+
+    fn read_chunk(&mut self, ptr: u64, buf: &mut [u8]) -> fesvr::Result<()> {
+        todo!()
+    }
+
+    fn write_chunk(&mut self, ptr: u64, buf: &[u8]) -> fesvr::Result<()> {
+        todo!()
+    }
 }

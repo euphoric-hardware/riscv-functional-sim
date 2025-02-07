@@ -1,3 +1,6 @@
 [submodule "riscv-opcodes"]
-	path = riscv-opcodes
+	path = isa-data/riscv-opcodes
 	url = https://github.com/riscv/riscv-opcodes
+[submodule "isa-data/riscv-isa-data"]
+	path = isa-data/riscv-isa-data
+	url = https://github.com/five-embeddev/riscv-isa-data
