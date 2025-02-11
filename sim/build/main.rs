@@ -1,4 +1,6 @@
+mod csrs;
 mod instructions;
+mod rpn;
 mod util;
 
 use std::{env, path::PathBuf};
@@ -8,6 +10,7 @@ fn main() {
     let src_dir = out_dir.join("src");
     let tpl_dir = out_dir.join("tpl");
     let opcodes_dir = out_dir.join("../isa-data/riscv-opcodes");
+    let isa_data_dir = out_dir.join("../isa-data/riscv-isa-data");
 
     let riscv_opcodes_ref = out_dir
         .join("../.git/modules/riscv-opcodes/refs/heads/master")
@@ -22,5 +25,5 @@ fn main() {
     instructions::generate_instruction_templates(&src_dir, &tpl_dir, &insn_map);
     instructions::generate_cpu_execute(&src_dir, &tpl_dir, &insn_map);
     instructions::generate_insn_args(&opcodes_dir, &src_dir, &tpl_dir);
-    // generate_csr_load_store(&out_dir, &mut rdr2);
+    csrs::generate_csr_structs(&isa_data_dir);
 }
