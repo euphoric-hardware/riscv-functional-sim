@@ -1,0 +1,3 @@
+#[bitfield]
+pub struct {csr_name}Raw {
+    {fields}}

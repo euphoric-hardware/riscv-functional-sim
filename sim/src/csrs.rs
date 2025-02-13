@@ -1,4 +1,4 @@
-use crate::cpu::Result;
+use crate::{cpu::Result, generated::csr_bitfields};
 
 pub const NUM_CSRS: usize = 4096;
 

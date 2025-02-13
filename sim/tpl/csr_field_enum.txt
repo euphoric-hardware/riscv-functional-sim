@@ -1,0 +1,5 @@
+#[derive(BitfieldSpecifier)]
+#[bits = {bits}]
+pub enum {enum_name} {
+    {values}
+}

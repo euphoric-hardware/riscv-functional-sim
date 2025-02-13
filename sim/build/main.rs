@@ -25,5 +25,5 @@ fn main() {
     instructions::generate_instruction_templates(&src_dir, &tpl_dir, &insn_map);
     instructions::generate_cpu_execute(&src_dir, &tpl_dir, &insn_map);
     instructions::generate_insn_args(&opcodes_dir, &src_dir, &tpl_dir);
-    csrs::generate_csr_structs(&isa_data_dir);
+    csrs::generate_csr_structs(&isa_data_dir, &src_dir);
 }
