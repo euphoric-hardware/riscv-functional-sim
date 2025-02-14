@@ -22,7 +22,7 @@ use fesvr::frontend::Frontend;
 fn main() {
     env_logger::init();
 
-    let dir = Path::new("benchmarks");
+    let dir = Path::new("test_bench");
 
     let mut entries: Vec<_> = std::fs::read_dir(dir)
         .unwrap()
@@ -30,9 +30,9 @@ fn main() {
         .filter(|entry| {
             let file_name = entry.file_name();
             let file_name_str = file_name.to_string_lossy();
-            file_name_str.starts_with("dhrystone")
+            file_name_str.starts_with("test")
                 && file_name_str.contains("")
-                && file_name_str.ends_with(".riscv")
+                && file_name_str.ends_with(".elf")
         })
         .collect();
 

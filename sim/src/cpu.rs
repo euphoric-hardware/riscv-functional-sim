@@ -1,4 +1,4 @@
-use std::{
+ use std::{
     collections::BTreeMap,
     default,
     fmt::{write, Display},
@@ -100,6 +100,7 @@ impl From<u8> for PrivilegeMode {
 #[derive(Debug, Default)]
 pub struct Cpu {
     pub regs: [u64; 32],
+    pub fregs: [f64; 32],
     pub pc: u64,
     pub csrs: Csrs,
     pub commits: Commits,
@@ -141,6 +142,17 @@ impl Cpu {
         }
     }
 
+    pub fn fload(&self, reg: u64) -> f64 {
+        self.fregs[reg as usize]
+    }
+
+    pub fn fstore(&mut self, reg: u64, value: f64) {
+        if reg != 0 {
+            self.fregs[reg as usize] = value;
+            // self.commits.reg_write.insert(reg, f64);
+        }
+    }
+
     pub fn privilege_mode(&self) -> PrivilegeMode {
         let mstatus = self.csrs.load_unchecked(Csrs::MSTATUS);
         let mpp = ((mstatus >> 11) & 0b11) as u8;
@@ -177,7 +189,6 @@ impl Cpu {
                 // println!();
 
                 self.pc = pc;
-                // TODO - fix MCYCLE magic number
                 self.csrs.store(0xB00, self.csrs.load_unchecked(0xB00) + 1);
             }
             Err(e) => {

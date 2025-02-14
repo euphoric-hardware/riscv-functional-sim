@@ -1,3 +1,5 @@
 target/
 fesvr-rs/tests/*/elf-*
 .vscode/
+test_bench
+benchmarks/
