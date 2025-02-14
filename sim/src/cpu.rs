@@ -53,6 +53,7 @@ impl Display for MemData {
 pub struct Commits {
     // reg, data
     pub reg_write: BTreeMap<u64, u64>,
+    pub freg_write: BTreeMap<u64, f64>,
     // addr, data
     pub mem_write: BTreeMap<u64, MemData>,
     pub mem_read: BTreeMap<u64, MemData>,
@@ -68,7 +69,7 @@ impl Commits {
     }
 
     pub fn modified_regs(&self) -> bool {
-        !self.reg_write.is_empty()
+        !self.reg_write.is_empty() || !self.freg_write.is_empty()
     }
 }
 
@@ -149,7 +150,7 @@ impl Cpu {
     pub fn fstore(&mut self, reg: u64, value: f64) {
         if reg != 0 {
             self.fregs[reg as usize] = value;
-            // self.commits.reg_write.insert(reg, f64);
+            self.commits.freg_write.insert(reg, value);
         }
     }
 
@@ -166,27 +167,27 @@ impl Cpu {
 
         match self.execute_insn(insn, bus) {
             Ok(pc) => {
-                // print!(
-                //     "core   0: {} 0x{:016x} (0x{:08x})",
-                //     self.privilege_mode(),
-                //     self.pc,
-                //     insn.bits()
-                // );
-                // if self.commits.modified_regs() {
-                //     while let Some((reg, val)) = self.commits.reg_write.pop_first() {
-                //         print!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
-                //     }
-                // }
-                // if self.commits.is_load() {
-                //     while let Some((addr, _)) = self.commits.mem_read.pop_first() {
-                //         print!(" mem 0x{:016x}", addr);
-                //     }
-                // } else if self.commits.is_store() {
-                //     while let Some((addr, val)) = self.commits.mem_write.pop_first() {
-                //         print!(" mem 0x{:016x} {}", addr, val);
-                //     }
-                // }
-                // println!();
+                print!(
+                    "core   0: {} 0x{:016x} (0x{:08x})",
+                    self.privilege_mode(),
+                    self.pc,
+                    insn.bits()
+                );
+                if self.commits.modified_regs() {
+                    while let Some((reg, val)) = self.commits.reg_write.pop_first() {
+                        print!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
+                    }
+                }
+                if self.commits.is_load() {
+                    while let Some((addr, _)) = self.commits.mem_read.pop_first() {
+                        print!(" mem 0x{:016x}", addr);
+                    }
+                } else if self.commits.is_store() {
+                    while let Some((addr, val)) = self.commits.mem_write.pop_first() {
+                        print!(" mem 0x{:016x} {}", addr, val);
+                    }
+                }
+                println!();
 
                 self.pc = pc;
                 self.csrs.store(0xB00, self.csrs.load_unchecked(0xB00) + 1);
