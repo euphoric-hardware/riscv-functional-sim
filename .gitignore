@@ -4,3 +4,6 @@ fesvr-rs/tests/*/elf-*
 benchmarks/
 *.log
 *.DS_Store
+riscv-benchmarks/
+riscv-tests/
+*.txt

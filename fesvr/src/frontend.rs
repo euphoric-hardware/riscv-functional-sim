@@ -165,7 +165,6 @@ impl Frontend {
         let mut buf = [0; size_of::<u64>()];
         htif.read(self.to_host, &mut buf)?;
         let tohost = u64::from_le_bytes(buf);
-        
         // todo: implement all of https://github.com/riscv-software-src/riscv-isa-sim/issues/364#issuecomment-607657754
         match tohost {
             1 => Ok(true),
@@ -173,7 +172,7 @@ impl Frontend {
             a => {
                 htif.write(self.to_host, &[0; size_of::<u64>()])?;
                 self.dispatch_syscall(&buf, htif)?;
-                
+
                 // FIXME: Currently, instead of queueing up the fromhost requests and handling them in the
                 // future, spin until the fromhost signal is cleared and write synchronously.
                 // Assuming that there isn't aren't multiple syscalls in flight, this is fine.

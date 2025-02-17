@@ -38,7 +38,7 @@ fn main() {
 
     env_logger::init();
 
-    let dir = Path::new("/Users/amaroo/riscv/usr/local/opt/riscv-gnu-toolchain/target/share/riscv-tests/isa/");
+    let dir = Path::new("../../riscv-tests/isa/");
 
     let mut entries: Vec<_> = std::fs::read_dir(dir)
         .unwrap()
