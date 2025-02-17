@@ -1,8 +1,7 @@
-use crate::Result;
 use object::{
     elf::FileHeader64,
     read::elf::{FileHeader, SectionHeader, SectionTable},
-    Endianness,
+    Endianness, Object, ObjectSymbol,
 };
 
 // wrapper for object's elf, which is quite annoying
@@ -27,6 +26,27 @@ impl RiscvElf {
         self.inner.sections(self.endianness(), &self.data)
     }
 
+    pub fn extract_htif_from_symbols(&self) -> object::Result<(Option<u64>, Option<u64>)> {
+        let obj = object::File::parse(&*self.data)?;
+        let mut tohost_addr = None;
+        let mut fromhost_addr = None;
+
+        for symbol in obj.symbols() {
+            let name = symbol.name()?;
+            match name {
+                "tohost" => {
+                    tohost_addr = Some(symbol.address());
+                }
+                "fromhost" => {
+                    fromhost_addr = Some(symbol.address());
+                }
+                _ => { }
+            }
+        }
+
+        Ok((tohost_addr, fromhost_addr))
+    }
+
     pub fn section_base_address(&self, name: &str) -> Option<u64> {
         let e = self.endianness();
 
@@ -39,13 +59,21 @@ impl RiscvElf {
             .map(|s| s.sh_addr(e))
     }
 
-    // tohost MUST exist; fromhost CAN exist
     pub fn extract_htif_addresses(&self) -> (u64, Option<u64>) {
-        (
-            self.section_base_address(".tohost")
-                .expect("tohost not found in elf"),
-            self.section_base_address(".fromhost"),
-        )
+        let (t, h) = match self.extract_htif_from_symbols() {
+            // Extract from symbols
+            Ok(htif_addrs) => {
+                htif_addrs
+            }
+            // Fall back to extract from sections
+            Err(_) => {
+                (
+                    self.section_base_address(".tohost"),
+                    self.section_base_address(".fromhost"),
+                )
+            }
+        };
+        (t.expect("tohost not found in elf"), h)
     }
 }
 
@@ -68,7 +96,16 @@ mod tests {
     // fn elf_explicit_htif() {
     //     let data = fs::read("tests/elf-htif/elf-htif").unwrap();
     //     let elf = RiscvElf::try_new(data).unwrap();
-    //     let ptr = elf.extract_htif_base().unwrap();
-    //     assert_eq!(ptr, 0x80000100);
+    //     let (tohost, fromhost) = elf.extract_htif_addresses();
+    //     assert_eq!(tohost, 0x80000100);
     // }
+
+    #[test]
+    fn elf_hello() {
+        let data = fs::read("tests/elf-hello/hello.riscv").unwrap();
+        let elf = RiscvElf::try_new(data).unwrap();
+        let (tohost, fromhost) = elf.extract_htif_addresses();
+        assert_eq!(tohost, 0x80001e00);
+        assert_eq!(fromhost.unwrap(), 0x80001e08);
+    }
 }

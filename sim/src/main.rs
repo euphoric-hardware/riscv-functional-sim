@@ -11,18 +11,34 @@ mod log;
 mod mmu;
 mod plic;
 mod system;
+mod diff;
 
 use std::path::Path;
+use std::env;
 
+use diff::Diff;
 use generated::cpu_execute as _;
 pub use log::*;
 
 use fesvr::frontend::Frontend;
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    
+    if args.len() < 2 {
+        eprintln!("Usage: {} <spike_log.txt>", args[0]);
+        std::process::exit(1);
+    }
+
+    let spike_log_filename = &args[1];
+    let differ = diff::Diff {};
+    let spike_states = differ.parse_spike_log(spike_log_filename).unwrap();
+
+    println!("Parsed {} execution states", spike_states.len()); // Debugging line
+
     env_logger::init();
 
-    let dir = Path::new("benchmarks");
+    let dir = Path::new("/Users/amaroo/riscv/usr/local/opt/riscv-gnu-toolchain/target/share/riscv-tests/isa/");
 
     let mut entries: Vec<_> = std::fs::read_dir(dir)
         .unwrap()
@@ -30,9 +46,9 @@ fn main() {
         .filter(|entry| {
             let file_name = entry.file_name();
             let file_name_str = file_name.to_string_lossy();
-            file_name_str.starts_with("median")
+            file_name_str.starts_with("rv64uf-p-fadd")
                 && file_name_str.contains("")
-                && file_name_str.ends_with(".riscv")
+                && !file_name_str.ends_with(".dump")
         })
         .collect();
 
@@ -60,6 +76,11 @@ fn main() {
 
             i += 1;
         }
+        println!("Execution complete!");
+
+        // diff logs
+        Diff::diff_execution_states(&spike_states, &system.cpus[0].states);
+        println!("Diff complete!");
     }
     
 }

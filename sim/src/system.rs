@@ -14,7 +14,7 @@ impl System<'_> {
         let mut bus = Bus::new();
         let ram = Ram::default();
 
-        bus.register(Box::new(ram), 0x80000000, 0x100000);
+        bus.register(Box::new(ram), 0x80000000, 0x10000);
 
         let mut cpu = Cpu::new();
         cpu.pc = 0x80000000;
@@ -41,5 +41,21 @@ impl Htif for System<'_> {
 
     fn write(&mut self, ptr: u64, buf: &[u8]) -> fesvr::Result<()> {
         self.bus.write(ptr, buf).map_err(|_| fesvr::Error::Misc)
+    }
+
+    fn align(&self) -> u64 {
+        todo!()
+    }
+
+    fn max_chunk_bytes(&self) -> u64 {
+        todo!()
+    }
+
+    fn read_chunk(&mut self, ptr: u64, buf: &mut [u8]) -> fesvr::Result<()> {
+        todo!()
+    }
+
+    fn write_chunk(&mut self, ptr: u64, buf: &[u8]) -> fesvr::Result<()> {
+        todo!()
     }
 }

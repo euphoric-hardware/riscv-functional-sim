@@ -1,12 +1,13 @@
  use std::{
     collections::BTreeMap,
     default,
-    fmt::{write, Display},
+    fmt::{write, Display}, u64,
 };
 
 use crate::{
     bus::{self, Bus, Device},
     csrs::Csrs,
+    diff::{Diff, ExecutionState},
     trace,
 };
 
@@ -32,6 +33,19 @@ impl MemData {
             2 => HalfWord(u16::from_le_bytes([buf[0], buf[1]])),
             1 => Byte(buf[0]),
             _ => unreachable!(),
+        }
+    }
+
+}
+
+impl From<MemData> for u64 {
+    fn from(data: MemData) -> Self {
+        match data {
+            MemData::DoubleWord(val) => val,
+            MemData::Word(val) => val as u64,
+            MemData::HalfWord(val) => val as u64,
+            MemData::Byte(val) => val as u64,
+            MemData::Empty => 0,
         }
     }
 }
@@ -105,6 +119,7 @@ pub struct Cpu {
     pub pc: u64,
     pub csrs: Csrs,
     pub commits: Commits,
+    pub states: Vec<ExecutionState>
 }
 
 #[derive(Debug)]
@@ -164,6 +179,7 @@ impl Cpu {
         let mut bytes = [0; std::mem::size_of::<u32>()];
         bus.read(self.pc, &mut bytes).expect("invalid dram address");
         let insn = Insn::from_bytes(&bytes);
+        let mut state = <ExecutionState as std::default::Default>::default();
 
         match self.execute_insn(insn, bus) {
             Ok(pc) => {
@@ -173,21 +189,29 @@ impl Cpu {
                     self.pc,
                     insn.bits()
                 );
+
+                state.pc = self.pc;
+                
                 if self.commits.modified_regs() {
                     while let Some((reg, val)) = self.commits.reg_write.pop_first() {
                         print!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
+                        state.register_updates.push((reg as u8, val));
                     }
                 }
                 if self.commits.is_load() {
                     while let Some((addr, _)) = self.commits.mem_read.pop_first() {
                         print!(" mem 0x{:016x}", addr);
+                        
                     }
+                    
                 } else if self.commits.is_store() {
                     while let Some((addr, val)) = self.commits.mem_write.pop_first() {
                         print!(" mem 0x{:016x} {}", addr, val);
+                        state.memory_writes.push((addr, u64::from(val)));
                     }
                 }
                 println!();
+                self.states.push(state);
 
                 self.pc = pc;
                 self.csrs.store(0xB00, self.csrs.load_unchecked(0xB00) + 1);
