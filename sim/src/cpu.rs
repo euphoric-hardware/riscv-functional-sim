@@ -191,7 +191,7 @@ impl Cpu {
                 );
 
                 state.pc = self.pc;
-                
+
                 if self.commits.modified_regs() {
                     while let Some((reg, val)) = self.commits.reg_write.pop_first() {
                         print!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
@@ -201,9 +201,7 @@ impl Cpu {
                 if self.commits.is_load() {
                     while let Some((addr, _)) = self.commits.mem_read.pop_first() {
                         print!(" mem 0x{:016x}", addr);
-                        
                     }
-                    
                 } else if self.commits.is_store() {
                     while let Some((addr, val)) = self.commits.mem_write.pop_first() {
                         print!(" mem 0x{:016x} {}", addr, val);

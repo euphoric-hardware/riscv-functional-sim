@@ -175,7 +175,7 @@ impl Frontend {
 
                 // FIXME: Currently, instead of queueing up the fromhost requests and handling them in the
                 // future, spin until the fromhost signal is cleared and write synchronously.
-                // Assuming that there isn't aren't multiple syscalls in flight, this is fine.
+                // Assuming that there aren't multiple syscalls in flight, this is fine.
                 // Fix this later...
                 'fromhost_clear: loop {
                     let mut buf = [0; size_of::<u64>()];

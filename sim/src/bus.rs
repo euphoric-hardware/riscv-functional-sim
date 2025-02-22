@@ -86,7 +86,8 @@ impl Device for Bus<'_> {
     }
 
     fn write(&mut self, ptr: u64, buf: &[u8]) -> Result<()> {
-        let (memory_range, device) = self.get_device(ptr, buf.len() as u64).expect("device does not exist");
+        let (memory_range, device) = self.get_device(ptr, buf.len() as u64)
+            .expect(&format!("device does not exist, ptr: 0x{:X}", ptr));
         device.write(ptr - memory_range.base_address, buf)
     }
 }

@@ -14,7 +14,7 @@ impl System<'_> {
         let mut bus = Bus::new();
         let ram = Ram::default();
 
-        bus.register(Box::new(ram), 0x80000000, 0x10000);
+        bus.register(Box::new(ram), 0x80000000, 0x10000000);
 
         let mut cpu = Cpu::new();
         cpu.pc = 0x80000000;
@@ -35,27 +35,19 @@ impl System<'_> {
 }
 
 impl Htif for System<'_> {
-    fn read(&mut self, ptr: u64, buf: &mut [u8]) -> fesvr::Result<()> {
-        self.bus.read(ptr, buf).map_err(|_| fesvr::Error::Misc)
-    }
-
-    fn write(&mut self, ptr: u64, buf: &[u8]) -> fesvr::Result<()> {
-        self.bus.write(ptr, buf).map_err(|_| fesvr::Error::Misc)
-    }
-
     fn align(&self) -> u64 {
-        todo!()
+        4
     }
 
     fn max_chunk_bytes(&self) -> u64 {
-        todo!()
+        1024
     }
 
     fn read_chunk(&mut self, ptr: u64, buf: &mut [u8]) -> fesvr::Result<()> {
-        todo!()
+        self.bus.read(ptr, buf).map_err(|_| fesvr::Error::Misc)
     }
 
     fn write_chunk(&mut self, ptr: u64, buf: &[u8]) -> fesvr::Result<()> {
-        todo!()
+        self.bus.write(ptr, buf).map_err(|_| fesvr::Error::Misc)
     }
 }
