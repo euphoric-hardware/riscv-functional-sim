@@ -1,5 +1,18 @@
 # Generated Functional Simulation (SAIL-Spike)
 
+---
+
+- Quickstart
+
+```bash
+git clone <this repo>
+git submodule update --init
+cd sim
+cargo run -- --bin=<path to target binary>
+```
+
+---
+
 ## Background and Goals
 
 We want to build a RISC-V instruction set simulator (ISS) from first principles.
