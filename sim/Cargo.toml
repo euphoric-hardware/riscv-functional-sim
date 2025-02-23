@@ -7,6 +7,7 @@ edition = "2021"
 env_logger = "0.11.5"
 log = { version = "0.4.22", features = ["release_max_level_off"] }
 fesvr = { path = "../fesvr" }
+clap = { version = "4.5.30", features = ["derive"] }
 
 [build-dependencies]
 csv = "1.3.0"
