@@ -2,8 +2,7 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 
-#[derive(Default)] 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct ExecutionState {
     pub pc: u64,
     pub instruction: u32,
@@ -93,7 +92,7 @@ impl Diff {
                 } else {
                     break; // Exit loop if we don't have enough data
                 }
-            } else if parts[i] == "mem" {
+            } else if i == 5 && parts[i] == "mem" {
                 // Memory write
                 // Ensure there's enough space for both the value and address
                 if i + 1 < parts.len() {
@@ -102,7 +101,7 @@ impl Diff {
                         u64::from_str_radix(parts[i + 1].trim_start_matches("0x"), 16).ok(),
                     ) {
                         memory_writes.push((addr, value));
-                    } 
+                    }
                     i += 2; // Skip to next part
                 } else {
                     i += 1; // Skip just the "mem" keyword and try next part
@@ -124,88 +123,88 @@ impl Diff {
 
     pub fn diff_execution_states(spike_log: &[ExecutionState], my_log: &[ExecutionState]) {
         let min_len = spike_log.len().min(my_log.len());
-    
+
         for i in 0..min_len {
             let spike_state = &spike_log[i];
             let my_state = &my_log[i];
-    
+
             if spike_state.pc != my_state.pc {
                 println!(
                     "PC MISMATCH at step {}: Spike 0x{:x}, Emulator 0x{:x}",
                     i, spike_state.pc, my_state.pc
                 );
             }
-    
+
             if spike_state.instruction != my_state.instruction {
                 println!(
-                    "INSTRUCTION MISMATCH at step {}: Spike 0x{:x}, Emulator 0x{:x}",
-                    i, spike_state.instruction, my_state.instruction
+                    "INSTRUCTION MISMATCH at step {}: Spike 0x{:x}, Emulator 0x{:x}, PC = {:#08x}",
+                    i, spike_state.instruction, my_state.instruction, spike_state.pc
                 );
             }
-    
+
             // Compare register updates
             let spike_regs: std::collections::HashMap<_, _> =
                 spike_state.register_updates.iter().cloned().collect();
             let my_regs: std::collections::HashMap<_, _> =
                 my_state.register_updates.iter().cloned().collect();
-    
+
             for (&reg, &spike_val) in &spike_regs {
                 if let Some(&my_val) = my_regs.get(&reg) {
                     if spike_val != my_val {
                         println!(
-                            "REGISTER x{} MISMATCH at step {}: Spike 0x{:x}, Emulator 0x{:x}",
-                            reg, i, spike_val, my_val
+                            "REGISTER x{} MISMATCH at step {}: Spike 0x{:x}, Emulator 0x{:x}, PC = {:#08x}",
+                            reg, i, spike_val, my_val, spike_state.pc
                         );
                     }
                 } else {
                     println!(
-                        "REGISTER x{} updated in Spike but not in Emulator at step {}",
-                        reg, i
+                        "REGISTER x{} updated in Spike but not in Emulator at step {}, PC = {:#08x}",
+                        reg, i, spike_state.pc
                     );
                 }
             }
-    
+
             for (&reg, &my_val) in &my_regs {
                 if !spike_regs.contains_key(&reg) {
                     println!(
-                        "REGISTER x{} updated in Emulator but not in Spike at step {}",
-                        reg, i
+                        "REGISTER x{} updated in Emulator but not in Spike at step {}, PC = {:#08x}",
+                        reg, i, spike_state.pc
                     );
                 }
             }
-    
+
             // Compare memory writes
             let spike_mem: std::collections::HashMap<_, _> =
                 spike_state.memory_writes.iter().cloned().collect();
             let my_mem: std::collections::HashMap<_, _> =
                 my_state.memory_writes.iter().cloned().collect();
-    
+
             for (&addr, &spike_val) in &spike_mem {
                 if let Some(&my_val) = my_mem.get(&addr) {
                     if spike_val != my_val {
                         println!(
-                            "MEMORY WRITE MISMATCH at 0x{:x} (step {}): Spike 0x{:x}, Emulator 0x{:x}",
-                            addr, i, spike_val, my_val
+                            "MEMORY WRITE MISMATCH at 0x{:x} (step {}): Spike 0x{:x}, Emulator 0x{:x}, PC = {:#08x}",
+                            addr, i, spike_val, my_val, spike_state.pc
                         );
                     }
                 } else {
                     println!(
-                        "MEMORY WRITE at 0x{:x} present in Spike but missing in Emulator (step {})",
-                        addr, i
+                        "MEMORY WRITE at 0x{:x} present in Spike but missing in Emulator (step {}), PC = {:#08x}",
+                        addr, i, spike_state.pc
                     );
                 }
             }
-    
+
             for (&addr, &my_val) in &my_mem {
                 if !spike_mem.contains_key(&addr) {
                     println!(
-                        "MEMORY WRITE at 0x{:x} present in Emulator but missing in Spike (step {})",
-                        addr, i
+                        "MEMORY WRITE at 0x{:x} present in Emulator but missing in Spike (step {}), PC = {:#08x}",
+                        addr, i, spike_state.pc
                     );
                 }
             }
         }
-    
+
         if spike_log.len() != my_log.len() {
             println!(
                 "LOG LENGTH MISMATCH: Spike has {} entries, Emulator has {}",

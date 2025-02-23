@@ -5,7 +5,7 @@ pub fn fmax_s(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let rs2 = insn.rs2();
 
-    let value = f64::max(cpu.fload(rs1), cpu.fload(rs2));
+    let value = f32::max(cpu.fload(rs1) as f32, cpu.fload(rs2) as f32) as f64;
     cpu.fstore(rd, value);
     Ok(cpu.pc + 4)
 }

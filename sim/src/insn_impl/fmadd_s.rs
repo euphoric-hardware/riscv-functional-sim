@@ -7,7 +7,7 @@ pub fn fmadd_s(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs3 = insn.rs3();
     let rm = insn.rm();
 
-    let value = cpu.fload(rs1) * cpu.fload(rs2) + cpu.fload(rs3);
+    let value = (cpu.fload(rs1) as f32 * cpu.fload(rs2) as f32 + cpu.fload(rs3) as f32) as f64;
     cpu.fstore(rd, value);
     Ok(cpu.pc + 4)
 }

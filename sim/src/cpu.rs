@@ -191,7 +191,8 @@ impl Cpu {
                 );
 
                 state.pc = self.pc;
-
+                state.instruction = insn.bits() as u32;
+                
                 if self.commits.modified_regs() {
                     while let Some((reg, val)) = self.commits.reg_write.pop_first() {
                         print!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
