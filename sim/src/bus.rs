@@ -81,8 +81,17 @@ impl<'b> Bus<'b> {
 
 impl Device for Bus<'_> {
     fn read(&mut self, ptr: u64, buf: &mut [u8]) -> Result<()> {
-        let (memory_range, device) = self.get_device(ptr, buf.len() as u64)?;
-        device.read(ptr - memory_range.base_address, buf)
+        match self.get_device(ptr, buf.len() as u64) {
+            Ok((memory_range, device)) => {
+                // Proceed normally
+                device.read(ptr - memory_range.base_address, buf)
+            }
+            Err(e) => {
+                println!("get_device failed: {:?} at address {:#016x}", e, ptr);
+                return Err(e); // Or handle it in another way
+            }
+        }
+        // device.read(ptr - memory_range.base_address, buf)
     }
 
     fn write(&mut self, ptr: u64, buf: &[u8]) -> Result<()> {

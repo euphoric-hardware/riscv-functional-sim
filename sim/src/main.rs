@@ -34,21 +34,20 @@ fn main() {
     let differ = diff::Diff {};
     let spike_states = differ.parse_spike_log(spike_log_filename).unwrap();
 
-    println!("Parsed {} execution states", spike_states.len()); // Debugging line
+    // println!("Parsed {} execution states", spike_states.len()); // Debugging line
 
     env_logger::init();
 
-    let dir = Path::new("../../riscv-tests/isa/");
-
+    let dir = Path::new("../../riscv-tests/benchmarks/");
     let mut entries: Vec<_> = std::fs::read_dir(dir)
         .unwrap()
         .filter_map(|entry| entry.ok())
         .filter(|entry| {
             let file_name = entry.file_name();
             let file_name_str = file_name.to_string_lossy();
-            file_name_str.starts_with("rv64uf-p-fadd")
+            file_name_str.starts_with("dhrystone")
                 && file_name_str.contains("")
-                && !file_name_str.ends_with(".dump")
+                && file_name_str.ends_with(".riscv")
         })
         .collect();
 
@@ -66,7 +65,7 @@ fn main() {
         let mut i = 1;
         loop {
             system.tick();
-            if i % 50 == 0 {
+            if i % 5000 == 0 {
                 if frontend.process(&mut system).expect("htif") {
                     break;
                 }
@@ -76,11 +75,10 @@ fn main() {
 
             i += 1;
         }
-        println!("Execution complete!");
-
+        
         // diff logs
-        Diff::diff_execution_states(&spike_states, &system.cpus[0].states);
-        println!("Diff complete!");
+        // Diff::diff_execution_states(&spike_states, &system.cpus[0].states);
+        // println!("Diff complete!");
     }
     
 }

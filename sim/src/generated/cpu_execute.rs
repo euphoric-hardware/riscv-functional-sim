@@ -220,6 +220,14 @@ impl Cpu {
             insn_impl::csrrwi::csrrwi(insn, self, bus)
         }
 
+        else if bits & 0xfe00707f == 0x2004033 {
+            insn_impl::div::div(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x2005033 {
+            insn_impl::divu::divu(insn, self, bus)
+        }
+
         else if bits & 0xffffffff == 0x100073 {
             insn_impl::ebreak::ebreak(insn, self, bus)
         }
@@ -380,12 +388,36 @@ impl Cpu {
             insn_impl::mret::mret(insn, self, bus)
         }
 
+        else if bits & 0xfe00707f == 0x2000033 {
+            insn_impl::mul::mul(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x2001033 {
+            insn_impl::mulh::mulh(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x2002033 {
+            insn_impl::mulhsu::mulhsu(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x2003033 {
+            insn_impl::mulhu::mulhu(insn, self, bus)
+        }
+
         else if bits & 0xfe00707f == 0x6033 {
             insn_impl::or::or(insn, self, bus)
         }
 
         else if bits & 0x707f == 0x6013 {
             insn_impl::ori::ori(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x2006033 {
+            insn_impl::rem::rem(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x2007033 {
+            insn_impl::remu::remu(insn, self, bus)
         }
 
         else if bits & 0x707f == 0x23 {
