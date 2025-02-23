@@ -38,14 +38,14 @@ fn main() {
 
     env_logger::init();
 
-    let dir = Path::new("../../riscv-tests/benchmarks/");
+    let dir = Path::new("../riscv-tests/benchmarks/");
     let mut entries: Vec<_> = std::fs::read_dir(dir)
         .unwrap()
         .filter_map(|entry| entry.ok())
         .filter(|entry| {
             let file_name = entry.file_name();
             let file_name_str = file_name.to_string_lossy();
-            file_name_str.starts_with("dhrystone")
+            file_name_str.starts_with("median")
                 && file_name_str.contains("")
                 && file_name_str.ends_with(".riscv")
         })
@@ -77,8 +77,8 @@ fn main() {
         }
         
         // diff logs
-        // Diff::diff_execution_states(&spike_states, &system.cpus[0].states);
-        // println!("Diff complete!");
+        Diff::diff_execution_states(&spike_states, &system.cpus[0].states);
+        println!("Diff complete!");
     }
     
 }
