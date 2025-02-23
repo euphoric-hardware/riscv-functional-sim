@@ -244,14 +244,6 @@ impl Cpu {
             insn_impl::fclass_s::fclass_s(insn, self, bus)
         }
 
-        else if bits & 0xfff0007f == 0xd2200053 {
-            insn_impl::fcvt_d_l::fcvt_d_l(insn, self, bus)
-        }
-
-        else if bits & 0xfff0007f == 0xd2300053 {
-            insn_impl::fcvt_d_lu::fcvt_d_lu(insn, self, bus)
-        }
-
         else if bits & 0xfff0007f == 0x42000053 {
             insn_impl::fcvt_d_s::fcvt_d_s(insn, self, bus)
         }
@@ -262,14 +254,6 @@ impl Cpu {
 
         else if bits & 0xfff0007f == 0xd2100053 {
             insn_impl::fcvt_d_wu::fcvt_d_wu(insn, self, bus)
-        }
-
-        else if bits & 0xfff0007f == 0xc2200053 {
-            insn_impl::fcvt_l_d::fcvt_l_d(insn, self, bus)
-        }
-
-        else if bits & 0xfff0007f == 0xc2300053 {
-            insn_impl::fcvt_lu_d::fcvt_lu_d(insn, self, bus)
         }
 
         else if bits & 0xfff0007f == 0x40100053 {
@@ -384,16 +368,8 @@ impl Cpu {
             insn_impl::fmul_s::fmul_s(insn, self, bus)
         }
 
-        else if bits & 0xfff0707f == 0xf2000053 {
-            insn_impl::fmv_d_x::fmv_d_x(insn, self, bus)
-        }
-
         else if bits & 0xfff0707f == 0xf0000053 {
             insn_impl::fmv_w_x::fmv_w_x(insn, self, bus)
-        }
-
-        else if bits & 0xfff0707f == 0xe2000053 {
-            insn_impl::fmv_x_d::fmv_x_d(insn, self, bus)
         }
 
         else if bits & 0xfff0707f == 0xe0000053 {
