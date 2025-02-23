@@ -256,8 +256,24 @@ impl Cpu {
             insn_impl::fcvt_d_wu::fcvt_d_wu(insn, self, bus)
         }
 
+        else if bits & 0xfff0007f == 0xc0200053 {
+            insn_impl::fcvt_l_s::fcvt_l_s(insn, self, bus)
+        }
+
+        else if bits & 0xfff0007f == 0xc0300053 {
+            insn_impl::fcvt_lu_s::fcvt_lu_s(insn, self, bus)
+        }
+
         else if bits & 0xfff0007f == 0x40100053 {
             insn_impl::fcvt_s_d::fcvt_s_d(insn, self, bus)
+        }
+
+        else if bits & 0xfff0007f == 0xd0200053 {
+            insn_impl::fcvt_s_l::fcvt_s_l(insn, self, bus)
+        }
+
+        else if bits & 0xfff0007f == 0xd0300053 {
+            insn_impl::fcvt_s_lu::fcvt_s_lu(insn, self, bus)
         }
 
         else if bits & 0xfff0007f == 0xd0000053 {
