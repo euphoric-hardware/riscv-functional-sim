@@ -5,9 +5,13 @@ use clap::Parser;
 pub struct FunctionalSimArgs {
     /// Output log file
     #[arg(long, default_value = "LOG.txt")]
-    pub log: PathBuf,
+    pub output_log: PathBuf,
 
     /// Path to target binary
     #[arg(long)]
-    pub bin: PathBuf
+    pub bin: PathBuf,
+
+    /// Optional spike log to diff against
+    #[arg(long)]
+    pub spike_log: Option<PathBuf>,
 }

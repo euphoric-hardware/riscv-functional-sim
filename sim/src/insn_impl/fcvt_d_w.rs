@@ -5,5 +5,7 @@ pub fn fcvt_d_w(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let rm = insn.rm();
 
-    todo!();
+    let value = cpu.load(rs1) as i32 as f64;
+    cpu.fstore(rd, value);
+    Ok(cpu.pc + 4)
 }

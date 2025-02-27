@@ -4,6 +4,8 @@ pub fn fmv_x_d(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rd = insn.rd();
     let rs1 = insn.rs1();
 
+    let value = cpu.fload(rs1) as u64;
+    cpu.store(rd, value);
+    Ok(cpu.pc + 4)
     
-    todo!();
 }

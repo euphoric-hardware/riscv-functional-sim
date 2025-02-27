@@ -16,6 +16,14 @@ impl Cpu {
             insn_impl::addi::addi(insn, self, bus)
         }
 
+        else if bits & 0x707f == 0x1b {
+            insn_impl::addiw::addiw(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x3b {
+            insn_impl::addw::addw(insn, self, bus)
+        }
+
         else if bits & 0xfe00707f == 0x7033 {
             insn_impl::and::and(insn, self, bus)
         }
@@ -220,6 +228,14 @@ impl Cpu {
             insn_impl::divu::divu(insn, self, bus)
         }
 
+        else if bits & 0xfe00707f == 0x200503b {
+            insn_impl::divuw::divuw(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x200403b {
+            insn_impl::divw::divw(insn, self, bus)
+        }
+
         else if bits & 0xffffffff == 0x100073 {
             insn_impl::ebreak::ebreak(insn, self, bus)
         }
@@ -244,6 +260,14 @@ impl Cpu {
             insn_impl::fclass_s::fclass_s(insn, self, bus)
         }
 
+        else if bits & 0xfff0007f == 0xd2200053 {
+            insn_impl::fcvt_d_l::fcvt_d_l(insn, self, bus)
+        }
+
+        else if bits & 0xfff0007f == 0xd2300053 {
+            insn_impl::fcvt_d_lu::fcvt_d_lu(insn, self, bus)
+        }
+
         else if bits & 0xfff0007f == 0x42000053 {
             insn_impl::fcvt_d_s::fcvt_d_s(insn, self, bus)
         }
@@ -256,8 +280,16 @@ impl Cpu {
             insn_impl::fcvt_d_wu::fcvt_d_wu(insn, self, bus)
         }
 
+        else if bits & 0xfff0007f == 0xc2200053 {
+            insn_impl::fcvt_l_d::fcvt_l_d(insn, self, bus)
+        }
+
         else if bits & 0xfff0007f == 0xc0200053 {
             insn_impl::fcvt_l_s::fcvt_l_s(insn, self, bus)
+        }
+
+        else if bits & 0xfff0007f == 0xc2300053 {
+            insn_impl::fcvt_lu_d::fcvt_lu_d(insn, self, bus)
         }
 
         else if bits & 0xfff0007f == 0xc0300053 {
@@ -384,8 +416,16 @@ impl Cpu {
             insn_impl::fmul_s::fmul_s(insn, self, bus)
         }
 
+        else if bits & 0xfff0707f == 0xf2000053 {
+            insn_impl::fmv_d_x::fmv_d_x(insn, self, bus)
+        }
+
         else if bits & 0xfff0707f == 0xf0000053 {
             insn_impl::fmv_w_x::fmv_w_x(insn, self, bus)
+        }
+
+        else if bits & 0xfff0707f == 0xe2000053 {
+            insn_impl::fmv_x_d::fmv_x_d(insn, self, bus)
         }
 
         else if bits & 0xfff0707f == 0xe0000053 {
@@ -472,6 +512,10 @@ impl Cpu {
             insn_impl::lbu::lbu(insn, self, bus)
         }
 
+        else if bits & 0x707f == 0x3003 {
+            insn_impl::ld::ld(insn, self, bus)
+        }
+
         else if bits & 0x707f == 0x1003 {
             insn_impl::lh::lh(insn, self, bus)
         }
@@ -486,6 +530,10 @@ impl Cpu {
 
         else if bits & 0x707f == 0x2003 {
             insn_impl::lw::lw(insn, self, bus)
+        }
+
+        else if bits & 0x707f == 0x6003 {
+            insn_impl::lwu::lwu(insn, self, bus)
         }
 
         else if bits & 0xffffffff == 0x30200073 {
@@ -508,6 +556,10 @@ impl Cpu {
             insn_impl::mulhu::mulhu(insn, self, bus)
         }
 
+        else if bits & 0xfe00707f == 0x200003b {
+            insn_impl::mulw::mulw(insn, self, bus)
+        }
+
         else if bits & 0xfe00707f == 0x6033 {
             insn_impl::or::or(insn, self, bus)
         }
@@ -524,8 +576,20 @@ impl Cpu {
             insn_impl::remu::remu(insn, self, bus)
         }
 
+        else if bits & 0xfe00707f == 0x200703b {
+            insn_impl::remuw::remuw(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x200603b {
+            insn_impl::remw::remw(insn, self, bus)
+        }
+
         else if bits & 0x707f == 0x23 {
             insn_impl::sb::sb(insn, self, bus)
+        }
+
+        else if bits & 0x707f == 0x3023 {
+            insn_impl::sd::sd(insn, self, bus)
         }
 
         else if bits & 0x707f == 0x1023 {
@@ -534,6 +598,18 @@ impl Cpu {
 
         else if bits & 0xfe00707f == 0x1033 {
             insn_impl::sll::sll(insn, self, bus)
+        }
+
+        else if bits & 0xfc00707f == 0x1013 {
+            insn_impl::slli::slli(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x101b {
+            insn_impl::slliw::slliw(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x103b {
+            insn_impl::sllw::sllw(insn, self, bus)
         }
 
         else if bits & 0xfe00707f == 0x2033 {
@@ -556,12 +632,40 @@ impl Cpu {
             insn_impl::sra::sra(insn, self, bus)
         }
 
+        else if bits & 0xfc00707f == 0x40005013 {
+            insn_impl::srai::srai(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x4000501b {
+            insn_impl::sraiw::sraiw(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x4000503b {
+            insn_impl::sraw::sraw(insn, self, bus)
+        }
+
         else if bits & 0xfe00707f == 0x5033 {
             insn_impl::srl::srl(insn, self, bus)
         }
 
+        else if bits & 0xfc00707f == 0x5013 {
+            insn_impl::srli::srli(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x501b {
+            insn_impl::srliw::srliw(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x503b {
+            insn_impl::srlw::srlw(insn, self, bus)
+        }
+
         else if bits & 0xfe00707f == 0x40000033 {
             insn_impl::sub::sub(insn, self, bus)
+        }
+
+        else if bits & 0xfe00707f == 0x4000003b {
+            insn_impl::subw::subw(insn, self, bus)
         }
 
         else if bits & 0x707f == 0x2023 {

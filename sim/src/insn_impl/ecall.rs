@@ -7,6 +7,6 @@ use crate::{
 };
 
 pub fn ecall(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
-    crate::trace_insn(cpu.pc, insn.bits(),"ecall", InsnType::Privileged);
-    Err(Exception::EnvironmentCallFromMMode)
+    // crate::trace_insn(cpu.pc, insn.bits(),"ecall", InsnType::Privileged);
+    Err(Exception::EnvironmentCallFromUMode)
 }

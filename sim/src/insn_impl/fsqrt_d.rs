@@ -5,5 +5,7 @@ pub fn fsqrt_d(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let rm = insn.rm();
 
-    todo!();
+    let value = (cpu.fload(rs1)).sqrt();
+    cpu.fstore(rd, value);
+    Ok(cpu.pc + 4)
 }

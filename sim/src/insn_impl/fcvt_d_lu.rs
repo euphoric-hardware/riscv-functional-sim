@@ -5,5 +5,7 @@ pub fn fcvt_d_lu(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let rm = insn.rm();
 
-    todo!();
+    let value = cpu.load(rs1) as u64 as f64;
+    cpu.fstore(rd, value);
+    Ok(cpu.pc + 4)
 }
