@@ -173,7 +173,7 @@ impl Frontend {
                 htif.write(self.to_host, &[0; size_of::<u64>()])?;
                 self.dispatch_syscall(&buf, htif)?;
                 htif.write(self.from_host.unwrap(), &[1])?;
-                Ok(true)
+                Ok(false)
             }
         }
     }
@@ -184,7 +184,6 @@ impl Frontend {
         htif.read(addr, &mut magicmem)?;
 
         let sc_opt = Syscall::from_le_bytes(&magicmem);
-
         match sc_opt {
             Some(sc) => {
                 let rc = self.execute_syscall(sc, htif)?;
