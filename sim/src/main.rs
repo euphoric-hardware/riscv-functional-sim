@@ -77,6 +77,8 @@ fn main() -> std::io::Result<()> {
         i += 1;
     }
 
+    println!("{}", system.cpus[0].load(15));
+
     // diff logs
     if compare_logs {
         Diff::diff_execution_states(&spike_states, &system.cpus[0].states);
