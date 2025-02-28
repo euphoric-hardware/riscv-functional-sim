@@ -172,21 +172,8 @@ impl Frontend {
             a => {
                 htif.write(self.to_host, &[0; size_of::<u64>()])?;
                 self.dispatch_syscall(&buf, htif)?;
-
-                // FIXME: Currently, instead of queueing up the fromhost requests and handling them in the
-                // future, spin until the fromhost signal is cleared and write synchronously.
-                // Assuming that there aren't multiple syscalls in flight, this is fine.
-                // Fix this later...
-                'fromhost_clear: loop {
-                    let mut buf = [0; size_of::<u64>()];
-                    htif.read(self.from_host.unwrap(), &mut buf)?;
-                    let fromhost = u64::from_le_bytes(buf);
-                    if fromhost == 0 {
-                        break 'fromhost_clear;
-                    }
-                }
                 htif.write(self.from_host.unwrap(), &[1])?;
-                Ok(true)
+                Ok(false)
             }
         }
     }
@@ -197,7 +184,6 @@ impl Frontend {
         htif.read(addr, &mut magicmem)?;
 
         let sc_opt = Syscall::from_le_bytes(&magicmem);
-
         match sc_opt {
             Some(sc) => {
                 let rc = self.execute_syscall(sc, htif)?;

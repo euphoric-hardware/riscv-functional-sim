@@ -63,6 +63,7 @@ fn main() -> std::io::Result<()> {
         system.tick();
         if i % 5000 == 0 {
             if frontend.process(&mut system).expect("htif") {
+                println!("Target program finished");
                 break;
             }
         }
