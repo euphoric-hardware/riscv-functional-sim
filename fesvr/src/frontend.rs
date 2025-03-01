@@ -105,6 +105,13 @@ pub trait Htif {
     fn write_chunk(&mut self, ptr: u64, buf: &[u8]) -> Result<()>;
 }
 
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum FrontendReturnCode {
+    Continue,
+    Exit,
+}
+
 pub struct Frontend {
     elf: RiscvElf,
     to_host: u64, // pointers
@@ -161,19 +168,19 @@ impl Frontend {
         Ok(())
     }
 
-    pub fn process<H: Htif>(&mut self, htif: &mut H) -> Result<bool> {
+    pub fn process<H: Htif>(&mut self, htif: &mut H) -> Result<FrontendReturnCode> {
         let mut buf = [0; size_of::<u64>()];
         htif.read(self.to_host, &mut buf)?;
         let tohost = u64::from_le_bytes(buf);
         // todo: implement all of https://github.com/riscv-software-src/riscv-isa-sim/issues/364#issuecomment-607657754
         match tohost {
-            1 => Ok(true),
-            0 => Ok(false),
+            1 => Ok(FrontendReturnCode::Exit),
+            0 => Ok(FrontendReturnCode::Continue),
             a => {
                 htif.write(self.to_host, &[0; size_of::<u64>()])?;
                 self.dispatch_syscall(&buf, htif)?;
                 htif.write(self.from_host.unwrap(), &[1])?;
-                Ok(false)
+                Ok(FrontendReturnCode::Continue)
             }
         }
     }
