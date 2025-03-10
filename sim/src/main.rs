@@ -10,6 +10,7 @@ mod diff;
 mod generated;
 mod insn_impl;
 mod log;
+mod logger;
 mod mmu;
 mod plic;
 mod system;
@@ -30,6 +31,8 @@ fn main() -> std::io::Result<()> {
     let args = FunctionalSimArgs::parse();
     File::create(&args.output_log)?;
 
+    logger::init_logger(true, &args.output_log.to_str().unwrap());
+
     let mut compare_logs = false;
     let differ: Diff;
     let mut spike_states: Vec<ExecutionState> = Vec::new();
@@ -44,7 +47,7 @@ fn main() -> std::io::Result<()> {
     }
 
     let binary = &args.bin;
-    println!("Testing... {:?}", binary.file_name().unwrap());
+    println!("Testing... {:?}\n", binary.file_name().unwrap());
 
     let mut system = system::System::new();
     system.cpus[0]
@@ -52,8 +55,8 @@ fn main() -> std::io::Result<()> {
         .store_unchecked(csrs::Csrs::MSTATUS, 0b00000000000000000001100000000000);
 
     // spike has an extra 5 instruction startup routine, just add 5 cycles/instructions to make up for this
-    system.cpus[0].csrs.store_unchecked(csrs::Csrs::MCYCLE, 5); 
-    system.cpus[0].csrs.store_unchecked(csrs::Csrs::MINSTRET, 5); 
+    system.cpus[0].csrs.store_unchecked(csrs::Csrs::MCYCLE, 5);
+    system.cpus[0].csrs.store_unchecked(csrs::Csrs::MINSTRET, 5);
 
     let mut frontend = Frontend::try_new(binary).unwrap();
     frontend.write_elf(&mut system).unwrap();
@@ -63,10 +66,19 @@ fn main() -> std::io::Result<()> {
         system.tick();
         if i % 5000 == 0 {
             if frontend.process(&mut system).expect("htif") {
-                println!("Target program finished");
+                println!("\nTarget program finished");
                 break;
             }
+            if (compare_logs) {
+                Diff::diff_execution_state(
+                    spike_states.get(i-1),
+                    system.cpus[0].states.get(i - 1),
+                );
+            }
         }
+
+        
+
         let minstret = system.cpus[0]
             .csrs
             .load(csrs::Csrs::MINSTRET)
@@ -77,7 +89,6 @@ fn main() -> std::io::Result<()> {
 
         i += 1;
     }
-
 
     // diff logs
     if compare_logs {

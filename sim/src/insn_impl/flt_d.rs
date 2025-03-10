@@ -5,11 +5,11 @@ pub fn flt_d(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let rs2 = insn.rs2();
 
-    let value = if cpu.fload(rs1) < cpu.fload(rs2) {
-        1.0
+    let value = if f64::from_bits(*cpu.fload(rs1).bits()) < f64::from_bits(*cpu.fload(rs2).bits()) {
+        1
     } else {
-        0.0
+        0
     };
-    cpu.fstore(rd, value);
+    cpu.store(rd, value);
     Ok(cpu.pc + 4)
 }

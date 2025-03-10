@@ -1,3 +1,5 @@
+use simple_soft_float::F64;
+
 use crate::{bus::{Bus, Device}, cpu::{self, Cpu, Insn}};
 
 pub fn flw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
@@ -10,7 +12,7 @@ pub fn flw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     let mut raw = [0; size_of::<f32>()];
     bus.read(address, &mut raw)?;
-    let h = f32::from_le_bytes(raw) as f64;
+    let h = F64::from_bits((f32::from_le_bytes(raw) as f64).to_bits());
 
     cpu.fstore(rd, h);
     Ok(cpu.pc + 4)

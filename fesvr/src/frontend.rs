@@ -9,6 +9,7 @@ pub trait Htif {
     /// Chunk up read transactions based on the address alignment scheme that the target expects
     /// - verbatim from memif.cc in spike
     fn read(&mut self, ptr: u64, buf: &mut [u8]) -> Result<()> {
+
         let mut len = buf.len();
         let mut addr = ptr;
         let mut buf_ = buf;

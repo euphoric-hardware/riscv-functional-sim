@@ -1,3 +1,5 @@
+use log::info;
+
 use crate::cpu::{Exception, Result};
 use std::{
     cmp,

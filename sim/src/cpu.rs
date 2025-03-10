@@ -1,15 +1,18 @@
- use std::{
+use std::{
     collections::BTreeMap,
     default,
-    fmt::{write, Display}, u64,
+    fmt::{write, Display},
+    u64,
 };
 
 use crate::{
     bus::{self, Bus, Device},
-    csrs::Csrs,
+    csrs::{self, Csrs},
     diff::{Diff, ExecutionState},
     trace,
 };
+
+use ::simple_soft_float;
 
 #[derive(Debug, Default)]
 pub enum MemData {
@@ -35,7 +38,6 @@ impl MemData {
             _ => unreachable!(),
         }
     }
-
 }
 
 impl From<MemData> for u64 {
@@ -115,11 +117,11 @@ impl From<u8> for PrivilegeMode {
 #[derive(Debug, Default)]
 pub struct Cpu {
     pub regs: [u64; 32],
-    pub fregs: [f64; 32],
+    pub fregs: [simple_soft_float::F64; 32],
     pub pc: u64,
     pub csrs: Csrs,
     pub commits: Commits,
-    pub states: Vec<ExecutionState>
+    pub states: Vec<ExecutionState>,
 }
 
 #[derive(Debug)]
@@ -140,6 +142,20 @@ pub enum Exception {
     StoreAMOPageFault = 15,
 }
 
+#[derive(Debug)]
+pub enum FpOperation {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Sqrt,
+    Convert,
+    Fmadd,
+    Fmsub,
+    Fnmadd,
+    Fnmsub,
+}
+
 pub type Result<T> = std::result::Result<T, Exception>;
 
 impl Cpu {
@@ -158,14 +174,16 @@ impl Cpu {
         }
     }
 
-    pub fn fload(&self, reg: u64) -> f64 {
+    pub fn fload(&self, reg: u64) -> simple_soft_float::F64 {
         self.fregs[reg as usize]
     }
 
-    pub fn fstore(&mut self, reg: u64, value: f64) {
+    pub fn fstore(&mut self, reg: u64, value: simple_soft_float::F64) {
         if reg != 0 {
             self.fregs[reg as usize] = value;
-            self.commits.freg_write.insert(reg, value);
+            self.commits
+                .freg_write
+                .insert(reg, f64::from_bits(*value.bits()));
         }
     }
 
@@ -183,7 +201,7 @@ impl Cpu {
 
         match self.execute_insn(insn, bus) {
             Ok(pc) => {
-                print!(
+                log::info!(
                     "core   0: {} 0x{:016x} (0x{:08x})",
                     self.privilege_mode(),
                     self.pc,
@@ -192,24 +210,24 @@ impl Cpu {
 
                 state.pc = self.pc;
                 state.instruction = insn.bits() as u32;
-                
+
                 if self.commits.modified_regs() {
                     while let Some((reg, val)) = self.commits.reg_write.pop_first() {
-                        print!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
+                        log::info!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
                         state.register_updates.push((reg as u8, val));
                     }
                 }
                 if self.commits.is_load() {
                     while let Some((addr, _)) = self.commits.mem_read.pop_first() {
-                        print!(" mem 0x{:016x}", addr);
+                        log::info!(" mem 0x{:016x}", addr);
                     }
                 } else if self.commits.is_store() {
                     while let Some((addr, val)) = self.commits.mem_write.pop_first() {
-                        print!(" mem 0x{:016x} {}", addr, val);
+                        log::info!(" mem 0x{:016x} {}", addr, val);
                         state.memory_writes.push((addr, u64::from(val)));
                     }
                 }
-                println!();
+                log::info!("\n");
                 self.states.push(state);
 
                 self.pc = pc;
@@ -251,6 +269,38 @@ impl Insn {
         } else {
             value as i64
         }
+    }
+
+    pub fn softfloat_flags_from_riscv_flags(cpu: &mut Cpu) -> simple_soft_float::StatusFlags {
+        let riscv_flags = cpu.csrs.load_unchecked(Csrs::FFLAGS) as u32;
+        let mask = 0b11111; // Mask to get the first 5 bits
+        let relevant_bits = riscv_flags & mask; // Extract the first 5 bits
+
+        let mut reversed_bits = 0u32;
+
+        // Reverse the bits one by one
+        for i in 0..5 {
+            reversed_bits <<= 1; // Shift left to make space for the next bit
+            reversed_bits |= (relevant_bits >> i) & 1; // Take the bit and append to reversed_bits
+        }
+        return simple_soft_float::StatusFlags::from_bits(reversed_bits)
+            .expect("invalid bits received!");
+    }
+
+    pub fn riscv_flags_from_softfloat_flags(cpu: &mut Cpu, softfloat_status: simple_soft_float::StatusFlags) {
+        let softfloat_flags = softfloat_status.bits();
+        let mask = 0b11111; // Mask to get the first 5 bits
+        let relevant_bits = softfloat_flags & mask; // Extract the first 5 bits
+
+        let mut reversed_bits = 0u32;
+
+        // Reverse the bits one by one
+        for i in 0..5 {
+            reversed_bits <<= 1; // Shift left to make space for the next bit
+            reversed_bits |= (relevant_bits >> i) & 1; // Take the bit and append to reversed_bits
+        }
+        println!("reversed_bits: {}", reversed_bits);
+        cpu.csrs.store(Csrs::FFLAGS, reversed_bits as u64);
     }
 }
 
@@ -327,6 +377,7 @@ mod insn_type_macros {
 }
 
 pub(crate) use insn_type_macros::*;
+use log::info;
 
 impl Display for InsnType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
