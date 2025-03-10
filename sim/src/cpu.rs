@@ -299,7 +299,6 @@ impl Insn {
             reversed_bits <<= 1; // Shift left to make space for the next bit
             reversed_bits |= (relevant_bits >> i) & 1; // Take the bit and append to reversed_bits
         }
-        println!("reversed_bits: {}", reversed_bits);
         cpu.csrs.store(Csrs::FFLAGS, reversed_bits as u64);
     }
 }
