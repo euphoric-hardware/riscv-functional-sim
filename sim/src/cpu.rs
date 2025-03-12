@@ -362,6 +362,17 @@ impl Insn {
         }
         cpu.csrs.store(Csrs::FFLAGS, reversed_bits as u64);
     }
+
+    pub fn softfloat_round_from_riscv_rm(rm: u64) -> RoundingMode {
+        match rm {
+            0b000 => RoundingMode::TiesToEven,
+            0b001 => RoundingMode::TowardZero,
+            0b010 => RoundingMode::TowardNegative,
+            0b011 => RoundingMode::TowardPositive,
+            0b100 => RoundingMode::TiesToAway,
+            default => RoundingMode::TiesToAway,
+        }
+    }
 }
 
 // FOR TRACING PURPOSES
@@ -438,6 +449,7 @@ mod insn_type_macros {
 
 pub(crate) use insn_type_macros::*;
 use log::info;
+use simple_soft_float::RoundingMode;
 
 impl Display for InsnType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
