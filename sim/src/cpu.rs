@@ -271,6 +271,64 @@ impl Insn {
         }
     }
 
+    pub fn f32_to_f64_preserve_all(value: f32) -> f64 {
+        let bits = value.to_bits(); // Get raw bit pattern
+        let sign = ((bits >> 31) as u64) << 63; // Extract sign bit and shift to f64 position
+        let exponent = ((bits >> 23) & 0xFF) as u64; // Extract exponent
+        let fraction = (bits & 0x007F_FFFF) as u64; // Extract fraction
+
+        if exponent == 0xFF {
+            // Handle NaNs and Infinities
+            let new_fraction = fraction << 29; // Align mantissa
+            let new_exponent = 0x7FF; // Max exponent for f64
+            return f64::from_bits(sign | (new_exponent << 52) | new_fraction);
+        } else if exponent == 0 {
+            // Subnormal case (denormal numbers)
+            let new_fraction = fraction << 29;
+            return f64::from_bits(sign | new_fraction);
+        }
+
+        // Normalized numbers
+        let new_exponent = (exponent as u64 + 896) << 52; // Adjust exponent bias from f32 (127) to f64 (1023)
+        let new_fraction = fraction << 29; // Align fraction to f64
+
+        f64::from_bits(sign | new_exponent | new_fraction)
+    }
+
+    pub fn f64_to_f32_preserve_all(value: f64) -> f32 {
+        let bits = value.to_bits();
+        let sign = ((bits >> 63) as u32) << 31; // Extract sign bit for f32
+        let mut exponent = ((bits >> 52) & 0x7FF) as u32; // Extract exponent
+        let mut fraction = ((bits & 0x000F_FFFF_FFFF_FFFF) >> 29) as u32; // Extract 23-bit fraction
+
+        if exponent == 0x7FF {
+            // Handle NaNs and Infinities
+            let new_exponent = 0xFF;
+            return f32::from_bits(sign | (new_exponent << 23) | fraction);
+        } else if exponent == 0 {
+            // Subnormal case (denormal numbers)
+            return f32::from_bits(sign | fraction);
+        }
+
+        // Handle rounding to nearest even
+        let round_bit = (bits >> 28) & 1; // First dropped bit
+        let sticky_bits = bits & 0x0FFFFFFF; // Remaining dropped bits
+        if round_bit == 1 && (sticky_bits != 0 || (fraction & 1) == 1) {
+            fraction += 1;
+        }
+
+        // Handle possible mantissa overflow due to rounding
+        if fraction >> 23 != 0 {
+            fraction = 0; // Mantissa overflow -> increment exponent
+            exponent += 1;
+        }
+
+        // Normalized numbers: Adjust exponent bias from f64 (1023) to f32 (127)
+        let new_exponent = ((exponent as i32 - 1023 + 127) as u32) << 23;
+
+        f32::from_bits(sign | new_exponent | fraction)
+    }
+
     pub fn softfloat_flags_from_riscv_flags(cpu: &mut Cpu) -> simple_soft_float::StatusFlags {
         let riscv_flags = cpu.csrs.load_unchecked(Csrs::FFLAGS) as u32;
         let mask = 0b11111; // Mask to get the first 5 bits
@@ -287,7 +345,10 @@ impl Insn {
             .expect("invalid bits received!");
     }
 
-    pub fn riscv_flags_from_softfloat_flags(cpu: &mut Cpu, softfloat_status: simple_soft_float::StatusFlags) {
+    pub fn riscv_flags_from_softfloat_flags(
+        cpu: &mut Cpu,
+        softfloat_status: simple_soft_float::StatusFlags,
+    ) {
         let softfloat_flags = softfloat_status.bits();
         let mask = 0b11111; // Mask to get the first 5 bits
         let relevant_bits = softfloat_flags & mask; // Extract the first 5 bits

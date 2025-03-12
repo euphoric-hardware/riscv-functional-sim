@@ -8,7 +8,8 @@ pub fn fsd(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     let imm = Insn::sign_extend((imm12hi << 5 | imm12lo) as u64, 12);
     let address = (cpu.load(rs1) as u64).wrapping_add(imm as u64);
+    let result = *cpu.fload(rs2).bits();
 
-    bus.write(address, &(cpu.load(rs2) as u64).to_le_bytes())?;
+    bus.write(address, &result.to_le_bytes());
     Ok(cpu.pc + 4)
 }

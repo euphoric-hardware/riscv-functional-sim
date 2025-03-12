@@ -5,7 +5,7 @@ pub fn fcvt_wu_s(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let rm = insn.rm();
 
-    let value = f64::from_bits(*cpu.fload(rs1).bits()) as f32 as u32 as u64;
-    cpu.store(rd, value);
+    let result = f32::from_bits(*cpu.fload(rs1).bits() as u32) as u32 as u64;
+    cpu.store(rd, result);
     Ok(cpu.pc + 4)
 }

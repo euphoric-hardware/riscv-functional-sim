@@ -10,8 +10,7 @@ pub fn fcvt_s_l(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let rm = insn.rm();
 
-    let result =
-        F64::convert_from_float(&F32::from_i64(cpu.load(rs1) as i64, None, None), None, None);
+    let result = F64::from_bits((cpu.load(rs1) as i64 as f32).to_bits() as u64);
     cpu.fstore(rd, result);
     Ok(cpu.pc + 4)
 }

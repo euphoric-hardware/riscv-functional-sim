@@ -20,6 +20,7 @@ pub fn bne(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     crate::trace_insn(cpu.pc, insn.bits(), "bne", b_type!(rs1, rs2, offset));
 
     if cpu.load(rs1) != cpu.load(rs2) {
+        println!("pc = {:#08x}, rs1 = {:#08x}, rs2 = {:#08x}", cpu.pc, cpu.load(rs1), cpu.load(rs2));
         Ok((cpu.pc as i64 + offset) as u64)
     } else {
         Ok(cpu.pc + 4)
