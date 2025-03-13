@@ -25,7 +25,7 @@ use diff::{Diff, ExecutionState};
 use generated::cpu_execute as _;
 pub use log::*;
 
-use fesvr::frontend::Frontend;
+use fesvr::frontend::{Frontend, FrontendReturnCode};
 
 fn main() -> std::io::Result<()> {
     let args = FunctionalSimArgs::parse();
@@ -65,19 +65,17 @@ fn main() -> std::io::Result<()> {
     loop {
         system.tick();
         if i % 5000 == 0 {
-            if frontend.process(&mut system).expect("htif") {
-                println!("\nTarget program finished");
+            if frontend.process(&mut system).expect("htif") == FrontendReturnCode::Exit {
+                println!("Target program finished");
                 break;
             }
             if (compare_logs) {
                 Diff::diff_execution_state(
-                    spike_states.get(i-1),
+                    spike_states.get(i - 1),
                     system.cpus[0].states.get(i - 1),
                 );
             }
         }
-
-        
 
         let minstret = system.cpus[0]
             .csrs
