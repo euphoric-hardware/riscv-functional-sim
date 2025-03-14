@@ -1,6 +1,6 @@
 use crate::{
     bus::Bus,
-    cpu::{self, ci_type, Cpu, Insn},
+    cpu::{self, Cpu, Insn},
 };
 
 pub fn c_addi16sp(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
@@ -12,7 +12,7 @@ pub fn c_addi16sp(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> 
     let imm = Insn::sign_extend(c_nzimm10hi << 9 | (c_nzimm10lo & 0x6) << 6 | (c_nzimm10lo & 0x8) << 3 | (c_nzimm10lo & 0x1) << 5 | (c_nzimm10lo) & 0x10, 10);
     let result = cpu.load(2).wrapping_add(imm as u64);
 
-    crate::trace_insn(cpu.pc, insn.bits(), "c.addi16sp", ci_type!(2, imm));
+    
 
     cpu.store(2, result);
     Ok(cpu.pc + 2)

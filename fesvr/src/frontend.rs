@@ -174,20 +174,25 @@ impl Frontend {
         htif.read(self.to_host, &mut buf)?;
         let tohost = u64::from_le_bytes(buf);
         // todo: implement all of https://github.com/riscv-software-src/riscv-isa-sim/issues/364#issuecomment-607657754
+
+        // check if payload bottom bit is 1
+        if (tohost & 0x1 == 1) {
+            return Ok(FrontendReturnCode::Exit);
+        }
         match tohost {
             1 => Ok(FrontendReturnCode::Exit),
             0 => Ok(FrontendReturnCode::Continue),
             a => {
                 htif.write(self.to_host, &[0; size_of::<u64>()])?;
-                self.dispatch_syscall(&buf, htif)?;
+                self.dispatch_syscall(u64::from_le_bytes(buf), htif)?;
                 htif.write(self.from_host.unwrap(), &[1])?;
                 Ok(FrontendReturnCode::Continue)
             }
         }
     }
 
-    fn dispatch_syscall<H: Htif>(&mut self, tohost: &[u8], htif: &mut H) -> Result<()> {
-        let addr = u64::from_le_bytes(tohost[0..8].try_into().unwrap());
+    fn dispatch_syscall<H: Htif>(&mut self, tohost: u64, htif: &mut H) -> Result<()> {
+        let addr = tohost;
         let mut magicmem = [0u8; 64];
         htif.read(addr, &mut magicmem)?;
 

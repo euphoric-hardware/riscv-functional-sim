@@ -1,6 +1,6 @@
 use crate::{
     bus::Bus,
-    cpu::{self, u_type, Cpu, Insn},
+    cpu::{self, Cpu, Insn},
 };
 
 pub fn auipc(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {

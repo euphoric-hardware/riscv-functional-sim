@@ -1,6 +1,6 @@
 use crate::{
     bus::{Bus, Device},
-    cpu::{self, i_type, Cpu, Insn},
+    cpu::{self, Cpu, Insn},
 };
 
 pub fn lbu(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
@@ -10,7 +10,7 @@ pub fn lbu(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     let imm = Insn::sign_extend(imm12 as u64, 12);
 
-    crate::trace_insn(cpu.pc, insn.bits(), "lbu", i_type!(rd, rs1, imm));
+    
 
     let address = (cpu.load(rs1)).wrapping_add(imm as u64);
     let mut raw = [0; size_of::<u8>()];

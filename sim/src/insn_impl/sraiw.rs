@@ -1,6 +1,6 @@
 use crate::{
     bus::Bus,
-    cpu::{self, i_type, Cpu, Insn},
+    cpu::{self, Cpu, Insn},
 };
 
 pub fn sraiw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
@@ -8,7 +8,7 @@ pub fn sraiw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let shamtw = insn.shamtw();
 
-    crate::trace_insn(cpu.pc, insn.bits(), "sraiw", i_type!(rd, rs1, shamtw));
+    
 
     cpu.store(rd, ((cpu.load(rs1) as i32) >> shamtw) as i64 as u64);
     Ok(cpu.pc + 4)

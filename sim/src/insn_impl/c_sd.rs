@@ -1,6 +1,6 @@
 use crate::{
     bus::{Bus, Device},
-    cpu::{self, cs_type, Cpu, Insn},
+    cpu::{self, Cpu, Insn},
 };
 
 pub fn c_sd(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
@@ -12,7 +12,7 @@ pub fn c_sd(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let c_uimm8lo = insn.c_uimm8lo();
 
     let imm = c_uimm8lo << 6 | c_uimm8hi << 3;
-    crate::trace_insn(cpu.pc, insn.bits(), "c.sd", cs_type!(rs1_p, rs2_p, imm));
+    
 
     let address = cpu.load(rs1_p).wrapping_add(imm);
     bus.write(address, &cpu.load(rs2_p).to_le_bytes())?;

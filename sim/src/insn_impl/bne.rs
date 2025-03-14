@@ -1,6 +1,6 @@
 use crate::{
     bus::Bus,
-    cpu::{self, b_type, Cpu, Insn},
+    cpu::{self, Cpu, Insn},
 };
 
 pub fn bne(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
@@ -17,7 +17,7 @@ pub fn bne(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
         12,
     );
 
-    crate::trace_insn(cpu.pc, insn.bits(), "bne", b_type!(rs1, rs2, offset));
+    
     if cpu.load(rs1) != cpu.load(rs2) {
         Ok((cpu.pc as i64 + offset) as u64)
     } else {

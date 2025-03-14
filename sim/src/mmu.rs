@@ -1,6 +1,6 @@
 use crate::{
     bus::{Bus, Device},
-    cpu::{Cpu, MemData, Result},
+    cpu::{self, Cpu, Insn, MemData, Result},
 };
 
 pub struct Mmu {}

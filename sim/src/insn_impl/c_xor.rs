@@ -1,4 +1,4 @@
-use crate::{bus::Bus, cpu::{self, ca_type, Cpu, Insn}};
+use crate::{bus::Bus, cpu::{self, Cpu, Insn}};
 
 pub fn c_xor(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     // crate::trace_insn!("c_xor", rd_rs1_p = insn.rd_rs1_p(), rs2_p = insn.rs2_p());
@@ -6,7 +6,7 @@ pub fn c_xor(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rd_rs1_p = insn.rd_rs1_p() + 8;
     let rs2_p = insn.rs2_p() + 8;
 
-    crate::trace_insn(cpu.pc, insn.bits(), "c.xor", ca_type!(rd_rs1_p, rs2_p));
+    
 
     let result = cpu.load(rd_rs1_p) ^ cpu.load(rs2_p);
     

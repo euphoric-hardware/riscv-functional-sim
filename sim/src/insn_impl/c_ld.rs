@@ -1,6 +1,6 @@
 use crate::{
     bus::{Bus, Device},
-    cpu::{self, cl_type, Cpu, Insn},
+    cpu::{self, Cpu, Insn},
 };
 
 pub fn c_ld(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
@@ -12,7 +12,7 @@ pub fn c_ld(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let c_uimm8hi = insn.c_uimm8hi();
 
     let imm = c_uimm8lo << 6 | c_uimm8hi << 3;
-    crate::trace_insn(cpu.pc, insn.bits(), "c.ld", cl_type!(rd_p, rs1_p, imm));
+    
 
     let address = (cpu.load(rs1_p) as u64).wrapping_add(imm);
     let mut raw = [0; size_of::<u64>()];
