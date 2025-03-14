@@ -69,12 +69,10 @@ fn main() -> std::io::Result<()> {
                 println!("Target program finished");
                 break;
             }
-            if (compare_logs) {
-                Diff::diff_execution_state(
-                    spike_states.get(i - 1),
-                    system.cpus[0].states.get(i - 1),
-                );
-            }
+        }
+
+        if (compare_logs) {
+            Diff::diff_execution_state(spike_states.get(i - 1), system.cpus[0].states.get(i - 1));
         }
 
         let minstret = system.cpus[0]

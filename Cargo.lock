@@ -521,6 +521,7 @@ dependencies = [
  "env_logger",
  "fesvr",
  "log",
+ "regex",
  "serde",
  "serde_yaml",
  "simple-soft-float",

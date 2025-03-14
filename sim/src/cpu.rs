@@ -69,7 +69,7 @@ impl Display for MemData {
 pub struct Commits {
     // reg, data
     pub reg_write: BTreeMap<u64, u64>,
-    pub freg_write: BTreeMap<u64, f64>,
+    pub freg_write: BTreeMap<u64, u64>,
     // addr, data
     pub mem_write: BTreeMap<u64, MemData>,
     pub mem_read: BTreeMap<u64, MemData>,
@@ -85,7 +85,11 @@ impl Commits {
     }
 
     pub fn modified_regs(&self) -> bool {
-        !self.reg_write.is_empty() || !self.freg_write.is_empty()
+        !self.reg_write.is_empty()
+    }
+
+    pub fn modified_fregs(&self) -> bool {
+        !self.freg_write.is_empty()
     }
 }
 
@@ -179,12 +183,8 @@ impl Cpu {
     }
 
     pub fn fstore(&mut self, reg: u64, value: simple_soft_float::F64) {
-        if reg != 0 {
-            self.fregs[reg as usize] = value;
-            self.commits
-                .freg_write
-                .insert(reg, f64::from_bits(*value.bits()));
-        }
+        self.fregs[reg as usize] = value;
+        self.commits.freg_write.insert(reg, *value.bits());
     }
 
     pub fn privilege_mode(&self) -> PrivilegeMode {
@@ -215,6 +215,12 @@ impl Cpu {
                     while let Some((reg, val)) = self.commits.reg_write.pop_first() {
                         log::info!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
                         state.register_updates.push((reg as u8, val));
+                    }
+                }
+                if self.commits.modified_fregs() {
+                    while let Some((reg, val)) = self.commits.freg_write.pop_first() {
+                        log::info!(" f{:<3} 0x{:016x}", reg as usize, val);
+                        state.fregister_updates.push((reg as u8, val));
                     }
                 }
                 if self.commits.is_load() {
