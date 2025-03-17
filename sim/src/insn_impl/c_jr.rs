@@ -1,11 +1,12 @@
-use crate::{bus::Bus, cpu::{self, Cpu, Insn}};
+use crate::{
+    bus::Bus,
+    cpu::{self, Cpu, Insn},
+};
 
 pub fn c_jr(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1_n0 = insn.rs1_n0();
 
-    
-    
-    let new_pc= cpu.load(rs1_n0);
+    let new_pc = cpu.load(rs1_n0);
     // println!("new pc: {:#16x}", new_pc);
 
     Ok(new_pc)

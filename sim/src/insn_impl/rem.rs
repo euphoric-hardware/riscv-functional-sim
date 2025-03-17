@@ -1,11 +1,12 @@
-use crate::{bus::Bus, cpu::{self, Cpu, Insn}};
+use crate::{
+    bus::Bus,
+    cpu::{self, Cpu, Insn},
+};
 
 pub fn rem(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rd = insn.rd();
     let rs1 = insn.rs1();
     let rs2 = insn.rs2();
-
-    
 
     let rs1_value = cpu.load(rs1) as i64;
     let rs2_value = cpu.load(rs2) as i64;

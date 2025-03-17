@@ -8,3 +8,4 @@ riscv-benchmarks/
 riscv-tests/
 *.txt
 embench/
+build/

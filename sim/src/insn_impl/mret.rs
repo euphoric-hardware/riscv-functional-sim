@@ -5,7 +5,5 @@ use crate::{
 };
 
 pub fn mret(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
-    // 
-
     Ok(cpu.csrs.load_unchecked(Csrs::MEPC))
 }

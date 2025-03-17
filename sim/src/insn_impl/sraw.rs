@@ -8,8 +8,6 @@ pub fn sraw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let rs2 = insn.rs2();
 
-    
-
     cpu.store(
         rd,
         Insn::sign_extend(

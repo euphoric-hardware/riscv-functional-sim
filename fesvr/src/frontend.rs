@@ -179,6 +179,7 @@ impl Frontend {
         if (tohost & 0x1 == 1) {
             return Ok(FrontendReturnCode::Exit);
         }
+        
         match tohost {
             1 => Ok(FrontendReturnCode::Exit),
             0 => Ok(FrontendReturnCode::Continue),

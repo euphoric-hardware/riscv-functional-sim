@@ -8,8 +8,6 @@ pub fn csrrs(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let csr = insn.csr();
 
-    
-
     let csr_value = cpu.csrs.load(csr)?;
     let rs1_value = cpu.load(rs1);
     cpu.csrs.store(csr, csr_value | rs1_value)?;

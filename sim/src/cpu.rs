@@ -14,6 +14,9 @@ use crate::{
 use ::simple_soft_float;
 use simple_soft_float::RoundingMode;
 
+use slog::{info, Logger};
+use crate::logger::get_logger;
+
 #[derive(Debug, Default)]
 pub enum MemData {
     DoubleWord(u64),
@@ -198,10 +201,12 @@ impl Cpu {
         bus.read(self.pc, &mut bytes).expect("invalid dram address");
         let insn = Insn::from_bytes(&bytes);
         let mut state = <ExecutionState as std::default::Default>::default();
+        
+        let log = get_logger();
 
         match self.execute_insn(insn, bus) {
             Ok(pc) => {
-                log::info!(
+                info!(log, 
                     "core   0: {} 0x{:016x} (0x{:08x})",
                     self.privilege_mode(),
                     self.pc,
@@ -213,27 +218,27 @@ impl Cpu {
 
                 if self.commits.modified_regs() {
                     while let Some((reg, val)) = self.commits.reg_write.pop_first() {
-                        log::info!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
+                        info!(log, " {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
                         state.register_updates.push((reg as u8, val));
                     }
                 }
                 if self.commits.modified_fregs() {
                     while let Some((reg, val)) = self.commits.freg_write.pop_first() {
-                        log::info!(" f{:<3} 0x{:016x}", reg as usize, val);
+                        info!(log, " f{:<3} 0x{:016x}", reg as usize, val);
                         state.fregister_updates.push((reg as u8, val));
                     }
                 }
                 if self.commits.is_load() {
                     while let Some((addr, _)) = self.commits.mem_read.pop_first() {
-                        log::info!(" mem 0x{:016x}", addr);
+                        info!(log, " mem 0x{:016x}", addr);
                     }
                 } else if self.commits.is_store() {
                     while let Some((addr, val)) = self.commits.mem_write.pop_first() {
-                        log::info!(" mem 0x{:016x} {}", addr, val);
+                        info!(log, " mem 0x{:016x} {}", addr, val);
                         state.memory_writes.push((addr, u64::from(val)));
                     }
                 }
-                log::info!("\n");
+                info!(log, "\n");
                 self.states.push(state);
 
                 self.pc = pc;

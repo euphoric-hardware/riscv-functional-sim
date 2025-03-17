@@ -23,15 +23,15 @@ use std::path::Path;
 
 use diff::{Diff, ExecutionState};
 use generated::cpu_execute as _;
-pub use log::*;
-
 use fesvr::frontend::{Frontend, FrontendReturnCode};
 
 fn main() -> std::io::Result<()> {
     let args = FunctionalSimArgs::parse();
-    File::create(&args.output_log)?;
 
-    logger::init_logger(true, &args.output_log.to_str().unwrap());
+    if let Some(pathbuf) = args.output_log {
+        File::create(&pathbuf)?;
+        logger::init_logger(pathbuf.to_str().unwrap());
+    }
 
     let mut compare_logs = false;
     let differ: Diff;

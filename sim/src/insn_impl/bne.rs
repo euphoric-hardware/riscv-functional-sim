@@ -17,7 +17,6 @@ pub fn bne(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
         12,
     );
 
-    
     if cpu.load(rs1) != cpu.load(rs2) {
         Ok((cpu.pc as i64 + offset) as u64)
     } else {

@@ -11,8 +11,6 @@ pub fn sh(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     let offset = Insn::sign_extend((imm12hi << 5 | imm12lo) as u64, 12);
 
-    
-
     let address = cpu.load(rs1).wrapping_add(offset as u64);
     bus.write(address, &(cpu.load(rs2) as u16).to_le_bytes())?;
     Ok(cpu.pc + 4)

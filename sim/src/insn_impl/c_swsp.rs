@@ -1,14 +1,13 @@
-use crate::{bus::{Bus, Device}, cpu::{self, Cpu, Insn}};
+use crate::{
+    bus::{Bus, Device},
+    cpu::{self, Cpu, Insn},
+};
 
 pub fn c_swsp(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
-    // crate::trace_insn!("c_swsp", c_rs2 = insn.c_rs2(), c_uimm8sp_s = insn.c_uimm8sp_s());
-
     let c_rs2 = insn.c_rs2();
     let c_uimm8sp_s = insn.c_uimm8sp_s();
 
     let offset = (c_uimm8sp_s & 0x3) << 6 | c_uimm8sp_s & 0x3c;
-
-    
 
     let address = cpu.load(2).wrapping_add(offset as u64);
     bus.write(address, &(cpu.load(c_rs2) as u32).to_le_bytes())?;

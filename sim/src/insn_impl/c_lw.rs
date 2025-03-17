@@ -1,4 +1,7 @@
-use crate::{bus::{Bus, Device}, cpu::{self, Cpu, Insn}};
+use crate::{
+    bus::{Bus, Device},
+    cpu::{self, Cpu, Insn},
+};
 
 pub fn c_lw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     // crate::trace_insn!("c_lw", rd_p = insn.rd_p(), rs1_p = insn.rs1_p(), c_uimm7lo = insn.c_uimm7lo(), c_uimm7hi = insn.c_uimm7hi());
@@ -7,10 +10,9 @@ pub fn c_lw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1_p = insn.rs1_p() + 8;
     let c_uimm7lo = insn.c_uimm7lo();
     let c_uimm7hi = insn.c_uimm7hi();
-    
+
     let imm = (c_uimm7lo & 0x1) << 6 | c_uimm7hi << 3 | (c_uimm7lo & 0x2) << 1;
-    
-    
+
     let address = (cpu.load(rs1_p) as u64).wrapping_add(imm);
     let mut raw = [0; size_of::<i32>()];
     bus.read(address, &mut raw)?;
