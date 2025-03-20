@@ -8,7 +8,8 @@ pub fn c_add(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     let rd_rs1_n0 = insn.rd_rs1_n0();
     let c_rs2_n0 = insn.c_rs2_n0();
-
+    
+    let rs1 = cpu.load(rd_rs1_n0);
     let result = cpu.load(rd_rs1_n0).wrapping_add(cpu.load(c_rs2_n0));
     cpu.store(rd_rs1_n0, result);
     Ok(cpu.pc + 2)

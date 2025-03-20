@@ -14,8 +14,7 @@ use crate::{
 use ::simple_soft_float;
 use simple_soft_float::RoundingMode;
 
-use slog::{info, Logger};
-use crate::logger::get_logger;
+use log::info;
 
 #[derive(Debug, Default)]
 pub enum MemData {
@@ -201,12 +200,10 @@ impl Cpu {
         bus.read(self.pc, &mut bytes).expect("invalid dram address");
         let insn = Insn::from_bytes(&bytes);
         let mut state = <ExecutionState as std::default::Default>::default();
-        
-        let log = get_logger();
 
         match self.execute_insn(insn, bus) {
             Ok(pc) => {
-                info!(log, 
+                info!(
                     "core   0: {} 0x{:016x} (0x{:08x})",
                     self.privilege_mode(),
                     self.pc,
@@ -218,27 +215,27 @@ impl Cpu {
 
                 if self.commits.modified_regs() {
                     while let Some((reg, val)) = self.commits.reg_write.pop_first() {
-                        info!(log, " {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
+                        info!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
                         state.register_updates.push((reg as u8, val));
                     }
                 }
                 if self.commits.modified_fregs() {
                     while let Some((reg, val)) = self.commits.freg_write.pop_first() {
-                        info!(log, " f{:<3} 0x{:016x}", reg as usize, val);
+                        info!(" f{:<3} 0x{:016x}", reg as usize, val);
                         state.fregister_updates.push((reg as u8, val));
                     }
                 }
                 if self.commits.is_load() {
                     while let Some((addr, _)) = self.commits.mem_read.pop_first() {
-                        info!(log, " mem 0x{:016x}", addr);
+                        info!(" mem 0x{:016x}", addr);
                     }
                 } else if self.commits.is_store() {
                     while let Some((addr, val)) = self.commits.mem_write.pop_first() {
-                        info!(log, " mem 0x{:016x} {}", addr, val);
+                        info!(" mem 0x{:016x} {}", addr, val);
                         state.memory_writes.push((addr, u64::from(val)));
                     }
                 }
-                info!(log, "\n");
+                info!("\n");
                 self.states.push(state);
 
                 self.pc = pc;
@@ -393,4 +390,3 @@ static REGISTER_NAMES: [&str; 32] = [
     "x15", "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27",
     "x28", "x29", "x30", "x31",
 ];
-

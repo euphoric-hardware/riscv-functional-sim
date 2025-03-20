@@ -34,7 +34,7 @@ impl Diff {
                 }
             }
         }
-
+        println!("spike log parsed, {} instructions executed!", states.len());
         Ok(states)
     }
 
@@ -128,7 +128,7 @@ impl Diff {
                 i += 1; // Continue looking at the next part
             }
         }
-
+        
         let parsed_state = ExecutionState {
             pc,
             instruction,
@@ -321,9 +321,6 @@ impl Diff {
                 sim_state.fregister_updates.iter().cloned().collect();
 
             for (&reg, &spike_val) in &spike_fregs {
-                if (reg == 24) {
-                    println!("value: {spike_val}!");
-                }
                 if let Some(&my_val) = my_fregs.get(&reg) {
                     if spike_val != my_val {
                         info!(

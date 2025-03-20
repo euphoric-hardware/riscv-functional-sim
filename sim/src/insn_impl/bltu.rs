@@ -1,7 +1,6 @@
 use crate::{
     bus::Bus,
     cpu::{self, Cpu, Insn},
-    log,
 };
 
 pub fn bltu(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {

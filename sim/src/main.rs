@@ -9,7 +9,6 @@ mod csrs;
 mod diff;
 mod generated;
 mod insn_impl;
-mod log;
 mod logger;
 mod mmu;
 mod plic;
@@ -22,16 +21,14 @@ use std::fs::File;
 use std::path::Path;
 
 use diff::{Diff, ExecutionState};
-use generated::cpu_execute as _;
 use fesvr::frontend::{Frontend, FrontendReturnCode};
+use generated::cpu_execute as _;
 
 fn main() -> std::io::Result<()> {
     let args = FunctionalSimArgs::parse();
+    File::create(&args.output_log)?;
 
-    if let Some(pathbuf) = args.output_log {
-        File::create(&pathbuf)?;
-        logger::init_logger(pathbuf.to_str().unwrap());
-    }
+    logger::init_logger(true, &args.output_log.to_str().unwrap());
 
     let mut compare_logs = false;
     let differ: Diff;
@@ -63,16 +60,18 @@ fn main() -> std::io::Result<()> {
 
     let mut i = 1;
     loop {
+        
         system.tick();
+        
+        if (compare_logs) {
+            Diff::diff_execution_state(spike_states.get(i - 1), system.cpus[0].states.get(i - 1));
+        }
+
         if i % 5000 == 0 {
             if frontend.process(&mut system).expect("htif") == FrontendReturnCode::Exit {
                 println!("Target program finished");
                 break;
             }
-        }
-
-        if (compare_logs) {
-            Diff::diff_execution_state(spike_states.get(i - 1), system.cpus[0].states.get(i - 1));
         }
 
         let minstret = system.cpus[0]
@@ -82,15 +81,15 @@ fn main() -> std::io::Result<()> {
         system.cpus[0]
             .csrs
             .store(csrs::Csrs::MINSTRET, minstret + 1);
-
+        
         i += 1;
     }
 
     // diff logs
-    // if compare_logs {
-    //     Diff::diff_execution_states(&spike_states, &system.cpus[0].states);
-    //     println!("Diff complete!");
-    // }
+    if compare_logs {
+        Diff::diff_execution_states(&spike_states, &system.cpus[0].states);
+        println!("Diff complete!");
+    }
 
     Ok(())
 }
