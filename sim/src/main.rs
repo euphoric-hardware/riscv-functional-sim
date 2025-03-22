@@ -61,11 +61,11 @@ fn main() -> std::io::Result<()> {
     let mut i = 1;
     loop {
         system.tick();
-        if (compare_logs) {
-            if (!Diff::diff_execution_state(
+        if compare_logs {
+            if !Diff::diff_execution_state(
                 spike_states.get(i - 1),
                 system.cpus[0].states.get(i - 1),
-            ) && i <= spike_states.len())
+            ) && i <= spike_states.len()
             {
                 println!("mismatch, exeuction ended!");
                 break;

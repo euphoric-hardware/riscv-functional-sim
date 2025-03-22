@@ -11,7 +11,7 @@ pub fn fcvt_lu_s(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rm = insn.rm();
 
     let mut state = FPState::default();
-    let mut status_flags: StatusFlags = Insn::softfloat_flags_from_riscv_flags(cpu);
+    let status_flags: StatusFlags = Insn::softfloat_flags_from_riscv_flags(cpu);
     state.status_flags = status_flags;
 
     let rounding_mode = Insn::softfloat_round_from_riscv_rm(rm);
@@ -22,11 +22,11 @@ pub fn fcvt_lu_s(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     );
 
     if result.is_none() {
-        if (f32::from_bits(*cpu.fload(rs1).bits() as u32) > u64::MAX as f32) {
+        if f32::from_bits(*cpu.fload(rs1).bits() as u32) > u64::MAX as f32 {
             cpu.store(rd, u64::MAX);
-        } else if (f32::from_bits(*cpu.fload(rs1).bits() as u32) < u64::MIN as f32) {
+        } else if f32::from_bits(*cpu.fload(rs1).bits() as u32) < u64::MIN as f32 {
             cpu.store(rd, u64::MIN);
-        } else if (F32::from_bits(*cpu.fload(rs1).bits() as u32).is_nan()) {
+        } else if F32::from_bits(*cpu.fload(rs1).bits() as u32).is_nan() {
             cpu.store(rd, u64::MAX);
         }
         cpu.csrs.store(Csrs::FFLAGS, 16);

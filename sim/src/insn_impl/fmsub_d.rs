@@ -10,7 +10,7 @@ pub fn fmsub_d(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rm = insn.rm();
 
     let mut state = FPState::default();
-    let mut status_flags: StatusFlags = Insn::softfloat_flags_from_riscv_flags(cpu);
+    let status_flags: StatusFlags = Insn::softfloat_flags_from_riscv_flags(cpu);
     state.status_flags = status_flags;
 
     let op1 = cpu.fload(rs1);

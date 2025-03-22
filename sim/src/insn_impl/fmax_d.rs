@@ -12,19 +12,19 @@ pub fn fmax_d(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     let op1 = cpu.fload(rs1);
     let op2 = cpu.fload(rs2);
-    let mut result: F64;
+    let result: F64;
     
-    if (op1.is_nan() && op2.is_nan()) {
+    if op1.is_nan() && op2.is_nan() {
         result = F64::quiet_nan();
-    } else if (op1.is_nan()) {
+    } else if op1.is_nan() {
         result = op2;
-    } else if (op2.is_nan()) {
+    } else if op2.is_nan() {
         result = op1;
     } else {
         result = F64::from_bits(f64::max(f64::from_bits(*op1.bits()), f64::from_bits(*op2.bits())).to_bits());
     }
 
-    if (op1.is_signaling_nan() || op2.is_signaling_nan()) {
+    if op1.is_signaling_nan() || op2.is_signaling_nan() {
         cpu.csrs.store(Csrs::FFLAGS, 16);
     }
 

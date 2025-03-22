@@ -9,14 +9,14 @@ pub fn fmul_s(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rm = insn.rm();
 
     let mut state = FPState::default();
-    let mut status_flags: StatusFlags = Insn::softfloat_flags_from_riscv_flags(cpu);
+    let status_flags: StatusFlags = Insn::softfloat_flags_from_riscv_flags(cpu);
     state.status_flags = status_flags;
 
     let op1 = F32::from_bits(*(cpu.fload(rs1).bits()) as u32);
     let op2 = F32::from_bits(*(cpu.fload(rs2).bits()) as u32);
     // FIXME - update rounding mode (RISC-V -> softfloat)
     let result = op1.mul(&op2, None, Some(&mut state));
-    let result64 = F64::from_bits(*result.bits() as u64);
+    let result64 = F64::from_bits(0xffffffff00000000 | *result.bits() as u64);
 
     cpu.fstore(rd, result64);
     Insn::riscv_flags_from_softfloat_flags(cpu, state.status_flags);

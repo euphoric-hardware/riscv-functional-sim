@@ -10,9 +10,9 @@ pub fn fsgnj_s(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let rs2 = insn.rs2();
 
-    let result = F32::from_bits((*F32::convert_from_float(&cpu.fload(rs1), None, None).bits() & 0x7fffffff)
-        | (*F32::convert_from_float(&cpu.fload(rs2), None, None).bits()) & 0x80000000);
-    let result64 = F64::convert_from_float(&result, None, None);
+    let sign = ((*cpu.fload(rs2).bits() as u32) & 0x80000000) as u32;
+    let result = (*cpu.fload(rs1).bits() as u32) | sign;
+    let result64 = F64::from_bits(0xffffffff00000000 | (result as u64));
     
     cpu.fstore(rd, result64);
     Ok(cpu.pc + 4)

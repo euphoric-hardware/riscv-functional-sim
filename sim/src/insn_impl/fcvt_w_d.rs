@@ -12,20 +12,20 @@ pub fn fcvt_w_d(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rm = insn.rm();
 
     let mut state = FPState::default();
-    let mut status_flags: StatusFlags = Insn::softfloat_flags_from_riscv_flags(cpu);
+    let status_flags: StatusFlags = Insn::softfloat_flags_from_riscv_flags(cpu);
     state.status_flags = status_flags;
 
     let rounding_mode = Insn::softfloat_round_from_riscv_rm(rm);
-    let mut result: Option<i32> =
+    let result: Option<i32> =
         cpu.fload(rs1)
             .to_i32(true, Some(rounding_mode), Some(&mut state));
 
     if result.is_none() {
-        if (f64::from_bits(*cpu.fload(rs1).bits()) > i32::MAX as f64) {
+        if f64::from_bits(*cpu.fload(rs1).bits()) > i32::MAX as f64 {
             cpu.store(rd, (i32::MAX as i64) as u64);
-        } else if (f64::from_bits(*cpu.fload(rs1).bits()) < i32::MIN as f64) {
+        } else if f64::from_bits(*cpu.fload(rs1).bits()) < i32::MIN as f64 {
             cpu.store(rd, (i32::MIN as i64) as u64);
-        } else if (cpu.fload(rs1).is_nan()) {
+        } else if cpu.fload(rs1).is_nan() {
             cpu.store(rd, i32::MAX as u64);
         }
         cpu.csrs.store(Csrs::FFLAGS, 16);

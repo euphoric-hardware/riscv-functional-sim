@@ -10,10 +10,8 @@ pub fn fsgnjn_d(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs1 = insn.rs1();
     let rs2 = insn.rs2();
 
-    let result = F64::from_bits(
-        (*cpu.fload(rs1).bits() & 0x7fffffffffffffff)
-            | !(*cpu.fload(rs1).bits() & 0x8000000000000000),
-    );
+    let sign = !(*cpu.fload(rs2).bits() >> 63) << 63;
+    let result = F64::from_bits((*cpu.fload(rs1).bits() & 0x7fffffffffffffff) | sign);
 
     cpu.fstore(rd, result);
     Ok(cpu.pc + 4)

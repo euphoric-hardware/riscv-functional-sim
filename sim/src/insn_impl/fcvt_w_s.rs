@@ -11,22 +11,22 @@ pub fn fcvt_w_s(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rm = insn.rm();
 
     let mut state = FPState::default();
-    let mut status_flags: StatusFlags = Insn::softfloat_flags_from_riscv_flags(cpu);
+    let status_flags: StatusFlags = Insn::softfloat_flags_from_riscv_flags(cpu);
     state.status_flags = status_flags;
 
     let rounding_mode = Insn::softfloat_round_from_riscv_rm(rm);
-    let mut result: Option<i32> = F32::from_bits(*cpu.fload(rs1).bits() as u32).to_i32(
+    let result: Option<i32> = F32::from_bits(*cpu.fload(rs1).bits() as u32).to_i32(
         true,
         Some(rounding_mode),
         Some(&mut state),
     );
 
     if result.is_none() {
-        if (f32::from_bits(*cpu.fload(rs1).bits() as u32) > i32::MAX as f32) {
+        if f32::from_bits(*cpu.fload(rs1).bits() as u32) > i32::MAX as f32 {
             cpu.store(rd, (i32::MAX as i64) as u64);
-        } else if (f32::from_bits(*cpu.fload(rs1).bits() as u32) < i32::MIN as f32) {
+        } else if f32::from_bits(*cpu.fload(rs1).bits() as u32) < i32::MIN as f32 {
             cpu.store(rd, (i32::MIN as i64) as u64);
-        } else if (F32::from_bits(*cpu.fload(rs1).bits() as u32).is_nan()) {
+        } else if F32::from_bits(*cpu.fload(rs1).bits() as u32).is_nan() {
             cpu.store(rd, i32::MAX as u64);
         }
         

@@ -680,6 +680,22 @@ impl Cpu {
             insn_impl::remuw::remuw(insn, self, bus)
         }
 
+        else if bits & 0xe003 == 0x2000 {
+            insn_impl::c_fld::c_fld(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0xa000 {
+            insn_impl::c_fsd::c_fsd(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0x2002 {
+            insn_impl::c_fldsp::c_fldsp(insn, self, bus)
+        }
+
+        else if bits & 0xe003 == 0xa002 {
+            insn_impl::c_fsdsp::c_fsdsp(insn, self, bus)
+        }
+
         else {
             Err(cpu::Exception::IllegalInstruction)
         }
