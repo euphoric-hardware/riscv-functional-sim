@@ -10,7 +10,7 @@ pub fn srl(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     cpu.store(
         rd,
-        cpu.load(rs1).wrapping_shr((cpu.load(rs2) & 0x31) as u32),
+        cpu.load(rs1).wrapping_shr((cpu.load(rs2) & 0x1f) as u32),
     );
     Ok(cpu.pc + 4)
 }

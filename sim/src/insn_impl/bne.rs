@@ -10,11 +10,11 @@ pub fn bne(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let bimm12lo = insn.bimm12lo();
 
     let offset = Insn::sign_extend(
-        ((bimm12hi & 0x40) << 5)
+        ((bimm12hi & 0x40) << 6)
             | ((bimm12lo & 0x01) << 11)
             | ((bimm12hi & 0x3F) << 5)
             | (bimm12lo & 0x1E),
-        12,
+        13,
     );
 
     if cpu.load(rs1) != cpu.load(rs2) {

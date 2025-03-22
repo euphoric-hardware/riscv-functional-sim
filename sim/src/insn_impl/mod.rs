@@ -23,7 +23,6 @@ pub mod c_beqz;
 pub mod c_bnez;
 pub mod c_ebreak;
 pub mod c_j;
-pub mod c_jal;
 pub mod c_jalr;
 pub mod c_jr;
 pub mod c_ld;

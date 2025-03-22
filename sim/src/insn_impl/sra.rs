@@ -10,7 +10,7 @@ pub fn sra(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     cpu.store(
         rd,
-        (cpu.load(rs1) as i64).wrapping_shr((cpu.load(rs2) & 0x31) as u32) as u64,
+        (cpu.load(rs1) as i64).wrapping_shr((cpu.load(rs2) & 0x1f) as u32) as u64,
     );
     Ok(cpu.pc + 4)
 }

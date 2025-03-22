@@ -128,7 +128,7 @@ impl Diff {
                 i += 1; // Continue looking at the next part
             }
         }
-        
+
         let parsed_state = ExecutionState {
             pc,
             instruction,
@@ -142,7 +142,7 @@ impl Diff {
     pub fn diff_execution_state(
         spike_state: Option<&ExecutionState>,
         sim_state: Option<&ExecutionState>,
-    ) {
+    ) -> bool {
         if let Some(spike_state) = spike_state {
             if let Some(sim_state) = sim_state {
                 if spike_state.pc != sim_state.pc {
@@ -150,13 +150,18 @@ impl Diff {
                         "PC MISMATCH: Spike 0x{:x}, Emulator 0x{:x}\n",
                         spike_state.pc, sim_state.pc
                     );
+                    return false;
                 }
 
-                if spike_state.instruction != sim_state.instruction {
+                let compact = (spike_state.instruction as u16 as u32) == spike_state.instruction;
+                if (spike_state.instruction != sim_state.instruction && !compact)
+                    || (compact && spike_state.instruction != sim_state.instruction as u16 as u32)
+                {
                     info!(
                         "INSTRUCTION MISMATCH: Spike 0x{:x}, Emulator 0x{:x}, PC = {:#08x}\n",
                         spike_state.instruction, sim_state.instruction, spike_state.pc
                     );
+                    return false;
                 }
 
                 // Compare register updates
@@ -172,12 +177,14 @@ impl Diff {
                                 "REGISTER x{} MISMATCH: Spike 0x{:x}, Emulator 0x{:x}, PC = {:#08x}\n",
                                 reg, spike_val, my_val, spike_state.pc
                             );
+                            return false;
                         }
                     } else {
                         info!(
                             "REGISTER x{} updated in Spike but not in Emulator, PC = {:#08x}\n",
                             reg, spike_state.pc
                         );
+                        return false;
                     }
                 }
 
@@ -187,6 +194,7 @@ impl Diff {
                             "REGISTER x{} updated in Emulator but not in Spike, PC = {:#08x}\n",
                             reg, spike_state.pc
                         );
+                        return false;
                     }
                 }
 
@@ -203,12 +211,14 @@ impl Diff {
                                 "REGISTER f{} MISMATCH: Spike 0x{:x}, Emulator 0x{:x}, PC = {:#08x}\n",
                                 reg, spike_val, my_val, spike_state.pc
                             );
+                            return false;
                         }
                     } else {
                         info!(
                             "REGISTER f{} updated in Spike but not in Emulator, PC = {:#08x}\n",
                             reg, spike_state.pc
                         );
+                        return false;
                     }
                 }
 
@@ -218,6 +228,7 @@ impl Diff {
                             "REGISTER f{} updated in Emulator but not in Spike, PC = {:#08x}\n",
                             reg, spike_state.pc
                         );
+                        return false;
                     }
                 }
 
@@ -234,12 +245,14 @@ impl Diff {
                                     "MEMORY WRITE MISMATCH at 0x{:x}: Spike 0x{:x}, Emulator 0x{:x}, PC = {:#08x}\n",
                                     addr, spike_val, my_val, spike_state.pc
                                 );
+                            return false;
                         }
                     } else {
                         info!(
                             "MEMORY WRITE at 0x{:x} present in Spike but missing in Emulator, PC = {:#08x}\n",
                             addr, spike_state.pc
                         );
+                        return false;
                     }
                 }
 
@@ -249,6 +262,7 @@ impl Diff {
                             "MEMORY WRITE at 0x{:x} present in Emulator but missing in Spike, PC = {:#08x}\n",
                             addr, spike_state.pc
                         );
+                        return false;
                     }
                 }
             } else {
@@ -256,115 +270,23 @@ impl Diff {
                     "No corresponding sim state for PC = {:#016x}, instruction = {:#08x}\n",
                     spike_state.pc, spike_state.instruction
                 );
+                return false;
             }
         } else {
             info!("No spike state!\n");
+            return false;
         }
+        return true;
     }
 
-    pub fn diff_execution_states(spike_log: &[ExecutionState], sim_log: &[ExecutionState]) {
+    pub fn diff_execution_states(spike_log: &[ExecutionState], sim_log: &[ExecutionState]) -> bool {
         let min_len = spike_log.len().min(sim_log.len());
 
         for i in 0..min_len {
             let spike_state = &spike_log[i];
             let sim_state = &sim_log[i];
-
-            if spike_state.pc != sim_state.pc {
-                info!(
-                    "PC MISMATCH at step {}: Spike 0x{:x}, Emulator 0x{:x}\n",
-                    i, spike_state.pc, sim_state.pc
-                );
-            }
-
-            if spike_state.instruction != sim_state.instruction {
-                info!(
-                    "INSTRUCTION MISMATCH at step {}: Spike 0x{:x}, Emulator 0x{:x}, PC = {:#08x}\n",
-                    i, spike_state.instruction, sim_state.instruction, spike_state.pc
-                );
-            }
-
-            // Compare register updates
-            let spike_regs: std::collections::HashMap<_, _> =
-                spike_state.register_updates.iter().cloned().collect();
-            let my_regs: std::collections::HashMap<_, _> =
-                sim_state.register_updates.iter().cloned().collect();
-
-            for (&reg, &spike_val) in &spike_regs {
-                if let Some(&my_val) = my_regs.get(&reg) {
-                    if spike_val != my_val {
-                        info!(
-                            "REGISTER x{} MISMATCH at step {}: Spike 0x{:x}, Emulator 0x{:x}, PC = {:#08x}\n",
-                            reg, i, spike_val, my_val, spike_state.pc
-                        );
-                    }
-                } else {
-                    info!(
-                        "REGISTER x{} updated in Spike but not in Emulator at step {}, PC = {:#08x}\n",
-                        reg, i, spike_state.pc
-                    );
-                }
-            }
-
-            for (&reg, &my_val) in &my_regs {
-                if !spike_regs.contains_key(&reg) {
-                    info!(
-                        "REGISTER x{} updated in Emulator but not in Spike at step {}, PC = {:#08x}\n",
-                        reg, i, spike_state.pc
-                    );
-                }
-            }
-
-            // Compare float register updates
-            let spike_fregs: std::collections::HashMap<_, _> =
-                spike_state.fregister_updates.iter().cloned().collect();
-            let my_fregs: std::collections::HashMap<_, _> =
-                sim_state.fregister_updates.iter().cloned().collect();
-
-            for (&reg, &spike_val) in &spike_fregs {
-                if let Some(&my_val) = my_fregs.get(&reg) {
-                    if spike_val != my_val {
-                        info!(
-                            "REGISTER f{} MISMATCH: Spike 0x{:x}, Emulator 0x{:x}, PC = {:#08x}\n",
-                            reg, spike_val, my_val, spike_state.pc
-                        );
-                    }
-                } else {
-                    info!(
-                        "REGISTER f{} updated in Spike but not in Emulator, PC = {:#08x}\n",
-                        reg, spike_state.pc
-                    );
-                }
-            }
-
-            // Compare memory writes
-            let spike_mem: std::collections::HashMap<_, _> =
-                spike_state.memory_writes.iter().cloned().collect();
-            let my_mem: std::collections::HashMap<_, _> =
-                sim_state.memory_writes.iter().cloned().collect();
-
-            for (&addr, &spike_val) in &spike_mem {
-                if let Some(&my_val) = my_mem.get(&addr) {
-                    if spike_val != my_val {
-                        info!(
-                            "MEMORY WRITE MISMATCH at 0x{:x} (step {}): Spike 0x{:x}, Emulator 0x{:x}, PC = {:#08x}\n",
-                            addr, i, spike_val, my_val, spike_state.pc
-                        );
-                    }
-                } else {
-                    info!(
-                        "MEMORY WRITE at 0x{:x} present in Spike but missing in Emulator (step {}), PC = {:#08x}\n",
-                        addr, i, spike_state.pc
-                    );
-                }
-            }
-
-            for (&addr, &my_val) in &my_mem {
-                if !spike_mem.contains_key(&addr) {
-                    info!(
-                        "MEMORY WRITE at 0x{:x} present in Emulator but missing in Spike (step {}), PC = {:#08x}\n",
-                        addr, i, spike_state.pc
-                    );
-                }
+            if Diff::diff_execution_state(Some(spike_state), Some(sim_state)) == false {
+                return false;
             }
         }
 
@@ -374,6 +296,8 @@ impl Diff {
                 spike_log.len(),
                 sim_log.len()
             );
+            return false;
         }
+        return true;
     }
 }

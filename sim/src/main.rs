@@ -60,11 +60,16 @@ fn main() -> std::io::Result<()> {
 
     let mut i = 1;
     loop {
-        
         system.tick();
-        
         if (compare_logs) {
-            Diff::diff_execution_state(spike_states.get(i - 1), system.cpus[0].states.get(i - 1));
+            if (!Diff::diff_execution_state(
+                spike_states.get(i - 1),
+                system.cpus[0].states.get(i - 1),
+            ) && i <= spike_states.len())
+            {
+                println!("mismatch, exeuction ended!");
+                break;
+            }
         }
 
         if i % 5000 == 0 {
@@ -81,15 +86,15 @@ fn main() -> std::io::Result<()> {
         system.cpus[0]
             .csrs
             .store(csrs::Csrs::MINSTRET, minstret + 1);
-        
+
         i += 1;
     }
 
-    // diff logs
-    if compare_logs {
-        Diff::diff_execution_states(&spike_states, &system.cpus[0].states);
-        println!("Diff complete!");
-    }
+    // // diff logs
+    // if compare_logs {
+    //     Diff::diff_execution_states(&spike_states, &system.cpus[0].states);
+    //     println!("Diff complete!");
+    // }
 
     Ok(())
 }

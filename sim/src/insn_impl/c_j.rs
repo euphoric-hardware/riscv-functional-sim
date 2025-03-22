@@ -4,9 +4,8 @@ use crate::{
 };
 
 pub fn c_j(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
-    // crate::trace_insn!("c_j", c_imm12 = insn.c_imm12());
-
     let c_imm12 = insn.c_imm12();
+    
     let offset_raw: u64 = (c_imm12 & 0x400) << 1
         | (c_imm12 & 0x40) << 4
         | (c_imm12 & 0x180) << 1
@@ -16,8 +15,6 @@ pub fn c_j(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
         | (c_imm12 & 0xe)
         | (c_imm12 & 0x1) << 5;
     let offset = Insn::sign_extend(offset_raw, 12);
-
     let new_pc = cpu.pc.wrapping_add(offset as u64);
-
     Ok(new_pc as u64)
 }

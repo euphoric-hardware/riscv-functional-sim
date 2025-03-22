@@ -1,5 +1,7 @@
+use indexmap::IndexMap;
 // use serde::Deserialize;
 use serde::Deserialize;
+use serde_json::{self, value::Index};
 use std::{
     collections::BTreeMap,
     env,
@@ -11,10 +13,12 @@ use std::{
 
 #[derive(Deserialize)]
 struct ParsedInsn {
-    mask: String,
+    encoding: String,
+    variable_fields: Vec<String>,
+    extension: Vec<String>,
     #[serde(rename = "match")]
     i_match: String,
-    variable_fields: Vec<String>,
+    mask: String,
 }
 
 fn generate_instruction_files(out_dir: &Path, config: &BTreeMap<String, ParsedInsn>) {
@@ -72,7 +76,7 @@ pub fn {insn_name}(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64>
     fs::write(&mod_rs, mod_decls).expect("mod.rs");
 }
 
-fn generate_cpu_execute_arms(out_dir: &Path, config: &BTreeMap<String, ParsedInsn>) {
+fn generate_cpu_execute_arms(out_dir: &Path, config: &IndexMap<String, ParsedInsn>) {
     let cpu_execute = out_dir.join("src").join("generated").join("cpu_execute.rs");
     if fs::exists(&cpu_execute).unwrap_or(true) {
         fs::remove_file(&cpu_execute).expect("remove cpu_execute");
@@ -261,7 +265,7 @@ fn main() {
     }
 
     let cmd = Command::new("make")
-        .arg("EXTENSIONS=rv_i rv64_i rv_zicsr rv_system rv_c rv32_c rv64_C rv_f rv64_f rv_d rv64_d rv_m rv64_m")
+        .arg("EXTENSIONS=rv_i rv64_i rv_zicsr rv_system rv_c rv64_c rv_f rv64_f rv_d rv64_d rv_m rv64_m")
         .current_dir(&spec_dir)
         .env("PATH", path)
         .output()
@@ -275,15 +279,51 @@ fn main() {
         );
     }
 
+    let mut execute_config: IndexMap<String, ParsedInsn> = serde_json::from_reader(
+        File::open(&spec_dir.join("instr_dict.json")).expect("instr_dict.json not found"),
+    )
+    .expect("json deserialize");
     let mut config: BTreeMap<String, ParsedInsn> = serde_yaml::from_reader(
         File::open(&spec_dir.join("instr_dict.json")).expect("instr_dict.json not found"),
     )
     .expect("json deserialize");
 
     const EXCLUDED_INSNS: &[&str] = &[
-        "mv", "neg", "nop", "zext_b", "ret", "bleu", "bgtu", "ble", "bgez", "blez", "bgt", "bgtz",
-        "bltz", "bnez", "beqz", "seqz", "snez", "sltz", "sgtz", "jr", "j", "sext_w", "csrr",
-        "csrw", "csrs", "csrc", "csrwi", "csrsi", "csrci", "jal_pseudo", "jalr_pseudo", "fence_tso", "scall", "sbreak", "pause"
+        "mv",
+        "neg",
+        "nop",
+        "zext_b",
+        "ret",
+        "bleu",
+        "bgtu",
+        "ble",
+        "bgez",
+        "blez",
+        "bgt",
+        "bgtz",
+        "bltz",
+        "bnez",
+        "beqz",
+        "seqz",
+        "snez",
+        "sltz",
+        "sgtz",
+        "jr",
+        "j",
+        "sext_w",
+        "csrr",
+        "csrw",
+        "csrs",
+        "csrc",
+        "csrwi",
+        "csrsi",
+        "csrci",
+        "jal_pseudo",
+        "jalr_pseudo",
+        "fence_tso",
+        "scall",
+        "sbreak",
+        "pause",
     ];
     for insn in EXCLUDED_INSNS {
         config.remove(insn.to_owned());
@@ -299,7 +339,7 @@ fn main() {
         .expect("csrs.csv not found");
 
     generate_instruction_files(&out_dir, &config);
-    generate_cpu_execute_arms(&out_dir, &config);
+    generate_cpu_execute_arms(&out_dir, &execute_config);
     generate_insn_arg_luts(&out_dir, &mut rdr);
     generate_csr_load_store(&out_dir, &mut rdr2);
 }

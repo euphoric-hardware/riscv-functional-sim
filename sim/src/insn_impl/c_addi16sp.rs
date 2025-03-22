@@ -4,8 +4,6 @@ use crate::{
 };
 
 pub fn c_addi16sp(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
-    // crate::trace_insn!("c_addi16sp", c_nzimm10hi = insn.c_nzimm10hi(), c_nzimm10lo = insn.c_nzimm10lo());
-
     let c_nzimm10hi = insn.c_nzimm10hi();
     let c_nzimm10lo = insn.c_nzimm10lo();
 
