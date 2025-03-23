@@ -9,6 +9,7 @@ use crate::{
     bus::{self, Bus, Device},
     csrs::{self, Csrs},
     diff::{Diff, ExecutionState},
+    insn_impl
 };
 
 use ::simple_soft_float;
@@ -254,6 +255,9 @@ impl Cpu {
 pub struct Insn(pub u64);
 
 impl Insn {
+    pub fn from_bits(bits: u32) -> Self {
+        Self(bits as u64)
+    }
     pub fn from_bytes(bytes: &[u8]) -> Self {
         Self(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as u64)
     }

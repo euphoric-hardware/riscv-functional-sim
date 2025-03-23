@@ -40,7 +40,7 @@ impl RiscvElf {
                 "fromhost" => {
                     fromhost_addr = Some(symbol.address());
                 }
-                _ => { }
+                _ => {}
             }
         }
 
@@ -62,18 +62,28 @@ impl RiscvElf {
     pub fn extract_htif_addresses(&self) -> (u64, Option<u64>) {
         let (t, h) = match self.extract_htif_from_symbols() {
             // Extract from symbols
-            Ok(htif_addrs) => {
-                htif_addrs
-            }
+            Ok(htif_addrs) => htif_addrs,
             // Fall back to extract from sections
-            Err(_) => {
-                (
-                    self.section_base_address(".tohost"),
-                    self.section_base_address(".fromhost"),
-                )
-            }
+            Err(_) => (
+                self.section_base_address(".tohost"),
+                self.section_base_address(".fromhost"),
+            ),
         };
         (t.expect("tohost not found in elf"), h)
+    }
+
+    pub fn extract_reset_vector(&self) -> (u64) {
+        let bytes: [u8; 8] = [
+            self.data[0x18],
+            self.data[0x19],
+            self.data[0x1a],
+            self.data[0x1b],
+            self.data[0x1c],
+            self.data[0x1d],
+            self.data[0x1e],
+            self.data[0x1f],
+        ];
+        return u64::from_le_bytes(bytes);
     }
 }
 

@@ -56,6 +56,8 @@ fn main() -> std::io::Result<()> {
     system.cpus[0].csrs.store_unchecked(csrs::Csrs::MINSTRET, 5);
 
     let mut frontend = Frontend::try_new(binary).unwrap();
+    system.cpus[0].pc = frontend.reset_vector();
+
     frontend.write_elf(&mut system).unwrap();
 
     let mut i = 1;

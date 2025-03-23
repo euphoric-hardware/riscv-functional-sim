@@ -18,7 +18,7 @@ impl System<'_> {
 
         let mut cpu = Cpu::new();
         cpu.pc = 0x80000000;
-
+        
         Self {
             bus,
             cpus: vec![cpu],
