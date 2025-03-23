@@ -9,3 +9,5 @@ riscv-tests/
 *.txt
 embench/
 build/
+*.py
+*.sh
