@@ -76,7 +76,6 @@ fn main() -> std::io::Result<()> {
 
         if i % 5000 == 0 {
             if frontend.process(&mut system).expect("htif") == FrontendReturnCode::Exit {
-                println!("{} instructions executed.", i);
                 println!("Target program finished");
                 break;
             }
