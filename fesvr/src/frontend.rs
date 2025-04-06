@@ -145,9 +145,15 @@ impl Frontend {
     }
 
     pub fn reset_vector(&self) -> u64 {
-        return self.elf.extract_reset_vector()
+        self.elf.extract_reset_vector()
     }
 
+    pub fn start_of_text(&self) -> u64 {
+        self.elf.extract_start_of_text()
+    }
+    pub fn end_of_text(&self) -> u64 {
+        self.elf.extract_end_of_text()
+    }
     pub fn reset<H: Htif>(&self, htif: &mut H) -> Result<()> {
         htif.write(Self::MSIP_BASE, &[1])?;
         Ok(())

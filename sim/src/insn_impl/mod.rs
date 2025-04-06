@@ -170,3 +170,4 @@ pub mod sw;
 pub mod wfi;
 pub mod xor;
 pub mod xori;
+pub mod insn_raw;

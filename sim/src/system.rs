@@ -1,14 +1,15 @@
 use fesvr::Htif;
 
 use crate::bus::{Bus, Device, Ram};
+use crate::Frontend;
 use crate::cpu::Cpu;
 
 pub struct System<'b> {
     pub cpus: Vec<Cpu>,
-    bus: Bus<'b>,
+    pub bus: Bus<'b>,
 }
 
-impl System<'_> {
+impl<'b> System<'b> {
     // testver
     pub fn new() -> Self {
         let mut bus = Bus::new();

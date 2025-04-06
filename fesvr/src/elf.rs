@@ -85,6 +85,44 @@ impl RiscvElf {
         ];
         return u64::from_le_bytes(bytes);
     }
+
+    pub fn extract_start_of_text(&self) -> u64 {
+        let obj = object::File::parse(&*self.data).expect("data error");
+        let mut start_addr: u64 = 0x80000000;
+        for symbol in obj.symbols() {
+            let name = symbol.name().expect("no symbol name");
+            match name {
+                "start" => {
+                    start_addr = symbol.address();
+                }
+
+                _ => {}
+            }
+        }
+
+        start_addr
+    }
+
+    pub fn extract_end_of_text(&self) -> u64 {
+        let obj = object::File::parse(&*self.data).expect("data error");
+        let mut end_addr: u64 = 0x80000000;
+        for symbol in obj.symbols() {
+            let name = symbol.name().expect("no symbol name");
+            match name {
+                "_exit" => {
+                    end_addr = symbol.address();
+                }
+
+                "exit" => {
+                    end_addr = symbol.address();
+                }
+
+                _ => {}
+            }
+        }
+
+        end_addr
+    }
 }
 
 pub(crate) type ElfSectionTable64<'a> = SectionTable<'a, FileHeader64<Endianness>>;
