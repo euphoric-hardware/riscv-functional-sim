@@ -113,6 +113,14 @@ impl UopCacheEntry {
             entry.op = insn_raw::bltu_cached::bltu_cached;
         } else if bits & 0x707f == 0x7063 {
             entry.op = insn_raw::bgeu_cached::bgeu_cached;
+        } else if bits & 0x7f == 0x6f {
+            entry.op = insn_raw::jal_cached::jal_cached;
+        } else if bits & 0x707f == 0x67 {
+            entry.op = insn_raw::jalr_cached::jalr_cached;
+        } else if bits & 0x7f == 0x37 {
+            entry.op = insn_raw::lui_cached::lui_cached;
+        } else if bits & 0x7f == 0x17 {
+            entry.op = insn_raw::auipc_cached::auipc_cached;
         } else {
             return None;
         }

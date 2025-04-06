@@ -31,4 +31,8 @@ pub mod blt_cached;
 pub mod bge_cached;
 pub mod bltu_cached;
 pub mod bgeu_cached;
+pub mod jal_cached;
+pub mod jalr_cached;
+pub mod lui_cached;
+pub mod auipc_cached;
 pub mod nop_cached;
