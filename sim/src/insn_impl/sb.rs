@@ -3,6 +3,8 @@ use crate::{
     cpu::{self, Cpu, Insn},
 };
 
+use super::insn_raw;
+
 pub fn sb(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let imm12hi = insn.imm12hi();
     let rs1 = insn.rs1();
@@ -11,7 +13,5 @@ pub fn sb(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     let offset = Insn::sign_extend((imm12hi << 5 | imm12lo) as u64, 12);
 
-    let address = cpu.load(rs1).wrapping_add(offset as u64);
-    bus.write(address, &(cpu.load(rs2) as u8).to_le_bytes())?;
-    Ok(cpu.pc + 4)
+    insn_raw::sb_raw::sb_raw(cpu, bus, rs1, rs2, offset as u64)
 }

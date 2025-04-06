@@ -218,17 +218,17 @@ impl Cpu {
         let insn = Insn::from_bytes(&bytes);
         let mut state = <ExecutionState as std::default::Default>::default();
 
-        match self.execute_insn(insn, bus) {
+        match self.execute_insn(bus) {
             Ok(pc) => {
                 info!(
                     "core   0: {} 0x{:016x} (0x{:08x})",
                     self.privilege_mode(),
                     self.pc,
-                    insn.bits()
+                    insn.bits() // FIXME - figure out how to get instruction
                 );
 
                 state.pc = self.pc;
-                state.instruction = insn.bits() as u32;
+                state.instruction = insn.bits() as u32; // FIXME - figure out how to get instruction
 
                 if self.commits.modified_regs() {
                     while let Some((reg, val)) = self.commits.reg_write.pop_first() {

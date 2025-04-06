@@ -1,0 +1,7 @@
+use crate::{
+    bus::Bus, cpu::{self, Cpu, Insn}, insn_impl::insn_raw::{self, nop_raw::nop_raw}, uop_cache::UopCacheEntry
+};
+
+pub fn nop_cached(cpu: &mut Cpu, bus: &mut Bus, cache_entry: &UopCacheEntry) -> cpu::Result<u64> {
+    insn_raw::nop_raw::nop_raw(cpu)
+}

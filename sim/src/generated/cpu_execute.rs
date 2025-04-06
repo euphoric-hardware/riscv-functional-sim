@@ -1,17 +1,20 @@
 use crate::{
-    bus::Bus,
+    bus::{Bus, Device},
     cpu::{self, Cpu, Insn},
     insn_impl,
 };
 
 impl Cpu {
-    pub fn execute_insn(&mut self, insn: Insn, bus: &mut Bus) -> cpu::Result<u64> {
+    pub fn execute_insn(&mut self, bus: &mut Bus) -> cpu::Result<u64> {
         let cache_index = (self.pc.clone() - 0x80000000) / 4;
         let cache_entry = self.uop_cache.get(&cache_index).cloned();
         if let Some(cached_insn) = cache_entry {
             let result = cached_insn.execute_cached_insn(self, bus);
             return result;
         } else {
+            let mut bytes = [0; std::mem::size_of::<u32>()];
+            bus.read(self.pc, &mut bytes).expect("invalid dram address");
+            let insn = Insn::from_bytes(&bytes);
             let bits = insn.bits();
             if bits & 0x7f == 0x37 {
                 insn_impl::lui::lui(insn, self, bus)

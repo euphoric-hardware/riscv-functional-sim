@@ -3,11 +3,12 @@ use crate::{
     cpu::{self, Cpu, Insn},
 };
 
+use super::insn_raw;
+
 pub fn sltu(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rd = insn.rd();
     let rs1 = insn.rs1();
     let rs2 = insn.rs2();
 
-    cpu.store(rd, ((cpu.load(rs1)) < (cpu.load(rs2))) as u64);
-    Ok(cpu.pc + 4)
+    insn_raw::sltu_raw::sltu_raw(cpu, rd, rs1, rs2)
 }

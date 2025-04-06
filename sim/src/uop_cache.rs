@@ -1,7 +1,7 @@
 use crate::{
     bus::Bus,
     cpu::{self, Cpu, Insn, Result},
-    insn_impl::insn_raw,
+    insn_impl::insn_cached,
 };
 
 #[derive(Debug, Clone)]
@@ -28,7 +28,7 @@ impl UopCacheEntry {
             imm_b: (0),
             imm_u: (0),
             imm_j: (0),
-            op: (insn_raw::nop_cached::nop_cached),
+            op: (insn_cached::nop_cached::nop_cached),
         };
         entry.rs1 = insn.rs1();
         entry.rs2 = insn.rs2();
@@ -42,7 +42,7 @@ impl UopCacheEntry {
                 | (insn.bimm12lo() & 0x1E),
             13,
         ) as u64;
-        entry.imm_u = insn.imm20() << 12;
+        entry.imm_u = Insn::sign_extend(insn.imm20() << 12, 32) as u64;
         entry.imm_j = Insn::sign_extend(
             ((insn.jimm20() & 0x80000) << 1
                 | ((insn.jimm20() & 0xff) << 12)
@@ -54,73 +54,73 @@ impl UopCacheEntry {
         // select operation here
         let bits = insn.bits();
         if bits & 0x707f == 0x13 {
-            entry.op = insn_raw::addi_cached::addi_cached;
+            entry.op = insn_cached::addi_cached::addi_cached;
         } else if bits & 0x707f == 0x2013 {
-            entry.op = insn_raw::slti_cached::slti_cached;
+            entry.op = insn_cached::slti_cached::slti_cached;
         } else if bits & 0x707f == 0x3013 {
-            entry.op = insn_raw::sltiu_cached::sltiu_cached;
+            entry.op = insn_cached::sltiu_cached::sltiu_cached;
         } else if bits & 0x707f == 0x4013 {
-            entry.op = insn_raw::xori_cached::xori_cached;
+            entry.op = insn_cached::xori_cached::xori_cached;
         } else if bits & 0x707f == 0x6013 {
-            entry.op = insn_raw::ori_cached::ori_cached;
+            entry.op = insn_cached::ori_cached::ori_cached;
         } else if bits & 0x707f == 0x7013 {
-            entry.op = insn_raw::andi_cached::andi_cached;
+            entry.op = insn_cached::andi_cached::andi_cached;
         } else if bits & 0xfe00707f == 0x33 {
-            entry.op = insn_raw::add_cached::add_cached;
+            entry.op = insn_cached::add_cached::add_cached;
         } else if bits & 0xfe00707f == 0x40000033 {
-            entry.op = insn_raw::sub_cached::sub_cached;
+            entry.op = insn_cached::sub_cached::sub_cached;
         } else if bits & 0xfe00707f == 0x1033 {
-            entry.op = insn_raw::sll_cached::sll_cached;
+            entry.op = insn_cached::sll_cached::sll_cached;
         } else if bits & 0xfe00707f == 0x2033 {
-            entry.op = insn_raw::slt_cached::slt_cached;
+            entry.op = insn_cached::slt_cached::slt_cached;
         } else if bits & 0xfe00707f == 0x3033 {
-            entry.op = insn_raw::sltu_cached::sltu_cached;
+            entry.op = insn_cached::sltu_cached::sltu_cached;
         } else if bits & 0xfe00707f == 0x4033 {
-            entry.op = insn_raw::xor_cached::xor_cached;
+            entry.op = insn_cached::xor_cached::xor_cached;
         } else if bits & 0xfe00707f == 0x5033 {
-            entry.op = insn_raw::srl_cached::srl_cached;
+            entry.op = insn_cached::srl_cached::srl_cached;
         } else if bits & 0xfe00707f == 0x40005033 {
-            entry.op = insn_raw::sra_cached::sra_cached;
+            entry.op = insn_cached::sra_cached::sra_cached;
         } else if bits & 0xfe00707f == 0x6033 {
-            entry.op = insn_raw::or_cached::or_cached;
+            entry.op = insn_cached::or_cached::or_cached;
         } else if bits & 0xfe00707f == 0x7033 {
-            entry.op = insn_raw::and_cached::and_cached;
+            entry.op = insn_cached::and_cached::and_cached;
         } else if bits & 0x707f == 0x3 {
-            entry.op = insn_raw::lb_cached::lb_cached;
+            entry.op = insn_cached::lb_cached::lb_cached;
         } else if bits & 0x707f == 0x1003 {
-            entry.op = insn_raw::lh_cached::lh_cached;
+            entry.op = insn_cached::lh_cached::lh_cached;
         } else if bits & 0x707f == 0x2003 {
-            entry.op = insn_raw::lw_cached::lw_cached;
+            entry.op = insn_cached::lw_cached::lw_cached;
         } else if bits & 0x707f == 0x4003 {
-            entry.op = insn_raw::lbu_cached::lbu_cached;
+            entry.op = insn_cached::lbu_cached::lbu_cached;
         } else if bits & 0x707f == 0x5003 {
-            entry.op = insn_raw::lhu_cached::lhu_cached;
+            entry.op = insn_cached::lhu_cached::lhu_cached;
         } else if bits & 0x707f == 0x23 {
-            entry.op = insn_raw::sb_cached::sb_cached;
+            entry.op = insn_cached::sb_cached::sb_cached;
         } else if bits & 0x707f == 0x1023 {
-            entry.op = insn_raw::sh_cached::sh_cached;
+            entry.op = insn_cached::sh_cached::sh_cached;
         } else if bits & 0x707f == 0x2023 {
-            entry.op = insn_raw::sw_cached::sw_cached;
+            entry.op = insn_cached::sw_cached::sw_cached;
         } else if bits & 0x707f == 0x63 {
-            entry.op = insn_raw::beq_cached::beq_cached;
+            entry.op = insn_cached::beq_cached::beq_cached;
         } else if bits & 0x707f == 0x1063 {
-            entry.op = insn_raw::bne_cached::bne_cached;
+            entry.op = insn_cached::bne_cached::bne_cached;
         } else if bits & 0x707f == 0x4063 {
-            entry.op = insn_raw::blt_cached::blt_cached;
+            entry.op = insn_cached::blt_cached::blt_cached;
         } else if bits & 0x707f == 0x5063 {
-            entry.op = insn_raw::bge_cached::bge_cached;
+            entry.op = insn_cached::bge_cached::bge_cached;
         } else if bits & 0x707f == 0x6063 {
-            entry.op = insn_raw::bltu_cached::bltu_cached;
+            entry.op = insn_cached::bltu_cached::bltu_cached;
         } else if bits & 0x707f == 0x7063 {
-            entry.op = insn_raw::bgeu_cached::bgeu_cached;
+            entry.op = insn_cached::bgeu_cached::bgeu_cached;
         } else if bits & 0x7f == 0x6f {
-            entry.op = insn_raw::jal_cached::jal_cached;
+            entry.op = insn_cached::jal_cached::jal_cached;
         } else if bits & 0x707f == 0x67 {
-            entry.op = insn_raw::jalr_cached::jalr_cached;
+            entry.op = insn_cached::jalr_cached::jalr_cached;
         } else if bits & 0x7f == 0x37 {
-            entry.op = insn_raw::lui_cached::lui_cached;
+            entry.op = insn_cached::lui_cached::lui_cached;
         } else if bits & 0x7f == 0x17 {
-            entry.op = insn_raw::auipc_cached::auipc_cached;
+            entry.op = insn_cached::auipc_cached::auipc_cached;
         } else {
             return None;
         }

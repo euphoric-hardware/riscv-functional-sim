@@ -3,6 +3,8 @@ use crate::{
     cpu::{self, Cpu, Insn},
 };
 
+use super::insn_raw;
+
 pub fn beq(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let bimm12hi = insn.bimm12hi();
     let rs1 = insn.rs1();
@@ -17,9 +19,5 @@ pub fn beq(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
         13,
     );
 
-    if cpu.load(rs1) == cpu.load(rs2) {
-        Ok((cpu.pc as i64 + offset) as u64)
-    } else {
-        Ok(cpu.pc + 4)
-    }
+    insn_raw::beq_raw::beq_raw(cpu, rs1, rs2, offset as u64)
 }

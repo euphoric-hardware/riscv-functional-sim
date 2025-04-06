@@ -3,6 +3,8 @@ use crate::{
     cpu::{self, Cpu, Insn},
 };
 
+use super::insn_raw;
+
 pub fn jal(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rd = insn.rd();
     let jimm20 = insn.jimm20();
@@ -15,6 +17,5 @@ pub fn jal(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
         20,
     );
 
-    cpu.store(rd, cpu.pc + 4);
-    Ok(cpu.pc.wrapping_add(offset as u64) as u64)
+    insn_raw::jal_raw::jal_raw(cpu, rd, offset as u64)
 }
