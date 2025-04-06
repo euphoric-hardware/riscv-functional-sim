@@ -178,7 +178,10 @@ impl Cpu {
             let insn = Insn::from_bytes(&bytes);
             
             let cache_index = ((i - 0x80000000) / 4) as usize;
-            self.uop_cache.insert(cache_index, UopCacheEntry::new(insn));
+            let entry = UopCacheEntry::new(insn);
+            if let Some(entry) = entry {
+                self.uop_cache.insert(cache_index, entry);
+            }
             i += 4;
         }
     }

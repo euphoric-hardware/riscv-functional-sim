@@ -17,7 +17,7 @@ pub struct UopCacheEntry {
 }
 
 impl UopCacheEntry {
-    pub fn new(insn: Insn) -> Self {
+    pub fn new(insn: Insn) -> Option<Self> {
         let mut entry = UopCacheEntry {
             rs1: (0),
             rs2: (0),
@@ -52,11 +52,25 @@ impl UopCacheEntry {
 
         // select operation here
         let bits = insn.bits();
-        if bits & 0xfe00707f == 0x33 {
+        if bits & 0x707f == 0x13 {
+            entry.op = insn_raw::addi_cached::addi_cached;
+        } else if bits & 0x707f == 0x2013 {
+            entry.op = insn_raw::slti_cached::slti_cached;
+        } else if bits & 0x707f == 0x3013 {
+            entry.op = insn_raw::sltiu_cached::sltiu_cached;
+        } else if bits & 0x707f == 0x4013 {
+            entry.op = insn_raw::xori_cached::xori_cached;
+        } else if bits & 0x707f == 0x6013 {
+            entry.op = insn_raw::ori_cached::ori_cached;
+        } else if bits & 0x707f == 0x7013 {
+            entry.op = insn_raw::andi_cached::andi_cached;
+        } else if bits & 0xfe00707f == 0x33 {
             entry.op = insn_raw::add_cached::add_cached;
+        } else {
+            return None;
         }
 
-        return entry;
+        return Some(entry);
     }
 
     pub fn execute_cached_insn(&self, cpu: &mut Cpu) -> cpu::Result<u64> {

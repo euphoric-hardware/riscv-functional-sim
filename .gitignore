@@ -11,3 +11,5 @@ embench/
 build/
 *.py
 *.sh
+*.svg
+profile.json.gz
