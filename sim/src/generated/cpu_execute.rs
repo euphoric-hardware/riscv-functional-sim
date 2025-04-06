@@ -7,9 +7,9 @@ use crate::{
 impl Cpu {
     pub fn execute_insn(&mut self, insn: Insn, bus: &mut Bus) -> cpu::Result<u64> {
         let cache_index = (self.pc.clone() - 0x80000000) / 4;
-        let cache_entry = self.uop_cache.get(cache_index as usize).cloned();
+        let cache_entry = self.uop_cache.get(&cache_index).cloned();
         if let Some(cached_insn) = cache_entry {
-            let result = cached_insn.execute_cached_insn(self);
+            let result = cached_insn.execute_cached_insn(self, bus);
             return result;
         } else {
             let bits = insn.bits();

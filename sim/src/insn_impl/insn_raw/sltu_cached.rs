@@ -4,7 +4,7 @@ use crate::{
     uop_cache::UopCacheEntry,
 };
 
-pub fn sltu_cached(cpu: &mut Cpu, cache_entry: &UopCacheEntry) -> cpu::Result<u64> {
+pub fn sltu_cached(cpu: &mut Cpu, bus: &mut Bus, cache_entry: &UopCacheEntry) -> cpu::Result<u64> {
     let result = if (cpu.load(cache_entry.rs1) < cpu.load(cache_entry.rs2)) {
         1
     } else {

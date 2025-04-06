@@ -1,4 +1,5 @@
 use crate::{
+    bus::Bus,
     cpu::{self, Cpu, Insn, Result},
     insn_impl::insn_raw::{self, add_cached},
 };
@@ -13,7 +14,7 @@ pub struct UopCacheEntry {
     pub imm_b: u64,
     pub imm_u: u64,
     pub imm_j: u64,
-    pub op: fn(cpu: &mut Cpu, &UopCacheEntry) -> cpu::Result<u64>,
+    pub op: fn(cpu: &mut Cpu, bus: &mut Bus, &UopCacheEntry) -> cpu::Result<u64>,
 }
 
 impl UopCacheEntry {
@@ -66,6 +67,40 @@ impl UopCacheEntry {
             entry.op = insn_raw::andi_cached::andi_cached;
         } else if bits & 0xfe00707f == 0x33 {
             entry.op = insn_raw::add_cached::add_cached;
+        } else if bits & 0xfe00707f == 0x40000033 {
+            entry.op = insn_raw::sub_cached::sub_cached;
+        } else if bits & 0xfe00707f == 0x1033 {
+            entry.op = insn_raw::sll_cached::sll_cached;
+        } else if bits & 0xfe00707f == 0x2033 {
+            entry.op = insn_raw::slt_cached::slt_cached;
+        } else if bits & 0xfe00707f == 0x3033 {
+            entry.op = insn_raw::sltu_cached::sltu_cached;
+        } else if bits & 0xfe00707f == 0x4033 {
+            entry.op = insn_raw::xor_cached::xor_cached;
+        } else if bits & 0xfe00707f == 0x5033 {
+            entry.op = insn_raw::srl_cached::srl_cached;
+        } else if bits & 0xfe00707f == 0x40005033 {
+            entry.op = insn_raw::sra_cached::sra_cached;
+        } else if bits & 0xfe00707f == 0x6033 {
+            entry.op = insn_raw::or_cached::or_cached;
+        } else if bits & 0xfe00707f == 0x7033 {
+            entry.op = insn_raw::and_cached::and_cached;
+        } else if bits & 0x707f == 0x3 {
+            entry.op = insn_raw::lb_cached::lb_cached;
+        } else if bits & 0x707f == 0x1003 {
+            entry.op = insn_raw::lh_cached::lh_cached;
+        } else if bits & 0x707f == 0x2003 {
+            entry.op = insn_raw::lw_cached::lw_cached;
+        } else if bits & 0x707f == 0x4003 {
+            entry.op = insn_raw::lbu_cached::lbu_cached;
+        } else if bits & 0x707f == 0x5003 {
+            entry.op = insn_raw::lhu_cached::lhu_cached;
+        } else if bits & 0x707f == 0x23 {
+            entry.op = insn_raw::sb_cached::sb_cached;
+        } else if bits & 0x707f == 0x1023 {
+            entry.op = insn_raw::sh_cached::sh_cached;
+        } else if bits & 0x707f == 0x2023 {
+            entry.op = insn_raw::sw_cached::sw_cached;
         } else {
             return None;
         }
@@ -73,7 +108,7 @@ impl UopCacheEntry {
         return Some(entry);
     }
 
-    pub fn execute_cached_insn(&self, cpu: &mut Cpu) -> cpu::Result<u64> {
-        (self.op)(cpu, self)
+    pub fn execute_cached_insn(&self, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
+        (self.op)(cpu, bus, self)
     }
 }

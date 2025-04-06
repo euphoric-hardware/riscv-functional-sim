@@ -57,14 +57,12 @@ fn main() -> std::io::Result<()> {
     system.cpus[0].csrs.store_unchecked(csrs::Csrs::MINSTRET, 5);
 
     let mut frontend = Frontend::try_new(binary).unwrap();
+    
+    frontend.write_elf(&mut system).unwrap();
     system.cpus[0].pc = frontend.reset_vector();
-
     let start_pc = frontend.start_of_text();
     let end_pc = frontend.end_of_text();
-
     system.cpus[0].load_uop_cache(&mut system.bus, start_pc, end_pc);
-
-    frontend.write_elf(&mut system).unwrap();
 
     let mut i = 1;
     loop {

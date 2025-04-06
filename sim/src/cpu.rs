@@ -1,12 +1,13 @@
 use std::{
-    collections::{BTreeMap, HashMap},
-    default,
-    fmt::{write, Display},
-    u64,
+    collections::{BTreeMap, HashMap}, default, fmt::{write, Display}, hash::Hash, u64
 };
 
 use crate::{
-    bus::{self, Bus, Device}, csrs::{self, Csrs}, diff::{Diff, ExecutionState}, insn_impl, uop_cache::{self, UopCacheEntry}
+    bus::{self, Bus, Device},
+    csrs::{self, Csrs},
+    diff::{Diff, ExecutionState},
+    insn_impl,
+    uop_cache::{self, UopCacheEntry},
 };
 
 use ::simple_soft_float;
@@ -124,7 +125,7 @@ pub struct Cpu {
     pub fregs: [simple_soft_float::F64; 32],
     pub pc: u64,
     pub csrs: Csrs,
-    pub uop_cache: Vec<UopCacheEntry>,
+    pub uop_cache: HashMap<u64, UopCacheEntry>,
     pub commits: Commits,
     pub states: Vec<ExecutionState>,
 }
@@ -171,13 +172,12 @@ impl Cpu {
     pub fn load_uop_cache(&mut self, bus: &mut Bus, start_pc: u64, end_pc: u64) {
         // FIXME - for now, this only supports word-length instructions. leave compressed for later
         let mut i: u64 = start_pc;
-
         while (i < end_pc) {
             let mut bytes = [0; std::mem::size_of::<u32>()];
             bus.read(i, &mut bytes).expect("invalid dram address");
             let insn = Insn::from_bytes(&bytes);
-            
-            let cache_index = ((i - 0x80000000) / 4) as usize;
+            let cache_index = ((i - 0x80000000) / 4);
+
             let entry = UopCacheEntry::new(insn);
             if let Some(entry) = entry {
                 self.uop_cache.insert(cache_index, entry);
@@ -377,6 +377,7 @@ impl Insn {
         cpu: &mut Cpu,
         softfloat_status: simple_soft_float::StatusFlags,
     ) {
+
         let softfloat_flags = softfloat_status.bits();
         let mask = 0b11111; // Mask to get the first 5 bits
         let relevant_bits = softfloat_flags & mask; // Extract the first 5 bits
