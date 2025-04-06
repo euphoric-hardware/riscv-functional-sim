@@ -1,7 +1,7 @@
 use crate::{
     bus::Bus,
     cpu::{self, Cpu, Insn, Result},
-    insn_impl::insn_raw::{self, add_cached},
+    insn_impl::insn_raw,
 };
 
 #[derive(Debug, Clone)]
@@ -101,6 +101,18 @@ impl UopCacheEntry {
             entry.op = insn_raw::sh_cached::sh_cached;
         } else if bits & 0x707f == 0x2023 {
             entry.op = insn_raw::sw_cached::sw_cached;
+        } else if bits & 0x707f == 0x63 {
+            entry.op = insn_raw::beq_cached::beq_cached;
+        } else if bits & 0x707f == 0x1063 {
+            entry.op = insn_raw::bne_cached::bne_cached;
+        } else if bits & 0x707f == 0x4063 {
+            entry.op = insn_raw::blt_cached::blt_cached;
+        } else if bits & 0x707f == 0x5063 {
+            entry.op = insn_raw::bge_cached::bge_cached;
+        } else if bits & 0x707f == 0x6063 {
+            entry.op = insn_raw::bltu_cached::bltu_cached;
+        } else if bits & 0x707f == 0x7063 {
+            entry.op = insn_raw::bgeu_cached::bgeu_cached;
         } else {
             return None;
         }

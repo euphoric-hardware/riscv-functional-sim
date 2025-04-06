@@ -68,7 +68,7 @@ pub fn {insn_name}(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64>
     }
 
     let mod_rs = out_dir.join("src").join("insn_impl").join("mod.rs");
-    let mod_decls = config
+    let mut mod_decls = config
         .keys()
         .map(|i| format!("pub mod {i};"))
         .collect::<Vec<_>>()
