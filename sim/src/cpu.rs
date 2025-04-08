@@ -213,9 +213,9 @@ impl Cpu {
     }
 
     pub fn step(&mut self, bus: &mut Bus) {
-        let mut bytes = [0; std::mem::size_of::<u32>()];
-        bus.read(self.pc, &mut bytes).expect("invalid dram address");
-        let insn = Insn::from_bytes(&bytes);
+        // let mut bytes = [0; std::mem::size_of::<u32>()];
+        // bus.read(self.pc, &mut bytes).expect("invalid dram address");
+        // let insn = Insn::from_bytes(&bytes);
         let mut state = <ExecutionState as std::default::Default>::default();
 
         match self.execute_insn(bus) {
@@ -224,11 +224,11 @@ impl Cpu {
                     "core   0: {} 0x{:016x} (0x{:08x})",
                     self.privilege_mode(),
                     self.pc,
-                    insn.bits() // FIXME - figure out how to get instruction
+                    0x0000000 // FIXME - figure out how to get instruction
                 );
 
                 state.pc = self.pc;
-                state.instruction = insn.bits() as u32; // FIXME - figure out how to get instruction
+                state.instruction = 0x00000000 as u32; // FIXME - figure out how to get instruction
 
                 if self.commits.modified_regs() {
                     while let Some((reg, val)) = self.commits.reg_write.pop_first() {
