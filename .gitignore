@@ -13,3 +13,4 @@ build/
 *.sh
 *.svg
 profile.json.gz
+uncached_binaries/

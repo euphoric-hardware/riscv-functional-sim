@@ -3,5 +3,5 @@ use crate::{
 };
 
 pub fn srai_cached(cpu: &mut Cpu, bus: &mut Bus, cache_entry: &UopCacheEntry) -> cpu::Result<u64> {
-    insn_raw::srai_raw::srai_raw(cpu, cache_entry.rd, cache_entry.rs1, cache_entry.imm_i)
+    insn_raw::srai_raw::srai_raw(cpu, cache_entry.rd, cache_entry.rs1, cache_entry.shamtd)
 }

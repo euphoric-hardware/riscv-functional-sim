@@ -3,12 +3,12 @@ use crate::{
     cpu::{self, Cpu, Insn},
 };
 
+use super::insn_raw;
+
 pub fn sllw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rd = insn.rd();
     let rs1 = insn.rs1();
     let rs2 = insn.rs2();
 
-    let result = Insn::sign_extend(cpu.load(rs1).wrapping_shl((cpu.load(rs2) & 0x1f) as u32) as u32 as u64, 32) as u64;
-    cpu.store(rd, result);
-    Ok(cpu.pc + 4)
+    insn_raw::sllw_raw::sllw_raw(cpu, rd, rs1, rs2)
 }

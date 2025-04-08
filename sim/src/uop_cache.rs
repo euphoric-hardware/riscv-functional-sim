@@ -14,6 +14,8 @@ pub struct UopCacheEntry {
     pub imm_b: u64,
     pub imm_u: u64,
     pub imm_j: u64,
+    pub shamtd: u64,
+    pub shamtw: u64,
     pub op: fn(cpu: &mut Cpu, bus: &mut Bus, &UopCacheEntry) -> cpu::Result<u64>,
 }
 
@@ -28,6 +30,8 @@ impl UopCacheEntry {
             imm_b: (0),
             imm_u: (0),
             imm_j: (0),
+            shamtd: (0),
+            shamtw: (0),
             op: (insn_cached::nop_cached::nop_cached),
         };
         entry.rs1 = insn.rs1();
@@ -50,6 +54,8 @@ impl UopCacheEntry {
                 | ((insn.jimm20() & 0x100) >> 8 << 11)) as u64,
             20,
         ) as u64;
+        entry.shamtd = insn.shamtd();
+        entry.shamtw = insn.shamtw();
 
         // select operation here
         let bits = insn.bits();
@@ -95,12 +101,18 @@ impl UopCacheEntry {
             entry.op = insn_cached::lbu_cached::lbu_cached;
         } else if bits & 0x707f == 0x5003 {
             entry.op = insn_cached::lhu_cached::lhu_cached;
+        } else if bits & 0x707f == 0x6003 {
+            entry.op = insn_cached::lwu_cached::lwu_cached;
+        } else if bits & 0x707f == 0x3003 {
+            entry.op = insn_cached::ld_cached::ld_cached;
         } else if bits & 0x707f == 0x23 {
             entry.op = insn_cached::sb_cached::sb_cached;
         } else if bits & 0x707f == 0x1023 {
             entry.op = insn_cached::sh_cached::sh_cached;
         } else if bits & 0x707f == 0x2023 {
             entry.op = insn_cached::sw_cached::sw_cached;
+        } else if bits & 0x707f == 0x3023 {
+            entry.op = insn_cached::sd_cached::sd_cached;
         } else if bits & 0x707f == 0x63 {
             entry.op = insn_cached::beq_cached::beq_cached;
         } else if bits & 0x707f == 0x1063 {
@@ -121,6 +133,24 @@ impl UopCacheEntry {
             entry.op = insn_cached::lui_cached::lui_cached;
         } else if bits & 0x7f == 0x17 {
             entry.op = insn_cached::auipc_cached::auipc_cached;
+        } else if bits & 0x707f == 0x1b {
+            entry.op = insn_cached::addiw_cached::addiw_cached;
+        } else if bits & 0xfe00707f == 0x101b {
+            entry.op = insn_cached::slliw_cached::slliw_cached;
+        } else if bits & 0xfe00707f == 0x501b {
+            entry.op = insn_cached::srliw_cached::srliw_cached;
+        } else if bits & 0xfe00707f == 0x4000501b {
+            entry.op = insn_cached::sraiw_cached::sraiw_cached;
+        } else if bits & 0xfe00707f == 0x3b {
+            entry.op = insn_cached::addw_cached::addw_cached;
+        } else if bits & 0xfe00707f == 0x4000003b {
+            entry.op = insn_cached::subw_cached::subw_cached;
+        } else if bits & 0xfe00707f == 0x103b {
+            entry.op = insn_cached::sllw_cached::sllw_cached;
+        } else if bits & 0xfe00707f == 0x503b {
+            entry.op = insn_cached::srlw_cached::srlw_cached;
+        } else if bits & 0xfe00707f == 0x4000503b {
+            entry.op = insn_cached::sraw_cached::sraw_cached;
         } else {
             return None;
         }
