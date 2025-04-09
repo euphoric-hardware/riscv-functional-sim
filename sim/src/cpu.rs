@@ -220,40 +220,40 @@ impl Cpu {
 
         match self.execute_insn(bus) {
             Ok(pc) => {
-                info!(
-                    "core   0: {} 0x{:016x} (0x{:08x})",
-                    self.privilege_mode(),
-                    self.pc,
-                    0x0000000 // FIXME - figure out how to get instruction
-                );
+                // info!(
+                //     "core   0: {} 0x{:016x} (0x{:08x})",
+                //     self.privilege_mode(),
+                //     self.pc,
+                //     0x0000000 // FIXME - figure out how to get instruction
+                // );
 
-                state.pc = self.pc;
-                state.instruction = 0x00000000 as u32; // FIXME - figure out how to get instruction
+                // state.pc = self.pc;
+                // state.instruction = 0x00000000 as u32; // FIXME - figure out how to get instruction
 
-                if self.commits.modified_regs() {
-                    while let Some((reg, val)) = self.commits.reg_write.pop_first() {
-                        info!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
-                        state.register_updates.push((reg as u8, val));
-                    }
-                }
-                if self.commits.modified_fregs() {
-                    while let Some((reg, val)) = self.commits.freg_write.pop_first() {
-                        info!(" f{:<3} 0x{:016x}", reg as usize, val);
-                        state.fregister_updates.push((reg as u8, val));
-                    }
-                }
-                if self.commits.is_load() {
-                    while let Some((addr, _)) = self.commits.mem_read.pop_first() {
-                        info!(" mem 0x{:016x}", addr);
-                    }
-                } else if self.commits.is_store() {
-                    while let Some((addr, val)) = self.commits.mem_write.pop_first() {
-                        info!(" mem 0x{:016x} {}", addr, val);
-                        state.memory_writes.push((addr, u64::from(val)));
-                    }
-                }
-                info!("\n");
-                self.states.push(state);
+                // if self.commits.modified_regs() {
+                //     while let Some((reg, val)) = self.commits.reg_write.pop_first() {
+                //         info!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
+                //         state.register_updates.push((reg as u8, val));
+                //     }
+                // }
+                // if self.commits.modified_fregs() {
+                //     while let Some((reg, val)) = self.commits.freg_write.pop_first() {
+                //         info!(" f{:<3} 0x{:016x}", reg as usize, val);
+                //         state.fregister_updates.push((reg as u8, val));
+                //     }
+                // }
+                // if self.commits.is_load() {
+                //     while let Some((addr, _)) = self.commits.mem_read.pop_first() {
+                //         info!(" mem 0x{:016x}", addr);
+                //     }
+                // } else if self.commits.is_store() {
+                //     while let Some((addr, val)) = self.commits.mem_write.pop_first() {
+                //         info!(" mem 0x{:016x} {}", addr, val);
+                //         state.memory_writes.push((addr, u64::from(val)));
+                //     }
+                // }
+                // info!("\n");
+                // self.states.push(state);
 
                 self.pc = pc;
                 self.csrs.store(0xB00, self.csrs.load_unchecked(0xB00) + 1);
