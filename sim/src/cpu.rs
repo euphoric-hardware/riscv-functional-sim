@@ -10,7 +10,8 @@ use crate::{
     bus::{Bus, Device},
     csrs::Csrs,
     diff::ExecutionState,
-    uop_cache::uop_cache::UopCacheEntry
+    uop_cache::uop_cache::UopCacheEntry,
+    ahash::AHashMap
 };
 
 use ::simple_soft_float;
@@ -128,7 +129,7 @@ pub struct Cpu {
     pub fregs: [simple_soft_float::F64; 32],
     pub pc: u64,
     pub csrs: Csrs,
-    pub uop_cache: HashMap<u64, UopCacheEntry>,
+    pub uop_cache: AHashMap<u64, UopCacheEntry>,
     pub commits: Commits,
     pub states: Vec<ExecutionState>,
 }
@@ -200,7 +201,7 @@ impl Cpu {
     pub fn store(&mut self, reg: u64, value: u64) {
         if reg != 0 {
             self.regs[reg as usize] = value;
-            self.commits.reg_write.insert(reg, value);
+            // self.commits.reg_write.insert(reg, value);
         }
     }
 

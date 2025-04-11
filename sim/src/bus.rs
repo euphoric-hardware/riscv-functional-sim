@@ -1,3 +1,4 @@
+use ahash::AHashMap;
 use log::info;
 
 use crate::cpu::{Exception, Result};
@@ -105,23 +106,28 @@ impl Device for Bus<'_> {
     }
 }
 
+type Page = Box<[u8; Ram::PAGE_SIZE as usize]>;
 #[derive(Default, Debug)]
 pub struct Ram {
     // Vec size: 4096
-    sparse_memory_map: HashMap<u64, Vec<u8>>,
+    sparse_memory_map: AHashMap<u64, Page>,
 }
 
 impl Ram {
     pub const PAGE_SIZE: u64 = 0x1000;
     pub const PAGE_OFFSET_BITS: u64 = 12; // log(PAGE_SIZE)
-
-    
 }
 
 lazy_static! {
     static ref ZERO_PAGE: Vec<u8> = vec![0u8; Ram::PAGE_SIZE as usize];
 }
+
+
 impl Ram {
+    fn create_empty_page() -> Page {
+        Box::new([0u8; Ram::PAGE_SIZE as usize])
+    }
+
     fn page_slice(&mut self, ptr: u64, len: u64) -> &mut [u8] {
         let (page_id, page_offset) = (
             ptr >> Self::PAGE_OFFSET_BITS,
@@ -129,9 +135,13 @@ impl Ram {
         );
     
         let page = self.sparse_memory_map.entry(page_id)
-            .or_insert_with(|| ZERO_PAGE.clone());
+            .or_insert_with(Self::create_empty_page); 
     
-        &mut page[page_offset as usize..page_offset as usize + len as usize]
+        let start = page_offset as usize;
+        let end = start + len as usize;
+    
+        debug_assert!(end <= Ram::PAGE_SIZE as usize); 
+        &mut page[start..end]
     }
 }
 

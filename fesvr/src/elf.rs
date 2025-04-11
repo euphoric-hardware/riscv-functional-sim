@@ -109,13 +109,16 @@ impl RiscvElf {
         for symbol in obj.symbols() {
             let name = symbol.name().expect("no symbol name");
             match name {
-                "_exit" => {
-                    end_addr = symbol.address();
+                "_end" => {
+                    end_addr = symbol.address()
                 }
+                // "_exit" => {
+                //     end_addr = symbol.address();
+                // }
 
-                "exit" => {
-                    end_addr = symbol.address();
-                }
+                // "exit" => {
+                //     end_addr = symbol.address();
+                // }
 
                 _ => {}
             }

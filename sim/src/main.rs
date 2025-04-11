@@ -17,6 +17,7 @@ mod uop_cache;
 
 use args::FunctionalSimArgs;
 use clap::Parser;
+use ahash;
 use std::env;
 use std::fs::File;
 use std::path::Path;
@@ -66,7 +67,7 @@ fn main() -> std::io::Result<()> {
     // println!("start pc: {:#16x}", start_pc);
     // println!("end_pc: {:#16x}", end_pc);
     system.cpus[0].load_uop_cache(&mut system.bus, start_pc, end_pc);
-
+    // println!("{} entries in uop cache", system.cpus[0].uop_cache.len());
     let mut i = 1;
     loop {
         system.tick();

@@ -1,3 +1,5 @@
+use std::process::exit;
+
 use crate::{
     cpu::{self, Cpu, Insn},
     bus::{Bus, Device},
@@ -6,7 +8,7 @@ use crate::{
 
 impl Cpu {
     pub fn execute_insn(&mut self, bus: &mut Bus) -> cpu::Result<u64> {
-    let cache_index = (self.pc.clone() - 0x80000000) / 4;
+    let cache_index = self.pc;
     let cache_entry = self.uop_cache.get(&cache_index).cloned();
     if let Some(cached_insn) = cache_entry {
         let result = cached_insn.execute_cached_insn(self, bus);
@@ -18,7 +20,11 @@ impl Cpu {
         bus.read(self.pc, &mut bytes).expect("invalid dram address");
         let insn = Insn::from_bytes(&bytes);
         let bits = insn.bits();
+        println!("pc: {:#16x}", self.pc);
+        println!("instruction: {:#08x}", bits);
+        // println!("pc in cache? {}", self.uop_cache.contains_key(&self.pc));
 
+        std::process::exit(1);
         if bits & 0x7f == 0x37 {
             insn_impl::lui::lui(insn, self, bus)
         }
