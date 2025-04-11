@@ -106,7 +106,7 @@ impl Device for Bus<'_> {
     fn write(&mut self, ptr: u64, buf: &[u8]) -> Result<()> {
         let (memory_range, device) = self
             .get_device(ptr, buf.len() as u64)
-            .expect(&format!("device does not exist, ptr: 0x{:X}", ptr));
+            .expect("device does not exist");
         device.write(ptr - memory_range.base_address, buf)
     }
 }
@@ -147,12 +147,7 @@ impl Ram {
         let end = start + len as usize;
 
         if end > Ram::PAGE_SIZE as usize {
-            panic!(
-                "page_slice out of bounds: offset {} + len {} > page size {}",
-                page_offset,
-                len,
-                Ram::PAGE_SIZE
-            );
+            panic!("page_slice: out of bounds access");
         }
         &mut page[start..end]
     }
@@ -195,7 +190,6 @@ impl Device for Ram {
             ptr += to_write as u64;
             remaining = rest;
         }
-
         Ok(())
     }
 }

@@ -131,6 +131,7 @@ pub struct Cpu {
     pub pc: u64,
     pub csrs: Csrs,
     pub uop_cache: AHashMap<u64, UopCacheEntry>,
+    pub diff: bool,
     pub commits: Commits,
     pub states: Vec<ExecutionState>,
 }
@@ -171,11 +172,12 @@ pub type Result<T> = std::result::Result<T, Exception>;
 
 impl Cpu {
     pub fn new() -> Cpu {
-        Default::default()
+        let mut cpu: Cpu = Default::default();
+        cpu.diff = *(DIFF.get().expect("invalid DIFF global variable"));
+        cpu
     }
 
     pub fn load_uop_cache(&mut self, bus: &mut Bus, start_pc: u64, end_pc: u64) {
-        // FIXME - for now, this only supports word-length instructions. leave compressed for later
         let mut i: u64 = start_pc;
         while (i < end_pc) {
             let mut bytes = [0; std::mem::size_of::<u32>()];
@@ -202,7 +204,7 @@ impl Cpu {
     pub fn store(&mut self, reg: u64, value: u64) {
         if reg != 0 {
             self.regs[reg as usize] = value;
-            if *(DIFF.get().expect("invalid DIFF global variable")) {
+            if self.diff {
                 self.commits.reg_write.insert(reg, value);
             }
         }
@@ -214,7 +216,7 @@ impl Cpu {
 
     pub fn fstore(&mut self, reg: u64, value: simple_soft_float::F64) {
         self.fregs[reg as usize] = value;
-        if *(DIFF.get().expect("invalid DIFF global variable")) {
+        if self.diff {
             self.commits.freg_write.insert(reg, *value.bits());
         }
     }
