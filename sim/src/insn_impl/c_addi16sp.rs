@@ -16,7 +16,6 @@ pub fn c_addi16sp(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> 
         10,
     );
     let result = cpu.load(2).wrapping_add(imm as u64);
-
     cpu.store(2, result);
     Ok(cpu.pc + 2)
 }

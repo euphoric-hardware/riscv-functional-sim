@@ -2,7 +2,7 @@ use simple_soft_float::F64;
 
 use crate::{
     bus::{Bus, Device},
-    cpu::{self, Cpu, Insn}, insn_impl::add,
+    cpu::{self, Cpu, Insn}
 };
 
 pub fn c_fldsp(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {

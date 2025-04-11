@@ -1,13 +1,16 @@
 use std::{
-    collections::{BTreeMap, HashMap}, default, fmt::{write, Display}, hash::Hash, u64
+    collections::{BTreeMap, HashMap},
+    default,
+    fmt::{write, Display},
+    hash::Hash,
+    u64,
 };
 
 use crate::{
-    bus::{self, Bus, Device},
-    csrs::{self, Csrs},
-    diff::{Diff, ExecutionState},
-    insn_impl,
-    uop_cache::{self, UopCacheEntry},
+    bus::{Bus, Device},
+    csrs::Csrs,
+    diff::ExecutionState,
+    uop_cache::uop_cache::UopCacheEntry
 };
 
 use ::simple_soft_float;
@@ -176,13 +179,17 @@ impl Cpu {
             let mut bytes = [0; std::mem::size_of::<u32>()];
             bus.read(i, &mut bytes).expect("invalid dram address");
             let insn = Insn::from_bytes(&bytes);
-            let cache_index = ((i - 0x80000000) / 4);
+            let cache_index = i;
+            i += 2; 
 
             let entry = UopCacheEntry::new(insn);
             if let Some(entry) = entry {
                 self.uop_cache.insert(cache_index, entry);
             }
-            i += 4;
+
+            if insn.bits() & 0b11 == 0b11 {
+                i += 2; // regular length instructions
+            }
         }
     }
 
@@ -377,7 +384,6 @@ impl Insn {
         cpu: &mut Cpu,
         softfloat_status: simple_soft_float::StatusFlags,
     ) {
-
         let softfloat_flags = softfloat_status.bits();
         let mask = 0b11111; // Mask to get the first 5 bits
         let relevant_bits = softfloat_flags & mask; // Extract the first 5 bits

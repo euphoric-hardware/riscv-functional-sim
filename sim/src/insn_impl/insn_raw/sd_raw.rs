@@ -1,6 +1,6 @@
 use crate::{
     bus::{Bus, Device},
-    cpu::{self, Cpu, Insn}, uop_cache::UopCacheEntry
+    cpu::{self, Cpu, Insn}
 };
 
 pub fn sd_raw(cpu: &mut Cpu, bus: &mut Bus, rs1: u64, rs2: u64, imm_s: u64) -> cpu::Result<u64> {

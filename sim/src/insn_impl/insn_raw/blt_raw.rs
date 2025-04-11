@@ -1,7 +1,6 @@
 use crate::{
     bus::Bus,
-    cpu::{self, Cpu, Insn},
-    uop_cache::UopCacheEntry,
+    cpu::{self, Cpu, Insn}
 };
 
 pub fn blt_raw(cpu: &mut Cpu, rs1: u64, rs2: u64, imm_b: u64) -> cpu::Result<u64> {

@@ -1,5 +1,5 @@
 use crate::{
-    bus::{Bus, Device}, cpu::{self, Cpu, Insn}, insn_impl::add, uop_cache::UopCacheEntry
+    bus::{Bus, Device}, cpu::{self, Cpu, Insn}
 };
 
 pub fn sw_raw(cpu: &mut Cpu, bus: &mut Bus, rs1: u64, rs2: u64, imm_s: u64) -> cpu::Result<u64> {

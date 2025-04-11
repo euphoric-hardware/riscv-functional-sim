@@ -1,7 +1,6 @@
 use crate::{
     bus::{Bus, Device},
-    cpu::{self, Cpu, Insn},
-    uop_cache::UopCacheEntry,
+    cpu::{self, Cpu, Insn}
 };
 
 pub fn lw_raw(cpu: &mut Cpu, bus: &mut Bus, rd: u64, rs1: u64, imm_i: u64) -> cpu::Result<u64> {

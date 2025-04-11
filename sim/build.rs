@@ -37,24 +37,40 @@ fn generate_instruction_files(out_dir: &Path, config: &BTreeMap<String, ParsedIn
             .collect::<Vec<_>>()
             .join("\n    ");
 
-        let comma_if = if insn.variable_fields.len() > 0 {
-            ", "
-        } else {
-            ""
-        };
+        let field_bindings_raw_insn_params = insn
+            .variable_fields
+            .iter()
+            .enumerate()
+            .map(|(i, field)| {
+                let comma = if i + 1 < insn.variable_fields.len() {
+                    ","
+                } else {
+                    ""
+                };
+                format!("{field}{comma}")
+            })
+            .collect::<Vec<_>>()
+            .join("");
 
-        let newline_if = if insn.variable_fields.len() > 0 {
-            "\n"
-        } else {
-            ""
-        };
+        let mut bus_param: &str = "";
+        if [
+            "lb", "lh", "lw", "lbu", "lhu", "sb", "sh", "sw", "ld", "sd", "lwu", "flw", "fsw",
+            "fld", "fsd", "c_lw", "c_sw", "c_ld", "c_sd", "c_lwsp", "c_swsp", "c_ldsp", "c_sdsp",
+            "c_flw", "c_fsw", "c_fld", "c_fsd", "c_flwsp", "c_fswsp", "c_fldsp", "c_fsdsp",
+        ]
+        .iter()
+        .any(|&s| s == insn_name)
+        {
+            bus_param = "bus,";
+        }
+
         let raw = format!(
             r#"use crate::{{cpu::{{self, Cpu, Insn}}, bus::Bus}};
+use super::insn_raw;
 
 pub fn {insn_name}(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {{
-    crate::trace_insn!("{insn_name}"{comma_if}{trace_args});{newline_if}
-    {field_bindings}{newline_if}
-    todo!();
+    {field_bindings}
+    insn_raw::{insn_name}_raw::{insn_name}_raw(cpu, {bus_param}{field_bindings_raw_insn_params})
 }}"#
         );
 
@@ -72,8 +88,186 @@ pub fn {insn_name}(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64>
         .keys()
         .map(|i| format!("pub mod {i};"))
         .collect::<Vec<_>>()
-        .join("\n");
+        .join("\n")
+        + "\npub mod insn_cached;\npub mod insn_raw;";
     fs::write(&mod_rs, mod_decls).expect("mod.rs");
+}
+
+fn generate_raw_instruction_files(out_dir: &Path, config: &BTreeMap<String, ParsedInsn>) {
+    for (insn_name, insn) in config.iter() {
+        let field_bindings = insn
+            .variable_fields
+            .iter()
+            .enumerate()
+            .map(|(i, field)| {
+                let comma = if i + 1 < insn.variable_fields.len() {
+                    ","
+                } else {
+                    ""
+                };
+                format!("{field}: u64{comma}")
+            })
+            .collect::<Vec<_>>()
+            .join("");
+
+        let mut bus_param: &str = "";
+        if [
+            "lb", "lh", "lw", "lbu", "lhu", "sb", "sh", "sw", "ld", "sd", "lwu", "flw", "fsw",
+            "fld", "fsd", "c_lw", "c_sw", "c_ld", "c_sd", "c_lwsp", "c_swsp", "c_ldsp", "c_sdsp",
+            "c_flw", "c_fsw", "c_fld", "c_fsd", "c_flwsp", "c_fswsp", "c_fldsp", "c_fsdsp",
+        ]
+        .iter()
+        .any(|&s| s == insn_name)
+        {
+            bus_param = "bus: &mut Bus, ";
+        }
+        let raw = format!(
+            r#"use crate::{{cpu::{{self, Cpu, Insn}}, bus::Bus}};
+
+pub fn {insn_name}_raw(cpu: &mut Cpu, {bus_param}todo()) -> cpu::Result<u64> {{
+    todo!();
+}}"#
+        );
+
+        let f = out_dir
+            .join("src")
+            .join("insn_impl/insn_raw")
+            .join(format!("{}_raw.rs", insn_name));
+        if !fs::exists(&f).unwrap_or_default() {
+            fs::write(&f, raw).expect("insn_impl write");
+        }
+    }
+
+    let mod_rs = out_dir
+        .join("src")
+        .join("insn_impl/insn_raw")
+        .join("mod.rs");
+    let mut mod_decls = config
+        .keys()
+        .map(|i| format!("pub mod {i}_raw;"))
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\npub mod nop_raw;";
+    fs::write(&mod_rs, mod_decls).expect("mod.rs");
+}
+
+
+
+fn generate_cached_instruction_files(out_dir: &Path, config: &BTreeMap<String, ParsedInsn>) {
+    for (insn_name, insn) in config.iter() {
+        let field_bindings = insn
+            .variable_fields
+            .iter()
+            .enumerate()
+            .map(|(i, field)| {
+                let comma = if i + 1 < insn.variable_fields.len() {
+                    ","
+                } else {
+                    ""
+                };
+                format!("{field}: u64{comma}")
+            })
+            .collect::<Vec<_>>()
+            .join("");
+
+        let field_bindings_args = insn
+            .variable_fields
+            .iter()
+            .enumerate()
+            .map(|(i, field)| {
+                let comma = if i + 1 < insn.variable_fields.len() {
+                    ","
+                } else {
+                    ""
+                };
+                format!("cache_entry.{field}{comma}")
+            })
+            .collect::<Vec<_>>()
+            .join("");
+
+        let mut bus_param: &str = "";
+        if [
+            "lb", "lh", "lw", "lbu", "lhu", "sb", "sh", "sw", "ld", "sd", "lwu", "flw", "fsw",
+            "fld", "fsd", "c_lw", "c_sw", "c_ld", "c_sd", "c_lwsp", "c_swsp", "c_ldsp", "c_sdsp",
+            "c_flw", "c_fsw", "c_fld", "c_fsd", "c_flwsp", "c_fswsp", "c_fldsp", "c_fsdsp",
+        ]
+        .iter()
+        .any(|&s| s == insn_name)
+        {
+            bus_param = "bus, ";
+        }
+
+        let raw = format!(
+            r#"use crate::{{bus::Bus, cpu::{{self, Cpu, Insn}}, insn_impl::insn_raw, uop_cache::uop_cache::UopCacheEntry}};
+
+pub fn {insn_name}_cached(cpu: &mut Cpu, bus: &mut Bus, cache_entry: &UopCacheEntry) -> cpu::Result<u64> {{
+    insn_raw::{insn_name}_raw::{insn_name}_raw(cpu, {bus_param}, todo())
+}}"#
+        );
+
+        let f = out_dir
+            .join("src")
+            .join("insn_impl/insn_cached")
+            .join(format!("{}_cached.rs", insn_name));
+        if !fs::exists(&f).unwrap_or_default() {
+            fs::write(&f, raw).expect("insn_impl write");
+        }
+    }
+    let mod_rs = out_dir
+        .join("src")
+        .join("insn_impl/insn_cached")
+        .join("mod.rs");
+    let mut mod_decls = config
+        .keys()
+        .map(|i| format!("pub mod {i}_cached;"))
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\npub mod nop_cached;";
+    fs::write(&mod_rs, mod_decls).expect("mod.rs");
+}
+
+
+fn generate_set_cached_insn(out_dir: &Path, config: &IndexMap<String, ParsedInsn>) {
+    let set_cached_insn = out_dir.join("src").join("uop_cache").join("set_cached_insn.rs");
+    if fs::exists(&set_cached_insn).unwrap_or(true) {
+        fs::remove_file(&set_cached_insn).expect("remove set_cached_insn");
+    }
+    let mut handle = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(&set_cached_insn)
+        .expect("set_cached_insn.rs");
+
+    let base = r#"use crate::{bus::Bus, cpu::{self, Cpu}, insn_impl::insn_cached};
+use super::uop_cache::UopCacheEntry;
+
+impl UopCacheEntry {
+    pub fn set_cached_insn(bits: u64) -> Option<fn(cpu: &mut Cpu, bus: &mut Bus, &UopCacheEntry) -> cpu::Result<u64>> {"#;
+
+    writeln!(handle, "{}", base).expect("write");
+
+    for (idx, (insn_name, insn)) in config.iter().enumerate() {
+        writeln!(
+            handle,
+            r#"
+        {}if bits & {} == {} {{
+            Some(insn_cached::{insn_name}_cached::{insn_name}_cached)
+        }}"#,
+            if idx != 0 { "else " } else { "" },
+            insn.mask,
+            insn.i_match
+        )
+        .expect("write");
+    }
+
+    let end = r#"
+        else {
+            None
+        }
+    }
+}
+"#;
+    writeln!(handle, "{}", end).expect("write");
 }
 
 fn generate_cpu_execute_arms(out_dir: &Path, config: &IndexMap<String, ParsedInsn>) {
@@ -89,12 +283,23 @@ fn generate_cpu_execute_arms(out_dir: &Path, config: &IndexMap<String, ParsedIns
 
     let base = r#"use crate::{
     cpu::{self, Cpu, Insn},
-    bus::Bus,
+    bus::{Bus, Device},
     insn_impl,
 };
 
 impl Cpu {
-    pub fn execute_insn(&mut self, insn: Insn, bus: &mut Bus) -> cpu::Result<u64> {
+    pub fn execute_insn(&mut self, bus: &mut Bus) -> cpu::Result<u64> {
+    let cache_index = (self.pc.clone() - 0x80000000) / 4;
+    let cache_entry = self.uop_cache.get(&cache_index).cloned();
+    if let Some(cached_insn) = cache_entry {
+        let result = cached_insn.execute_cached_insn(self, bus);
+        return result;
+    } 
+
+    else {
+        let mut bytes = [0; std::mem::size_of::<u32>()];
+        bus.read(self.pc, &mut bytes).expect("invalid dram address");
+        let insn = Insn::from_bytes(&bytes);
         let bits = insn.bits();"#;
 
     writeln!(handle, "{}", base).expect("write");
@@ -114,8 +319,9 @@ impl Cpu {
     }
 
     let end = r#"
-        else {
-            Err(cpu::Exception::IllegalInstruction)
+            else {
+                Err(cpu::Exception::IllegalInstruction)
+            }
         }
     }
 }
@@ -291,7 +497,6 @@ fn main() {
     const EXCLUDED_INSNS: &[&str] = &[
         "mv",
         "neg",
-        "nop",
         "zext_b",
         "ret",
         "bleu",
@@ -338,8 +543,11 @@ fn main() {
         .from_path(&spec_dir.join("csrs.csv"))
         .expect("csrs.csv not found");
 
-    generate_instruction_files(&out_dir, &config);
-    generate_cpu_execute_arms(&out_dir, &execute_config);
-    generate_insn_arg_luts(&out_dir, &mut rdr);
-    generate_csr_load_store(&out_dir, &mut rdr2);
+    // generate_instruction_files(&out_dir, &config);
+    // generate_set_cached_insn(&out_dir, &execute_config);
+    // generate_raw_instruction_files(&out_dir, &config);
+    // generate_cached_instruction_files(&out_dir, &config);
+    // generate_cpu_execute_arms(&out_dir, &execute_config);
+    // generate_insn_arg_luts(&out_dir, &mut rdr);
+    // generate_csr_load_store(&out_dir, &mut rdr2);
 }

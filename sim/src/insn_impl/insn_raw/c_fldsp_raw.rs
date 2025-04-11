@@ -1,0 +1,12 @@
+use simple_soft_float::F64;
+
+use crate::{bus::{Bus, Device}, cpu::{self, Cpu, Insn}};
+
+pub fn c_fldsp_raw(cpu: &mut Cpu, bus: &mut Bus, rd: u64, imm_c_ldsp: u64) -> cpu::Result<u64> {
+    let address = (cpu.load(2) as u64).wrapping_add(imm_c_ldsp as u64);
+    let mut raw = [0; size_of::<f64>()];
+    bus.read(address, &mut raw)?;
+    let h = F64::from_bits(u64::from_le_bytes(raw));
+    cpu.fstore(rd, h);
+    Ok(cpu.pc + 2)
+}

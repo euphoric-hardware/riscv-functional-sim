@@ -1,6 +1,5 @@
 use crate::{
-    cpu::{self, Cpu, Insn},
-    uop_cache::UopCacheEntry,
+    cpu::{self, Cpu, Insn}
 };
 
 pub fn andi_raw(cpu: &mut Cpu, rd: u64, rs1: u64, imm_i: u64) -> cpu::Result<u64> {

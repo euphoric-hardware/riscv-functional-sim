@@ -62,6 +62,9 @@ fn main() -> std::io::Result<()> {
     system.cpus[0].pc = frontend.reset_vector();
     let start_pc = frontend.start_of_text();
     let end_pc = frontend.end_of_text();
+
+    // println!("start pc: {:#16x}", start_pc);
+    // println!("end_pc: {:#16x}", end_pc);
     system.cpus[0].load_uop_cache(&mut system.bus, start_pc, end_pc);
 
     let mut i = 1;

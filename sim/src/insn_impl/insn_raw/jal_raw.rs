@@ -1,7 +1,6 @@
 use crate::{
     bus::Bus,
-    cpu::{self, Cpu, Insn},
-    uop_cache::UopCacheEntry,
+    cpu::{self, Cpu, Insn}
 };
 
 pub fn jal_raw(cpu: &mut Cpu, rd: u64, imm_j: u64) -> cpu::Result<u64> {
