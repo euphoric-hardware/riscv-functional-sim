@@ -15,9 +15,10 @@ mod plic;
 mod system;
 mod uop_cache;
 
+use ahash;
 use args::FunctionalSimArgs;
 use clap::Parser;
-use ahash;
+use once_cell::sync::OnceCell;
 use std::env;
 use std::fs::File;
 use std::path::Path;
@@ -26,24 +27,29 @@ use diff::{Diff, ExecutionState};
 use fesvr::frontend::{Frontend, FrontendReturnCode};
 use generated::cpu_execute as _;
 
+pub static DIFF: OnceCell<bool> = OnceCell::new();
 fn main() -> std::io::Result<()> {
     let args = FunctionalSimArgs::parse();
     File::create(&args.output_log)?;
 
     logger::init_logger(true, &args.output_log.to_str().unwrap());
 
-    let mut compare_logs = false;
     let differ: Diff;
     let mut spike_states: Vec<ExecutionState> = Vec::new();
 
     if let Some(spike_log_path) = &args.spike_log {
         if let Some(file_name) = spike_log_path.file_name().and_then(|f| f.to_str()) {
-            compare_logs = true;
+            DIFF.set(true).expect("DIFF already set.");
             differ = diff::Diff {};
             spike_states = differ.parse_spike_log(file_name).unwrap();
             spike_states.drain(0..5);
+        } else {
+            DIFF.set(false).expect("DIFF already set.");
         }
+    } else {
+        DIFF.set(false).expect("DIFF already set.");
     }
+
 
     let binary = &args.bin;
     println!("Testing... {:?}\n", binary.file_name().unwrap());
@@ -58,7 +64,7 @@ fn main() -> std::io::Result<()> {
     system.cpus[0].csrs.store_unchecked(csrs::Csrs::MINSTRET, 5);
 
     let mut frontend = Frontend::try_new(binary).unwrap();
-    
+
     frontend.write_elf(&mut system).unwrap();
     system.cpus[0].pc = frontend.reset_vector();
     let start_pc = frontend.start_of_text();
@@ -71,7 +77,7 @@ fn main() -> std::io::Result<()> {
     let mut i = 1;
     loop {
         system.tick();
-        if compare_logs {
+        if *DIFF.get().expect("invalid DIFF global variable") == true {
             if !Diff::diff_execution_state(
                 spike_states.get(i - 1),
                 system.cpus[0].states.get(i - 1),

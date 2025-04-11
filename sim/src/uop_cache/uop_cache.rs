@@ -8,6 +8,8 @@ use super::set_cached_insn;
 
 #[derive(Debug, Clone)]
 pub struct UopCacheEntry {
+    pub insn_bits: u64,
+
     /* regular registers */
     pub rs1: u64,
     pub rs2: u64,
@@ -72,6 +74,7 @@ pub struct UopCacheEntry {
 impl UopCacheEntry {
     pub fn new(insn: Insn) -> Option<Self> {
         let mut entry = UopCacheEntry {
+            insn_bits: 0,
             rs1: 0,
             rs2: 0,
             rd: 0,
@@ -129,6 +132,8 @@ impl UopCacheEntry {
 
             op: (insn_cached::nop_cached::nop_cached),
         };
+
+        entry.insn_bits = insn.bits();
 
         /* regular registers */
         entry.rs1 = insn.rs1();

@@ -10,7 +10,10 @@ impl Cpu {
     pub fn execute_insn(&mut self, bus: &mut Bus) -> cpu::Result<u64> {
     let cache_index = self.pc;
     let cache_entry = self.uop_cache.get(&cache_index).cloned();
+    // println!("PC: {:#16x}", self.pc);
+    
     if let Some(cached_insn) = cache_entry {
+        // println!("bits: {:#08x}", cached_insn.insn_bits);
         let result = cached_insn.execute_cached_insn(self, bus);
         return result;
     } 

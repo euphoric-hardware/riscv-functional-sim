@@ -6,7 +6,7 @@ use crate::{
 use super::insn_raw;
 
 pub fn c_addi4spn(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
-    let rd_p = insn.rd_p() + 8;
+    let rd_p = insn.rd_p();
     let c_nzuimm10 = insn.c_nzuimm10();
 
     let imm = (c_nzuimm10 & 0xc0) >> 2

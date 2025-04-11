@@ -7,11 +7,12 @@ use std::{
 };
 
 use crate::{
+    ahash::AHashMap,
     bus::{Bus, Device},
     csrs::Csrs,
     diff::ExecutionState,
     uop_cache::uop_cache::UopCacheEntry,
-    ahash::AHashMap
+    DIFF,
 };
 
 use ::simple_soft_float;
@@ -181,7 +182,7 @@ impl Cpu {
             bus.read(i, &mut bytes).expect("invalid dram address");
             let insn = Insn::from_bytes(&bytes);
             let cache_index = i;
-            i += 2; 
+            i += 2;
 
             let entry = UopCacheEntry::new(insn);
             if let Some(entry) = entry {
@@ -201,7 +202,9 @@ impl Cpu {
     pub fn store(&mut self, reg: u64, value: u64) {
         if reg != 0 {
             self.regs[reg as usize] = value;
-            // self.commits.reg_write.insert(reg, value);
+            if *(DIFF.get().expect("invalid DIFF global variable")) {
+                self.commits.reg_write.insert(reg, value);
+            }
         }
     }
 
@@ -211,7 +214,9 @@ impl Cpu {
 
     pub fn fstore(&mut self, reg: u64, value: simple_soft_float::F64) {
         self.fregs[reg as usize] = value;
-        self.commits.freg_write.insert(reg, *value.bits());
+        if *(DIFF.get().expect("invalid DIFF global variable")) {
+            self.commits.freg_write.insert(reg, *value.bits());
+        }
     }
 
     pub fn privilege_mode(&self) -> PrivilegeMode {
@@ -221,47 +226,50 @@ impl Cpu {
     }
 
     pub fn step(&mut self, bus: &mut Bus) {
-        // let mut bytes = [0; std::mem::size_of::<u32>()];
-        // bus.read(self.pc, &mut bytes).expect("invalid dram address");
-        // let insn = Insn::from_bytes(&bytes);
         let mut state = <ExecutionState as std::default::Default>::default();
-
+        let mut insn_bits = 0;
+        if let Some(entry) = self.uop_cache.get(&self.pc) {
+            insn_bits = entry.insn_bits;
+        }
         match self.execute_insn(bus) {
             Ok(pc) => {
-                // info!(
-                //     "core   0: {} 0x{:016x} (0x{:08x})",
-                //     self.privilege_mode(),
-                //     self.pc,
-                //     0x0000000 // FIXME - figure out how to get instruction
-                // );
+                let diff: bool = *DIFF.get().expect("invalid DIFF global variable");
+                if diff == true {
+                    info!(
+                        "core   0: {} 0x{:016x} (0x{:08x})",
+                        self.privilege_mode(),
+                        self.pc,
+                        insn_bits
+                    );
 
-                // state.pc = self.pc;
-                // state.instruction = 0x00000000 as u32; // FIXME - figure out how to get instruction
+                    state.pc = self.pc;
+                    state.instruction = insn_bits as u32; // FIXME - figure out how to get instruction
 
-                // if self.commits.modified_regs() {
-                //     while let Some((reg, val)) = self.commits.reg_write.pop_first() {
-                //         info!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
-                //         state.register_updates.push((reg as u8, val));
-                //     }
-                // }
-                // if self.commits.modified_fregs() {
-                //     while let Some((reg, val)) = self.commits.freg_write.pop_first() {
-                //         info!(" f{:<3} 0x{:016x}", reg as usize, val);
-                //         state.fregister_updates.push((reg as u8, val));
-                //     }
-                // }
-                // if self.commits.is_load() {
-                //     while let Some((addr, _)) = self.commits.mem_read.pop_first() {
-                //         info!(" mem 0x{:016x}", addr);
-                //     }
-                // } else if self.commits.is_store() {
-                //     while let Some((addr, val)) = self.commits.mem_write.pop_first() {
-                //         info!(" mem 0x{:016x} {}", addr, val);
-                //         state.memory_writes.push((addr, u64::from(val)));
-                //     }
-                // }
-                // info!("\n");
-                // self.states.push(state);
+                    if self.commits.modified_regs() {
+                        while let Some((reg, val)) = self.commits.reg_write.pop_first() {
+                            info!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
+                            state.register_updates.push((reg as u8, val));
+                        }
+                    }
+                    if self.commits.modified_fregs() {
+                        while let Some((reg, val)) = self.commits.freg_write.pop_first() {
+                            info!(" f{:<3} 0x{:016x}", reg as usize, val);
+                            state.fregister_updates.push((reg as u8, val));
+                        }
+                    }
+                    if self.commits.is_load() {
+                        while let Some((addr, _)) = self.commits.mem_read.pop_first() {
+                            info!(" mem 0x{:016x}", addr);
+                        }
+                    } else if self.commits.is_store() {
+                        while let Some((addr, val)) = self.commits.mem_write.pop_first() {
+                            info!(" mem 0x{:016x} {}", addr, val);
+                            state.memory_writes.push((addr, u64::from(val)));
+                        }
+                    }
+                    info!("\n");
+                    self.states.push(state);
+                }
 
                 self.pc = pc;
                 self.csrs.store(0xB00, self.csrs.load_unchecked(0xB00) + 1);
