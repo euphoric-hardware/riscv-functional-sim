@@ -1,4 +1,5 @@
 use ahash::AHashMap;
+use clap::builder::StringValueParser;
 use log::info;
 
 use crate::cpu::{Exception, Result};
@@ -7,7 +8,8 @@ use std::{
     cmp::{self, Ordering},
     collections::{BTreeMap, HashMap},
     fmt::Debug,
-    fs,
+    fs, mem,
+    thread::panicking,
 };
 
 #[derive(Clone, Copy, Default, Debug)]
@@ -112,10 +114,12 @@ impl Device for Bus<'_> {
 }
 
 type Page = Box<[u8; Ram::PAGE_SIZE as usize]>;
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Ram {
     // Vec size: 4096
-    sparse_memory_map: AHashMap<u64, Page>,
+    base_address: u64,
+    size: u64,
+    memory: Vec<u8>,
 }
 
 impl Ram {
@@ -125,6 +129,13 @@ impl Ram {
 }
 
 impl Ram {
+    pub fn new(base_address: u64, size: u64) -> Self {
+        Ram {
+            base_address: base_address,
+            size: size,
+            memory: vec![0u8; size as usize],
+        }
+    }
     fn create_empty_page() -> Page {
         vec![0u8; Ram::PAGE_SIZE as usize]
             .into_boxed_slice()
@@ -132,64 +143,50 @@ impl Ram {
             .unwrap_or_else(|_| panic!("Incorrect page size"))
     }
 
-    fn page_slice(&mut self, ptr: u64, len: u64) -> &mut [u8] {
-        let (page_id, page_offset) = (
-            ptr >> Self::PAGE_OFFSET_BITS,
-            ptr & ((1 << Self::PAGE_OFFSET_BITS) - 1),
-        );
+    // fn page_slice(&mut self, ptr: u64, len: u64) -> &mut [u8] {
+    //     let (page_id, page_offset) = (
+    //         ptr >> Self::PAGE_OFFSET_BITS,
+    //         ptr & ((1 << Self::PAGE_OFFSET_BITS) - 1),
+    //     );
 
-        let page = self
-            .sparse_memory_map
-            .entry(page_id)
-            .or_insert_with(Self::create_empty_page);
+    //     let page = self
+    //         .sparse_memory_map
+    //         .entry(page_id).or_insert_with(Self::create_empty_page);
 
-        let start = page_offset as usize;
-        let end = start + len as usize;
+    //     let start = page_offset as usize;
+    //     let end = start + len as usize;
 
-        if end > Ram::PAGE_SIZE as usize {
-            panic!("page_slice: out of bounds access");
-        }
-        &mut page[start..end]
-    }
+    //     if end > Ram::PAGE_SIZE as usize {
+    //         panic!("page_slice: out of bounds access");
+    //     }
+    //     &mut page[start..end]
+    // }
 }
 
 impl Device for Ram {
     fn read(&mut self, ptr: u64, buf: &mut [u8]) -> Result<()> {
-        let mut offset = 0;
-        let mut ptr = ptr;
-        while offset < buf.len() {
-            let page_offset = (ptr & Self::PAGE_MASK) as usize;
-            let bytes_in_page = Self::PAGE_SIZE - page_offset as u64;
-            let to_read = cmp::min(buf.len() - offset, bytes_in_page as usize);
-
-            let dst = &mut buf[offset..offset + to_read];
-            let src = &self.page_slice(ptr, to_read as u64)[..to_read];
-
-            dst.copy_from_slice(src);
-
-            ptr += to_read as u64;
-            offset += to_read;
+        let addr = (ptr % self.base_address);
+        let end = addr
+            .checked_add(buf.len() as u64)
+            .expect("Address overflow");
+        if end > self.memory.len() as u64 {
+            panic!("out of bounds read!");
         }
 
+        buf.copy_from_slice(&&self.memory[addr as usize..end as usize]);
         Ok(())
     }
 
     fn write(&mut self, ptr: u64, buf: &[u8]) -> Result<()> {
-        let mut ptr = ptr;
-        let mut remaining = buf;
-
-        while !remaining.is_empty() {
-            let page_offset = ptr & ((1 << Self::PAGE_OFFSET_BITS) - 1);
-
-            let bytes_in_page = Self::PAGE_SIZE as usize - page_offset as usize;
-            let to_write = cmp::min(remaining.len(), bytes_in_page);
-            let (chunk, rest) = remaining.split_at(to_write);
-
-            self.page_slice(ptr, to_write as u64).copy_from_slice(chunk);
-
-            ptr += to_write as u64;
-            remaining = rest;
+        let addr = (ptr % self.base_address);
+        let end = addr
+            .checked_add(buf.len() as u64)
+            .expect("Address overflow");
+        if end > self.memory.len()as u64 {
+            panic!("Write out of bounds");
         }
+
+        self.memory[addr as usize..end as usize].copy_from_slice(buf);
         Ok(())
     }
 }

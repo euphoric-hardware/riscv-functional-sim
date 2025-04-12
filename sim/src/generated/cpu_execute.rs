@@ -23,11 +23,8 @@ impl Cpu {
         bus.read(self.pc, &mut bytes).expect("invalid dram address");
         let insn = Insn::from_bytes(&bytes);
         let bits = insn.bits();
-        println!("pc: {:#16x}", self.pc);
-        println!("instruction: {:#08x}", bits);
-        // println!("pc in cache? {}", self.uop_cache.contains_key(&self.pc));
 
-        std::process::exit(1);
+        // std::process::exit(1);
         if bits & 0x7f == 0x37 {
             insn_impl::lui::lui(insn, self, bus)
         }

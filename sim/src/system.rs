@@ -13,7 +13,7 @@ impl<'b> System<'b> {
     // testver
     pub fn new() -> Self {
         let mut bus = Bus::new();
-        let ram = Ram::default();
+        let ram = Ram::new(0x80000000,(2 << 30));
 
         bus.register(Box::new(ram), 0x80000000, 0x10000000);
 

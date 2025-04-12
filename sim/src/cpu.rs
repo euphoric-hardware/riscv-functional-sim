@@ -1,4 +1,5 @@
 use std::{
+    arch::asm,
     collections::{BTreeMap, HashMap},
     default,
     fmt::{write, Display},
@@ -225,6 +226,33 @@ impl Cpu {
         let mstatus = self.csrs.load_unchecked(Csrs::MSTATUS);
         let mpp = ((mstatus >> 11) & 0b11) as u8;
         PrivilegeMode::from(mpp)
+    }
+
+    pub fn get_fp_flags() -> u32 {
+        #[cfg(target_arch = "x86_64")]
+        {
+            // read fnstsw or MXCSR, decode flags
+            0
+        }
+
+        #[cfg(target_arch = "aarch64")]
+        {
+            // read FPSR, decode flags
+            let fpsr: u32;
+            unsafe {
+                asm!(
+                    "mrs {fpsr}, fpsr",
+                    fpsr = out(reg) fpsr,
+                );
+            }
+            fpsr
+        }
+
+        // fallback or unsupported arch
+        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+        {
+            vec![]
+        }
     }
 
     pub fn step(&mut self, bus: &mut Bus) {
