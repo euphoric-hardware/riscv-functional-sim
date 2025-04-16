@@ -1,28 +1,29 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, ptr};
 
 use simple_soft_float::{FPState, StatusFlags, F32};
 
 use crate::{cpu::{self, Cpu, Insn}, bus::Bus};
 
 pub fn fle_s_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rs2: u64) -> cpu::Result<u64> {
-    let mut state = FPState::default();
-    let status_flags: StatusFlags = Insn::softfloat_flags_from_riscv_flags(cpu);
-    state.status_flags = status_flags;
+    let mut op1 = unsafe { ptr::read_volatile(&f32::from_bits(cpu.fload(rs1).to_bits() as u32)) };
+    let mut op2 = unsafe { ptr::read_volatile(&f32::from_bits(cpu.fload(rs2).to_bits() as u32)) };
 
-    let op1 = F32::from_bits(*cpu.fload(rs1).bits() as u32);
-    let op2 = F32::from_bits(*cpu.fload(rs2).bits() as u32);
-    
-    let value = if matches!(
-        op1.compare_signaling(&op2, Some(&mut state)),
-        Some(Ordering::Less) |
-        Some(Ordering::Equal)
-    ) {
-        1
-    } else {
-        0
-    };
-    
+    // ugly workaround for nan comparison. need to check behavior for x86
+    #[cfg(target_arch = "aarch64")]
+    {
+        // set any nan to signaling so that we get inexact flag checking
+        if f32::is_nan(op1) {
+            op1 = unsafe { ptr::read_volatile(&f32::from_bits(0x7FA00000)) };
+        }
+
+        if f32::is_nan(op2) {
+            op2 = unsafe { ptr::read_volatile(&f32::from_bits(0x7FA00000)) };
+        }
+    }
+
+    let value = if (op1 <= op2) { 1 } else { 0 };
+
+    cpu.set_fflags();
     cpu.store(rd, value);
-    Insn::riscv_flags_from_softfloat_flags(cpu, state.status_flags);
     Ok(cpu.pc + 4)
 }

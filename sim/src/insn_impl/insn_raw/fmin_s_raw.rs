@@ -3,26 +3,24 @@ use simple_soft_float::{F32, F64};
 use crate::{bus::Bus, cpu::{self, Cpu, Insn}, csrs::Csrs};
 
 pub fn fmin_s_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rs2: u64) -> cpu::Result<u64> {
-    let op1 = f32::from_bits(*cpu.fload(rs1).bits() as u32);
-    let op2 = f32::from_bits(*cpu.fload(rs2).bits() as u32);
-    let result: F64;
-
-    if F32::from_bits(op1.to_bits()).is_nan() && F32::from_bits(op2.to_bits()).is_nan() {
-        result = F64::quiet_nan();
-    } else if F32::from_bits(op1.to_bits()).is_nan() {
-        result = F64::from_bits(op2.to_bits() as u64);
-    } else if F32::from_bits(op2.to_bits()).is_nan() {
-        result = F64::from_bits(op2.to_bits() as u64);
+    let op1 = f32::from_bits(cpu.fload(rs1).to_bits() as u32);
+    let op2 = f32::from_bits(cpu.fload(rs2).to_bits() as u32);
+    let result: f32;
+    
+    if op1.is_nan() && op2.is_nan() {
+        result = f32::NAN;
+    } else if f32::is_nan(op1) {
+        result = op2;
+    } else if f32::is_nan(op2) {
+        result = op1;
     } else {
-        result = F64::from_bits(f32::min(op1, op2).to_bits() as u64);
+        result = f32::min(op1, op2);
     }
 
-    if F32::from_bits(op1.to_bits()).is_signaling_nan()
-        || F32::from_bits(op2.to_bits()).is_signaling_nan()
-    {
+    if Insn::is_signaling_nan_f32(op1) || Insn::is_signaling_nan_f32(op2) {
         cpu.csrs.store(Csrs::FFLAGS, 16);
     }
 
-    cpu.fstore(rd, result);
+    cpu.fstore(rd, Insn::f32_to_f64_raw(result));
     Ok(cpu.pc + 4)
 }

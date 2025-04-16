@@ -9,7 +9,7 @@ pub fn flw_raw(cpu: &mut Cpu, bus: &mut Bus, rd: u64, rs1: u64, imm_i: u64) -> c
     let mut raw = [0; size_of::<u32>()];
     bus.read(address, &mut raw)?;
     let h = u32::from_le_bytes(raw) as u64;
-    let h64 = F64::from_bits((u64::MAX & 0xffffffff00000000) | h);
+    let h64 = f64::from_bits((u64::MAX & 0xffffffff00000000) | h);
 
     cpu.fstore(rd, h64);
     Ok(cpu.pc + 4)

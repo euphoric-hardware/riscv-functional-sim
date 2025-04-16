@@ -2,7 +2,7 @@ use simple_soft_float::{FPState, StatusFlags, F32, F64};
 
 use crate::{
     bus::Bus,
-    cpu::{self, Cpu, Insn},
+    cpu::{self, Cpu, Insn}, insn_impl::insn_raw,
 };
 
 pub fn fnmsub_s(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
@@ -12,18 +12,5 @@ pub fn fnmsub_s(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let rs3 = insn.rs3();
     let rm = insn.rm();
 
-    let mut state = FPState::default();
-    let status_flags: StatusFlags = Insn::softfloat_flags_from_riscv_flags(cpu);
-    state.status_flags = status_flags;
-
-    let op1 = F32::from_bits(*(cpu.fload(rs1).bits()) as u32);
-    let op2 = F32::from_bits(*(cpu.fload(rs2).bits()) as u32);
-    let op3 = F32::from_bits(*(cpu.fload(rs3).bits()) as u32);
-    // FIXME - update rounding mode (RISC-V -> softfloat)
-    let result = op1.neg().fused_mul_add(&op2, &op3, None, Some(&mut state));
-    let result64 = F64::from_bits(0xffffffff00000000 | *result.bits() as u64);
-
-    cpu.fstore(rd, result64);
-    Insn::riscv_flags_from_softfloat_flags(cpu, state.status_flags);
-    Ok(cpu.pc + 4)
+    insn_raw::fnmsub_s_raw::fnmsub_s_raw(cpu, rd, rs1, rs2, rs3, rm)
 }

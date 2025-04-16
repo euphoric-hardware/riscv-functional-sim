@@ -13,7 +13,7 @@ pub fn c_fld(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
 
     let mut raw = [0; size_of::<u64>()];
     bus.read(address, &mut raw)?;
-    let h = F64::from_bits(u64::from_le_bytes(raw));
+    let h = f64::from_le_bytes(raw);
     cpu.fstore(rd_p, h);
     Ok(cpu.pc + 2)
 }

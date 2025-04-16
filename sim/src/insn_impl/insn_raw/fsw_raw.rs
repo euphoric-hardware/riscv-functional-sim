@@ -1,8 +1,8 @@
 use crate::{bus::{Bus, Device}, cpu::{self, Cpu, Insn}};
 
-pub fn fsw_raw(cpu: &mut Cpu, bus: &mut Bus, rd: u64, rs1: u64, rs2: u64, imm_s: u64) -> cpu::Result<u64> {
+pub fn fsw_raw(cpu: &mut Cpu, bus: &mut Bus, rs1: u64, rs2: u64, imm_s: u64) -> cpu::Result<u64> {
     let address = (cpu.load(rs1) as u64).wrapping_add(imm_s as u64);
-    let result = *cpu.fload(rs2).bits() as u32;
+    let result = cpu.fload(rs2).to_bits() as u32;
     bus.write(address, &result.to_le_bytes());
     Ok(cpu.pc + 4)
 }

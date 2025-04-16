@@ -17,8 +17,6 @@ use crate::{
 };
 
 use ::simple_soft_float;
-use simple_soft_float::RoundingMode;
-
 use log::info;
 
 #[derive(Debug, Default)]
@@ -30,6 +28,7 @@ pub enum MemData {
     #[default]
     Empty,
 }
+
 
 impl MemData {
     // SAFETY: slice must be 8, 4, 2, or 1 byte long
@@ -76,7 +75,7 @@ impl Display for MemData {
 pub struct Commits {
     // reg, data
     pub reg_write: BTreeMap<u64, u64>,
-    pub freg_write: BTreeMap<u64, u64>,
+    pub freg_write: BTreeMap<u64, f64>,
     // addr, data
     pub mem_write: BTreeMap<u64, MemData>,
     pub mem_read: BTreeMap<u64, MemData>,
@@ -128,7 +127,7 @@ impl From<u8> for PrivilegeMode {
 #[derive(Debug, Default)]
 pub struct Cpu {
     pub regs: [u64; 32],
-    pub fregs: [simple_soft_float::F64; 32],
+    pub fregs: [f64; 32],
     pub pc: u64,
     pub csrs: Csrs,
     pub uop_cache: AHashMap<u64, UopCacheEntry>,
@@ -167,6 +166,15 @@ pub enum FpOperation {
     Fmsub,
     Fnmadd,
     Fnmsub,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum RoundingMode {
+    RNE, // Round to Nearest, ties to Even
+    RTZ, // Round Toward Zero
+    RDN, // Round Down (−∞)
+    RUP, // Round Up (+∞)
+    RMM, // Round to Nearest, ties to Max Magnitude (ARM only)
 }
 
 pub type Result<T> = std::result::Result<T, Exception>;
@@ -211,14 +219,14 @@ impl Cpu {
         }
     }
 
-    pub fn fload(&self, reg: u64) -> simple_soft_float::F64 {
+    pub fn fload(&self, reg: u64) -> f64 {
         self.fregs[reg as usize]
     }
 
-    pub fn fstore(&mut self, reg: u64, value: simple_soft_float::F64) {
+    pub fn fstore(&mut self, reg: u64, value: f64) {
         self.fregs[reg as usize] = value;
         if self.diff {
-            self.commits.freg_write.insert(reg, *value.bits());
+            self.commits.freg_write.insert(reg, value);
         }
     }
 
@@ -255,6 +263,10 @@ impl Cpu {
         }
     }
 
+    pub fn set_fflags(&mut self) {
+        self.csrs.store(Csrs::FFLAGS, Self::get_fp_flags() as u64);
+    }
+
     pub fn step(&mut self, bus: &mut Bus) {
         let mut state = <ExecutionState as std::default::Default>::default();
         let mut insn_bits = 0;
@@ -283,8 +295,8 @@ impl Cpu {
                     }
                     if self.commits.modified_fregs() {
                         while let Some((reg, val)) = self.commits.freg_write.pop_first() {
-                            info!(" f{:<3} 0x{:016x}", reg as usize, val);
-                            state.fregister_updates.push((reg as u8, val));
+                            info!(" f{:<3} 0x{:016x}", reg as usize, val as u64);
+                            state.fregister_updates.push((reg as u8, val as u64));
                         }
                     }
                     if self.commits.is_load() {
@@ -344,107 +356,126 @@ impl Insn {
             value as i64
         }
     }
+    
+    pub fn classify_f32(val: f32) -> u8 {
+        use std::num::FpCategory;
 
-    pub fn f32_to_f64_preserve_all(value: f32) -> f64 {
-        let bits = value.to_bits(); // Get raw bit pattern
-        let sign = ((bits >> 31) as u64) << 63; // Extract sign bit and shift to f64 position
-        let exponent = ((bits >> 23) & 0xFF) as u64; // Extract exponent
-        let fraction = (bits & 0x007F_FFFF) as u64; // Extract fraction
-
-        if exponent == 0xFF {
-            // Handle NaNs and Infinities
-            let new_fraction = fraction << 29; // Align mantissa
-            let new_exponent = 0x7FF; // Max exponent for f64
-            return f64::from_bits(sign | (new_exponent << 52) | new_fraction);
-        } else if exponent == 0 {
-            // Subnormal case (denormal numbers)
-            let new_fraction = fraction << 29;
-            return f64::from_bits(sign | new_fraction);
+        match val.classify() {
+            FpCategory::Infinite => {
+                if val.is_sign_negative() {
+                    0 // -inf
+                } else {
+                    7 // +inf
+                }
+            }
+            FpCategory::Normal => {
+                if val.is_sign_negative() {
+                    1 // negative normal
+                } else {
+                    6 // positive normal
+                }
+            }
+            FpCategory::Subnormal => {
+                if val.is_sign_negative() {
+                    2 // negative subnormal
+                } else {
+                    5 // positive subnormal
+                }
+            }
+            FpCategory::Zero => {
+                if val.is_sign_negative() {
+                    3 // negative zero
+                } else {
+                    4 // positive zero
+                }
+            }
+            FpCategory::Nan => {
+                let bits = val.to_bits();
+                let quiet_bit = 1_u32 << 22;
+                if bits & quiet_bit == 0 {
+                    8 // signaling NaN
+                } else {
+                    9 // quiet NaN
+                }
+            }
         }
-
-        // Normalized numbers
-        let new_exponent = (exponent as u64 + 896) << 52; // Adjust exponent bias from f32 (127) to f64 (1023)
-        let new_fraction = fraction << 29; // Align fraction to f64
-
-        f64::from_bits(sign | new_exponent | new_fraction)
     }
 
-    pub fn f64_to_f32_preserve_all(value: f64) -> f32 {
-        let bits = value.to_bits();
-        let sign = ((bits >> 63) as u32) << 31; // Extract sign bit for f32
-        let mut exponent = ((bits >> 52) & 0x7FF) as u32; // Extract exponent
-        let mut fraction = ((bits & 0x000F_FFFF_FFFF_FFFF) >> 29) as u32; // Extract 23-bit fraction
+    pub fn classify_f64(val: f64) -> u8 {
+        use std::num::FpCategory;
 
-        if exponent == 0x7FF {
-            // Handle NaNs and Infinities
-            let new_exponent = 0xFF;
-            return f32::from_bits(sign | (new_exponent << 23) | fraction);
-        } else if exponent == 0 {
-            // Subnormal case (denormal numbers)
-            return f32::from_bits(sign | fraction);
+        match val.classify() {
+            FpCategory::Infinite => {
+                if val.is_sign_negative() {
+                    0 // -inf
+                } else {
+                    7 // +inf
+                }
+            }
+            FpCategory::Normal => {
+                if val.is_sign_negative() {
+                    1 // negative normal
+                } else {
+                    6 // positive normal
+                }
+            }
+            FpCategory::Subnormal => {
+                if val.is_sign_negative() {
+                    2 // negative subnormal
+                } else {
+                    5 // positive subnormal
+                }
+            }
+            FpCategory::Zero => {
+                if val.is_sign_negative() {
+                    3 // negative zero
+                } else {
+                    4 // positive zero
+                }
+            }
+            FpCategory::Nan => {
+                let bits = val.to_bits();
+                let quiet_bit = 1_u64 << 51;
+                if bits & quiet_bit == 0 {
+                    8 // signaling NaN
+                } else {
+                    9 // quiet NaN
+                }
+            }
         }
-
-        // Handle rounding to nearest even
-        let round_bit = (bits >> 28) & 1; // First dropped bit
-        let sticky_bits = bits & 0x0FFFFFFF; // Remaining dropped bits
-        if round_bit == 1 && (sticky_bits != 0 || (fraction & 1) == 1) {
-            fraction += 1;
-        }
-
-        // Handle possible mantissa overflow due to rounding
-        if fraction >> 23 != 0 {
-            fraction = 0; // Mantissa overflow -> increment exponent
-            exponent += 1;
-        }
-
-        // Normalized numbers: Adjust exponent bias from f64 (1023) to f32 (127)
-        let new_exponent = ((exponent as i32 - 1023 + 127) as u32) << 23;
-
-        f32::from_bits(sign | new_exponent | fraction)
     }
 
-    pub fn softfloat_flags_from_riscv_flags(cpu: &mut Cpu) -> simple_soft_float::StatusFlags {
-        let riscv_flags = cpu.csrs.load_unchecked(Csrs::FFLAGS) as u32;
-        let mask = 0b11111; // Mask to get the first 5 bits
-        let relevant_bits = riscv_flags & mask; // Extract the first 5 bits
-
-        let mut reversed_bits = 0u32;
-
-        // Reverse the bits one by one
-        for i in 0..5 {
-            reversed_bits <<= 1; // Shift left to make space for the next bit
-            reversed_bits |= (relevant_bits >> i) & 1; // Take the bit and append to reversed_bits
-        }
-        return simple_soft_float::StatusFlags::from_bits(reversed_bits)
-            .expect("invalid bits received!");
+    pub fn is_signaling_nan_f64(val: f64) -> bool {
+        let bits = val.to_bits();
+        let exponent = (bits >> 52) & 0x7FF;
+        let fraction = bits & 0x000F_FFFF_FFFF_FFFF;
+        let quiet_bit = 1 << 51;
+    
+        exponent == 0x7FF && fraction != 0 && (fraction & quiet_bit == 0)
+    }
+    
+    pub fn is_signaling_nan_f32(val: f32) -> bool {
+        let bits = val.to_bits();
+        let exponent = (bits >> 23) & 0xFF;
+        let fraction = bits & 0x007F_FFFF;
+        let quiet_bit = 1 << 22;
+    
+        exponent == 0xFF && fraction != 0 && (fraction & quiet_bit == 0)
     }
 
-    pub fn riscv_flags_from_softfloat_flags(
-        cpu: &mut Cpu,
-        softfloat_status: simple_soft_float::StatusFlags,
-    ) {
-        let softfloat_flags = softfloat_status.bits();
-        let mask = 0b11111; // Mask to get the first 5 bits
-        let relevant_bits = softfloat_flags & mask; // Extract the first 5 bits
-
-        let mut reversed_bits = 0u32;
-
-        // Reverse the bits one by one
-        for i in 0..5 {
-            reversed_bits <<= 1; // Shift left to make space for the next bit
-            reversed_bits |= (relevant_bits >> i) & 1; // Take the bit and append to reversed_bits
-        }
-        cpu.csrs.store(Csrs::FFLAGS, reversed_bits as u64);
+    pub fn f32_to_f64_raw(val: f32) -> f64 {
+        f64::from_bits(0xffffffff00000000 | val.to_bits() as u64)
     }
 
-    pub fn softfloat_round_from_riscv_rm(rm: u64) -> RoundingMode {
+    pub fn get_rounding_mode(cpu: &mut Cpu, rm: u64) -> Option<RoundingMode> {
         match rm {
-            0b000 => RoundingMode::TiesToEven,
-            0b001 => RoundingMode::TowardZero,
-            0b010 => RoundingMode::TowardNegative,
-            0b011 => RoundingMode::TowardPositive,
-            0b100 => RoundingMode::TiesToAway,
-            default => RoundingMode::TiesToAway,
+            0 => Some(RoundingMode::RNE),
+            1 => Some(RoundingMode::RTZ),
+            2 => Some(RoundingMode::RDN),
+            3 => Some(RoundingMode::RUP),
+            4 => Some(RoundingMode::RMM),
+            8 => Self::get_rounding_mode(cpu, cpu.csrs.load(Csrs::FRM).expect("invalid rounding mode")),
+            _ => None,
         }
     }
 }

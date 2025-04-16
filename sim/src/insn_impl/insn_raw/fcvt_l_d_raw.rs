@@ -1,30 +1,44 @@
 use simple_soft_float::FPState;
 
-use crate::{bus::Bus, cpu::{self, Cpu, Insn}, csrs::Csrs};
+use crate::{
+    bus::Bus,
+    cpu::{self, Cpu, Insn, RoundingMode},
+    csrs::Csrs,
+};
 
 pub fn fcvt_l_d_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u64> {
-    let mut state = FPState::default();
-    let status_flags: simple_soft_float::StatusFlags = Insn::softfloat_flags_from_riscv_flags(cpu);
-    state.status_flags = status_flags;
+    let result: i64;
+    let mode = Insn::get_rounding_mode(cpu, rm);
+    unsafe {
+        let mut old_fpcr: u64;
+        let mut new_fpcr: u64;
 
-    let rounding_mode = Insn::softfloat_round_from_riscv_rm(rm);
-    let result = cpu
-        .fload(rs1)
-        .to_i64(true, Some(rounding_mode), Some(&mut state));
+        // Read the current FPCR value
+        core::arch::asm!("mrs {}, fpcr", out(reg) old_fpcr);
 
-    if result.is_none() {
-        if f64::from_bits(*cpu.fload(rs1).bits()) > i64::MAX as f64 {
-            cpu.store(rd, i64::MAX as u64);
-        } else if f64::from_bits(*cpu.fload(rs1).bits()) < i64::MIN as f64 {
-            cpu.store(rd, i64::MIN as u64);
-        } else if cpu.fload(rs1).is_nan() {
-            cpu.store(rd, i64::MAX as u64);
-        }
-        cpu.csrs.store(Csrs::FFLAGS, 16);
-    } else {
-        cpu.store(rd, result.expect("invalid") as i64 as u64);
-        Insn::riscv_flags_from_softfloat_flags(cpu, state.status_flags);
+        // Clear the rounding mode bits (bits 22-24)
+        new_fpcr = old_fpcr & !(0b111 << 22);
+
+        // Set the new rounding mode based on the given mode
+        new_fpcr |= match mode {
+            Some(RoundingMode::RNE) => 0b00 << 22,
+            Some(RoundingMode::RTZ) => 0b11 << 22,
+            Some(RoundingMode::RDN) => 0b10 << 22,
+            Some(RoundingMode::RUP) => 0b01 << 22,
+            Some(RoundingMode::RMM) => 1 << 24,
+            None => todo!(),
+        };
+
+        // Set the new FPCR value
+        core::arch::asm!("msr fpcr, {}", in(reg) new_fpcr);
+
+        // Perform the conversion from f64 to i64
+        core::arch::asm!("FCVTZS {}, {}", in(reg) cpu.fload(rs1), out(reg) result);
+
+        // Restore the old FPCR value (to revert the rounding mode)
+        core::arch::asm!("msr fpcr, {}", in(reg) old_fpcr);
     }
-
+    cpu.set_fflags();
+    cpu.store(rd, result as u64);
     Ok(cpu.pc + 4)
 }
