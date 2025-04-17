@@ -28,6 +28,7 @@ use fesvr::frontend::{Frontend, FrontendReturnCode};
 use generated::cpu_execute as _;
 
 pub static DIFF: OnceCell<bool> = OnceCell::new();
+pub static LOG: OnceCell<bool> = OnceCell::new();
 fn main() -> std::io::Result<()> {
     let args = FunctionalSimArgs::parse();
     File::create(&args.output_log)?;
@@ -46,9 +47,14 @@ fn main() -> std::io::Result<()> {
         } else {
             DIFF.set(false).expect("DIFF already set.");
         }
-    } else {
-        DIFF.set(false).expect("DIFF already set.");
+    } 
+    else {
+        DIFF.set(false).expect("DIFF already set.")
     }
+
+    if let(log_path) = &args.output_log {
+        LOG.set(true).expect("LOG already set.");
+    } 
 
 
     let binary = &args.bin;

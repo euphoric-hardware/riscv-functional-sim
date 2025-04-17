@@ -1,41 +1,41 @@
 use simple_soft_float::{FPState, StatusFlags, F32};
 
-use crate::{bus::Bus, cpu::{self, Cpu, Insn, RoundingMode}, csrs::Csrs};
+use crate::{
+    bus::Bus,
+    cpu::{self, Cpu, Insn, RoundingMode},
+    csrs::Csrs,
+};
 
 pub fn fcvt_w_s_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u64> {
-    let result: i32;
+    let mut result: i32;
     let mode = Insn::get_rounding_mode(cpu, rm);
-    unsafe {
-        let mut old_fpcr: u64;
-        let mut new_fpcr: u64;
+    let op1 = f32::from_bits(cpu.fload(rs1).to_bits() as u32);
 
-        // Read the current FPCR value
-        core::arch::asm!("mrs {}, fpcr", out(reg) old_fpcr);
-
-        // Clear the rounding mode bits (bits 22-24)
-        new_fpcr = old_fpcr & !(0b111 << 22);
-
-        // Set the new rounding mode based on the given mode
-        new_fpcr |= match mode {
-            Some(RoundingMode::RNE) => 0b00 << 22,
-            Some(RoundingMode::RTZ) => 0b11 << 22,
-            Some(RoundingMode::RDN) => 0b10 << 22,
-            Some(RoundingMode::RUP) => 0b01 << 22,
-            Some(RoundingMode::RMM) => 1 << 24,
-            None => todo!(),
-        };
-
-        // Set the new FPCR value
-        core::arch::asm!("msr fpcr, {}", in(reg) new_fpcr);
-
-        // Perform the conversion from f32 to i32
-        core::arch::asm!("FCVTZS {}, {}", in(reg) f32::from_bits(cpu.fload(rs1).to_bits() as u32), out(reg) result);
-
-        // Restore the old FPCR value (to revert the rounding mode)
-        core::arch::asm!("msr fpcr, {}", in(reg) old_fpcr);
+    if (op1 > i32::MAX as f32) {
+        result = i32::MAX;
+        cpu.csrs.store(Csrs::FFLAGS, 16);
+    } else if (op1 < i32::MIN as f32) {
+        result = i32::MIN;
+        cpu.csrs.store(Csrs::FFLAGS, 16);
+    } else if (op1.is_nan()) {
+        result = i32::MAX;
+        cpu.csrs.store(Csrs::FFLAGS, 16);
+    } else {
+        cpu.update_hardware_fp_flags();
+        unsafe {
+            core::arch::asm!("fmov d0, {0}", in(reg) op1);
+            match mode {
+                Some(RoundingMode::RNE) => core::arch::asm!("fcvtns {}, s0", out(reg) result),
+                Some(RoundingMode::RTZ) => core::arch::asm!("fcvtzs {}, s0", out(reg) result),
+                Some(RoundingMode::RDN) => core::arch::asm!("fcvtms {}, s0", out(reg) result),
+                Some(RoundingMode::RUP) => core::arch::asm!("fcvtps {}, s0", out(reg) result),
+                Some(RoundingMode::RMM) => core::arch::asm!("fcvtas {}, s0", out(reg) result),
+                None => todo!(),
+            };
+        }
+        cpu.set_fflags();
     }
-    cpu.set_fflags();
-    cpu.store(rd, result as u32 as u64);
+
+    cpu.store(rd, result as i64 as u64);
     Ok(cpu.pc + 4)
 }
-

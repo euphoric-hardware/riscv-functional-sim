@@ -13,7 +13,7 @@ use crate::{
     csrs::Csrs,
     diff::ExecutionState,
     uop_cache::uop_cache::UopCacheEntry,
-    DIFF,
+    DIFF, LOG,
 };
 
 use ::simple_soft_float;
@@ -28,7 +28,6 @@ pub enum MemData {
     #[default]
     Empty,
 }
-
 
 impl MemData {
     // SAFETY: slice must be 8, 4, 2, or 1 byte long
@@ -236,7 +235,7 @@ impl Cpu {
         PrivilegeMode::from(mpp)
     }
 
-    pub fn get_fp_flags() -> u32 {
+    pub fn get_hardware_fp_flags() -> u32 {
         #[cfg(target_arch = "x86_64")]
         {
             // read fnstsw or MXCSR, decode flags
@@ -245,15 +244,23 @@ impl Cpu {
 
         #[cfg(target_arch = "aarch64")]
         {
-            // read FPSR, decode flags
             let fpsr: u32;
             unsafe {
                 asm!(
-                    "mrs {fpsr}, fpsr",
-                    fpsr = out(reg) fpsr,
+                    "mrs {0}, fpsr",
+                    out(reg) fpsr
                 );
             }
-            fpsr
+
+            // Extract the relevant bits and reorder
+            let nv = (fpsr >> 0) & 1;
+            let dz = (fpsr >> 1) & 1;
+            let of = (fpsr >> 2) & 1;
+            let uf = (fpsr >> 3) & 1;
+            let nx = (fpsr >> 4) & 1;
+
+            // Reassemble into desired order: nv (4), dz (3), of (2), uf (1), nx (0)
+            ((nv << 4) | (dz << 3) | (of << 2) | (uf << 1) | nx) as u32
         }
 
         // fallback or unsupported arch
@@ -263,8 +270,65 @@ impl Cpu {
         }
     }
 
+    pub fn update_hardware_fp_flags(&self) {
+        let mask = self.csrs.load(Csrs::FFLAGS).expect("Error reading from FFLAGS!");
+        #[cfg(target_arch = "aarch64")]
+        {
+            let nv = (mask >> 4) & 1; // FPSR bit 0
+            let dz = (mask >> 3) & 1; // FPSR bit 1
+            let of = (mask >> 2) & 1; // FPSR bit 2
+            let uf = (mask >> 1) & 1; // FPSR bit 3
+            let nx = (mask >> 0) & 1; // FPSR bit 4
+
+            let fpsr_val: u32 = ((nx << 4) | (uf << 3) | (of << 2) | (dz << 1) | nv) as u32;
+
+            unsafe {
+                asm!(
+                    "msr fpsr, {0}",
+                    in(reg) fpsr_val,
+                    options(nostack, nomem)
+                );
+            }
+        }
+    }
+
+    pub fn print_fpsr_exceptions() {
+        let fpsr: u32;
+        unsafe {
+            asm!(
+                "mrs {0}, fpsr",
+                out(reg) fpsr
+            );
+        }
+
+        let flags = [
+            ("IOC (Invalid Operation)", (fpsr >> 0) & 1),
+            ("DZC (Divide by Zero)", (fpsr >> 1) & 1),
+            ("OFC (Overflow)", (fpsr >> 2) & 1),
+            ("UFC (Underflow)", (fpsr >> 3) & 1),
+            ("IXC (Inexact)", (fpsr >> 4) & 1),
+            ("IDC (Input Denormal)", (fpsr >> 7) & 1),
+        ];
+
+        println!("Floating-Point Exception Flags:");
+        println!("Raw FPSR: {:#034b}", fpsr);
+        for (label, state) in flags {
+            println!("  {:<25}: {}", label, state);
+        }
+    }
+
+    pub fn clear_fpsr_exceptions() {
+        unsafe {
+            asm!(
+                "msr fpsr, xzr", // Write zero to FPSR — clears all flags
+                options(nostack, nomem)
+            );
+        }
+    }
+
     pub fn set_fflags(&mut self) {
-        self.csrs.store(Csrs::FFLAGS, Self::get_fp_flags() as u64);
+        self.csrs
+            .store(Csrs::FFLAGS, Self::get_hardware_fp_flags() as u64);
     }
 
     pub fn step(&mut self, bus: &mut Bus) {
@@ -275,43 +339,62 @@ impl Cpu {
         }
         match self.execute_insn(bus) {
             Ok(pc) => {
+                let log: bool = *LOG.get().expect("invalid DIFF global variable");
                 let diff: bool = *DIFF.get().expect("invalid DIFF global variable");
-                if diff == true {
+                if log == true {
                     info!(
                         "core   0: {} 0x{:016x} (0x{:08x})",
                         self.privilege_mode(),
                         self.pc,
                         insn_bits
                     );
+                }
 
-                    state.pc = self.pc;
-                    state.instruction = insn_bits as u32; // FIXME - figure out how to get instruction
+                state.pc = self.pc;
+                state.instruction = insn_bits as u32; // FIXME - figure out how to get instruction
 
-                    if self.commits.modified_regs() {
-                        while let Some((reg, val)) = self.commits.reg_write.pop_first() {
+                if self.commits.modified_regs() {
+                    while let Some((reg, val)) = self.commits.reg_write.pop_first() {
+                        if (log) {
                             info!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
+                        }
+                        if diff {
                             state.register_updates.push((reg as u8, val));
                         }
                     }
-                    if self.commits.modified_fregs() {
-                        while let Some((reg, val)) = self.commits.freg_write.pop_first() {
-                            info!(" f{:<3} 0x{:016x}", reg as usize, val as u64);
-                            state.fregister_updates.push((reg as u8, val as u64));
+                }
+                if self.commits.modified_fregs() {
+                    while let Some((reg, val)) = self.commits.freg_write.pop_first() {
+                        if (log) {
+                            info!(" f{:<3} 0x{:016x}", reg as usize, val.to_bits());
+                        }
+                        if diff {
+                            state.fregister_updates.push((reg as u8, val.to_bits()));
                         }
                     }
-                    if self.commits.is_load() {
-                        while let Some((addr, _)) = self.commits.mem_read.pop_first() {
+                }
+                if self.commits.is_load() {
+                    while let Some((addr, _)) = self.commits.mem_read.pop_first() {
+                        if (log) {
                             info!(" mem 0x{:016x}", addr);
                         }
-                    } else if self.commits.is_store() {
-                        while let Some((addr, val)) = self.commits.mem_write.pop_first() {
+                    }
+                } else if self.commits.is_store() {
+                    while let Some((addr, val)) = self.commits.mem_write.pop_first() {
+                        if (log) {
                             info!(" mem 0x{:016x} {}", addr, val);
+                        }
+
+                        if diff {
                             state.memory_writes.push((addr, u64::from(val)));
                         }
                     }
-                    info!("\n");
-                    self.states.push(state);
                 }
+
+                if (log) {
+                    info!("\n");
+                }
+                self.states.push(state);
 
                 self.pc = pc;
                 self.csrs.store(0xB00, self.csrs.load_unchecked(0xB00) + 1);
@@ -356,90 +439,90 @@ impl Insn {
             value as i64
         }
     }
-    
-    pub fn classify_f32(val: f32) -> u8 {
+
+    pub fn classify_f32(val: f32) -> u32 {
         use std::num::FpCategory;
 
         match val.classify() {
             FpCategory::Infinite => {
                 if val.is_sign_negative() {
-                    0 // -inf
+                    1_u32 << 0 // -inf
                 } else {
-                    7 // +inf
+                    1_u32 << 7 // +inf
                 }
             }
             FpCategory::Normal => {
                 if val.is_sign_negative() {
-                    1 // negative normal
+                    1_u32 << 1 // negative normal
                 } else {
-                    6 // positive normal
+                    1_u32 << 6 // positive normal
                 }
             }
             FpCategory::Subnormal => {
                 if val.is_sign_negative() {
-                    2 // negative subnormal
+                    1_u32 << 2 // negative subnormal
                 } else {
-                    5 // positive subnormal
+                    1_u32 << 5 // positive subnormal
                 }
             }
             FpCategory::Zero => {
                 if val.is_sign_negative() {
-                    3 // negative zero
+                    1_u32 << 3 // negative zero
                 } else {
-                    4 // positive zero
+                    1_u32 << 4 // positive zero
                 }
             }
             FpCategory::Nan => {
                 let bits = val.to_bits();
                 let quiet_bit = 1_u32 << 22;
                 if bits & quiet_bit == 0 {
-                    8 // signaling NaN
+                    1_u32 << 8 // signaling NaN
                 } else {
-                    9 // quiet NaN
+                    1_u32 << 9 // quiet NaN
                 }
             }
         }
     }
 
-    pub fn classify_f64(val: f64) -> u8 {
+    pub fn classify_f64(val: f64) -> u32 {
         use std::num::FpCategory;
 
         match val.classify() {
             FpCategory::Infinite => {
                 if val.is_sign_negative() {
-                    0 // -inf
+                    1_u32 << 0 // -inf
                 } else {
-                    7 // +inf
+                    1_u32 << 7 // +inf
                 }
             }
             FpCategory::Normal => {
                 if val.is_sign_negative() {
-                    1 // negative normal
+                    1_u32 << 1 // negative normal
                 } else {
-                    6 // positive normal
+                    1_u32 << 6 // positive normal
                 }
             }
             FpCategory::Subnormal => {
                 if val.is_sign_negative() {
-                    2 // negative subnormal
+                    1_u32 << 2 // negative subnormal
                 } else {
-                    5 // positive subnormal
+                    1_u32 << 5 // positive subnormal
                 }
             }
             FpCategory::Zero => {
                 if val.is_sign_negative() {
-                    3 // negative zero
+                    1_u32 << 3 // negative zero
                 } else {
-                    4 // positive zero
+                    1_u32 << 4 // positive zero
                 }
             }
             FpCategory::Nan => {
                 let bits = val.to_bits();
                 let quiet_bit = 1_u64 << 51;
                 if bits & quiet_bit == 0 {
-                    8 // signaling NaN
+                    1_u32 << 8 // signaling NaN
                 } else {
-                    9 // quiet NaN
+                    1_u32 << 9 // quiet NaN
                 }
             }
         }
@@ -450,16 +533,16 @@ impl Insn {
         let exponent = (bits >> 52) & 0x7FF;
         let fraction = bits & 0x000F_FFFF_FFFF_FFFF;
         let quiet_bit = 1 << 51;
-    
+
         exponent == 0x7FF && fraction != 0 && (fraction & quiet_bit == 0)
     }
-    
+
     pub fn is_signaling_nan_f32(val: f32) -> bool {
         let bits = val.to_bits();
         let exponent = (bits >> 23) & 0xFF;
         let fraction = bits & 0x007F_FFFF;
         let quiet_bit = 1 << 22;
-    
+
         exponent == 0xFF && fraction != 0 && (fraction & quiet_bit == 0)
     }
 
@@ -474,10 +557,14 @@ impl Insn {
             2 => Some(RoundingMode::RDN),
             3 => Some(RoundingMode::RUP),
             4 => Some(RoundingMode::RMM),
-            8 => Self::get_rounding_mode(cpu, cpu.csrs.load(Csrs::FRM).expect("invalid rounding mode")),
+            7 => Self::get_rounding_mode(
+                cpu,
+                cpu.csrs.load(Csrs::FRM).expect("invalid rounding mode"),
+            ),
             _ => None,
         }
     }
+
 }
 
 // FOR TRACING PURPOSES

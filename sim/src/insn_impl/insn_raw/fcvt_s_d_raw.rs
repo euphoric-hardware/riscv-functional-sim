@@ -4,7 +4,9 @@ use crate::{bus::Bus, cpu::{self, Cpu, Insn, RoundingMode}};
 
 pub fn fcvt_s_d_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u64> {
     let result: f32;
+    let op1 = cpu.fload(rs1);
     let mode = Insn::get_rounding_mode(cpu, rm);
+    cpu.update_hardware_fp_flags();
     unsafe {
         let mut old_fpcr: u64;
         let mut new_fpcr: u64;
@@ -25,13 +27,12 @@ pub fn fcvt_s_d_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u6
             None => todo!(),
         };
 
-        // Set the new FPCR value
         core::arch::asm!("msr fpcr, {}", in(reg) new_fpcr);
 
-        // Perform the conversion from f64 to f32
-        core::arch::asm!("FCVT {}, {}", in(reg) cpu.fload(rs1), out(reg) result);
+        core::arch::asm!("fmov d0, {0}", in(reg) op1);
+        core::arch::asm!("fcvt s0, d0");
+        core::arch::asm!("fmov s0, s0", out("s0") result);
 
-        // Restore the old FPCR value (to revert the rounding mode)
         core::arch::asm!("msr fpcr, {}", in(reg) old_fpcr);
     }
     cpu.set_fflags();
