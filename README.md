@@ -123,6 +123,8 @@ Since we're using Rust, it would be great to use the Cranelift IR and JIT!
   - Rust RISC-V emulator based on [Asami's tutorial](https://book.rvemu.app/)
 - [theonlymrcat/rivet](https://sr.ht/~theonlymrcat/rivet/)
   - RISC-V emulator written in Zig
+- [Fast Interpreter-Based Instruction Set Simulation for Virtual Prototypes](https://ics.jku.at/files/2025DATE_Fast_Interpreter-based_ISS.pdf)
+  - They demonstrate better performance vs spike using various performance optimizations (dynamic basic block cache + load/store cache) (claim peak perf of 406 MIPS)
 
 #### DBT
 
