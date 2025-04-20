@@ -19,6 +19,7 @@ ahash = "0.8.11"
 rustc-hash = "2.1.1"
 once_cell = "1.21.3"
 memmap2 = "0.9.5"
+libc = "0.2.172"
 
 [build-dependencies]
 csv = "1.3.0"

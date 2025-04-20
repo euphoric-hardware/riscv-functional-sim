@@ -13,9 +13,9 @@ impl<'b> System<'b> {
     // testver
     pub fn new() -> Self {
         let mut bus = Bus::new();
-        let ram = Ram::new(0x80000000,(2 << 30));
+        let ram = Ram::new(0x80000000,(1 << 29));
 
-        bus.register(Box::new(ram), 0x80000000, 0x10000000);
+        bus.register(Box::new(ram), 0x80000000, (1 << 29));
 
         let mut cpu = Cpu::new();
         cpu.pc = 0x80000000;

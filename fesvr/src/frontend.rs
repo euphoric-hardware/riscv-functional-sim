@@ -2,14 +2,23 @@ use crate::{elf::RiscvElf, syscall::SyscallId, Error, Result, Syscall};
 use log::info;
 use object::{elf::SHT_PROGBITS, read::elf::SectionHeader as _};
 use std::{
-    cmp::min, fs::{self, File}, io::{self, Write}, os::fd::FromRawFd as _, path::Path
+    cmp::min,
+    fs::{self, File},
+    io::{self, Write},
+    path::Path,
 };
+
+#[cfg(unix)]
+use std::os::unix::io::{FromRawFd, RawFd as _};
+#[cfg(windows)]
+use std::os::windows::io::{FromRawHandle, RawHandle};
+#[cfg(windows)]
+use std::os::windows::raw::HANDLE;
 
 pub trait Htif {
     /// Chunk up read transactions based on the address alignment scheme that the target expects
     /// - verbatim from memif.cc in spike
     fn read(&mut self, ptr: u64, buf: &mut [u8]) -> Result<()> {
-
         let mut len = buf.len();
         let mut addr = ptr;
         let mut buf_ = buf;
@@ -47,7 +56,7 @@ pub trait Htif {
             self.read_chunk(start, &mut buf_[pos..pos + cur_len])?;
         }
 
-        return Ok(())
+        return Ok(());
     }
 
     /// Chunk up write transactions based on the address alignment scheme that the target expects
@@ -85,7 +94,6 @@ pub trait Htif {
             len -= this_len as usize;
         }
 
-
         // aligned
         for pos in (0..len).step_by(self.max_chunk_bytes() as usize) {
             let start = addr + pos as u64;
@@ -105,7 +113,6 @@ pub trait Htif {
     fn read_chunk(&mut self, ptr: u64, buf: &mut [u8]) -> Result<()>;
     fn write_chunk(&mut self, ptr: u64, buf: &[u8]) -> Result<()>;
 }
-
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum FrontendReturnCode {
@@ -140,7 +147,7 @@ impl Frontend {
         Ok(Self {
             elf,
             to_host,
-            from_host
+            from_host,
         })
     }
 
@@ -189,7 +196,7 @@ impl Frontend {
         if (tohost & 0x1 == 1) {
             return Ok(FrontendReturnCode::Exit);
         }
-        
+
         match tohost {
             1 => Ok(FrontendReturnCode::Exit),
             0 => Ok(FrontendReturnCode::Continue),
@@ -246,7 +253,17 @@ impl Frontend {
                         arg_no: 0,
                         value: syscall.arg0,
                     })?;
-                    let mut f = unsafe { File::from_raw_fd(fd) };
+
+                    let mut f: File;
+                    #[cfg(unix)]
+                    {
+                        f = unsafe { File::from_raw_fd(fd) };
+                    }
+                    #[cfg(windows)] {
+                        f = unsafe { File::from_raw_handle(fd) };
+                    }                        
+                    
+
                     self.write_buf(&mut f, &buf)?;
                 }
                 return Ok(len);
@@ -256,12 +273,8 @@ impl Frontend {
 
     fn write_buf<Wr: Write>(&self, f: &mut Wr, buf: &[u8]) -> Result<u64> {
         match f.write_all(&buf) {
-            Ok(_) => {
-                Ok(buf.len() as u64)
-            }
-            Err(io_error) => {
-                Err(Error::IoError(io_error))
-            }
+            Ok(_) => Ok(buf.len() as u64),
+            Err(io_error) => Err(Error::IoError(io_error)),
         }
     }
 }

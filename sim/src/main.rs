@@ -14,6 +14,7 @@ mod mmu;
 mod plic;
 mod system;
 mod uop_cache;
+mod superpage;
 
 use ahash;
 use args::FunctionalSimArgs;
