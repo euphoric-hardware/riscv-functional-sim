@@ -10,30 +10,34 @@ pub fn fcvt_d_l_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u6
     let mode = Insn::get_rounding_mode(cpu, rm);
     cpu.update_hardware_fp_flags();
 
-    let result: f64;
-    unsafe {
-        // Set the FPCR based on rounding mode
-        let mode_bits = match mode {
-            Some(RoundingMode::RNE) => 0b00,
-            Some(RoundingMode::RUP) => 0b01,
-            Some(RoundingMode::RDN) => 0b10,
-            Some(RoundingMode::RTZ) => 0b11,
-            Some(RoundingMode::RMM) => 0b11, // RMM is round to nearest, ties to max mag
-            None => todo!(),
-        };
+    let mut result: f64 = 0.0;
 
-        let mut fpcr: u64;
-        core::arch::asm!("mrs {0}, fpcr", out(reg) fpcr);
-        fpcr = (fpcr & !(0b11 << 22)) | ((mode_bits as u64) << 22);
-        core::arch::asm!("msr fpcr, {0}", in(reg) fpcr);
+    #[cfg(target_arch = "aarch64")]
+    {
+        unsafe {
+            // Set the FPCR based on rounding mode
+            let mode_bits = match mode {
+                Some(RoundingMode::RNE) => 0b00,
+                Some(RoundingMode::RUP) => 0b01,
+                Some(RoundingMode::RDN) => 0b10,
+                Some(RoundingMode::RTZ) => 0b11,
+                Some(RoundingMode::RMM) => 0b11, // RMM is round to nearest, ties to max mag
+                None => todo!(),
+            };
 
-        // Perform signed int to float conversion using `scvtf`
-        core::arch::asm!(
-            "scvtf d0, {input}",
-            "fmov {output}, d0",
-            input = in(reg) input,
-            output = out(reg) result,
-        );
+            let mut fpcr: u64;
+            core::arch::asm!("mrs {0}, fpcr", out(reg) fpcr);
+            fpcr = (fpcr & !(0b11 << 22)) | ((mode_bits as u64) << 22);
+            core::arch::asm!("msr fpcr, {0}", in(reg) fpcr);
+
+            // Perform signed int to float conversion using `scvtf`
+            core::arch::asm!(
+                "scvtf d0, {input}",
+                "fmov {output}, d0",
+                input = in(reg) input,
+                output = out(reg) result,
+            );
+        }
     }
 
     cpu.set_fflags();
