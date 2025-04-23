@@ -22,6 +22,8 @@ pub fn fcvt_l_s_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u6
         cpu.csrs.store(Csrs::FFLAGS, 16);
     } else {
         cpu.update_hardware_fp_flags();
+        #[cfg(target_arch = "aarch64")]
+    {
         unsafe {
             core::arch::asm!("fmov d0, {0}", in(reg) op1);
             match mode {
@@ -33,6 +35,7 @@ pub fn fcvt_l_s_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u6
                 None => todo!(),
             };
         }
+    }
         cpu.set_fflags();
     }
     cpu.store(rd, result as u64);

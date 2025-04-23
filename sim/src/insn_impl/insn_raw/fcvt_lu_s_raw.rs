@@ -26,16 +26,19 @@ pub fn fcvt_lu_s_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u
         cpu.csrs.store(Csrs::FFLAGS, 16);
     } else {
         cpu.update_hardware_fp_flags();
-        unsafe {
-            core::arch::asm!("fmov d0, {0}", in(reg) op1);
-            match mode {
-                Some(RoundingMode::RNE) => core::arch::asm!("fcvtns {}, s0", out(reg) result),
-                Some(RoundingMode::RTZ) => core::arch::asm!("fcvtzs {}, s0", out(reg) result),
-                Some(RoundingMode::RDN) => core::arch::asm!("fcvtms {}, s0", out(reg) result),
-                Some(RoundingMode::RUP) => core::arch::asm!("fcvtps {}, s0", out(reg) result),
-                Some(RoundingMode::RMM) => core::arch::asm!("fcvtas {}, s0", out(reg) result),
-                None => todo!(),
-            };
+        #[cfg(target_arch = "aarch64")]
+        {
+            unsafe {
+                core::arch::asm!("fmov d0, {0}", in(reg) op1);
+                match mode {
+                    Some(RoundingMode::RNE) => core::arch::asm!("fcvtns {}, s0", out(reg) result),
+                    Some(RoundingMode::RTZ) => core::arch::asm!("fcvtzs {}, s0", out(reg) result),
+                    Some(RoundingMode::RDN) => core::arch::asm!("fcvtms {}, s0", out(reg) result),
+                    Some(RoundingMode::RUP) => core::arch::asm!("fcvtps {}, s0", out(reg) result),
+                    Some(RoundingMode::RMM) => core::arch::asm!("fcvtas {}, s0", out(reg) result),
+                    None => todo!(),
+                };
+            }
         }
         cpu.set_fflags();
     }

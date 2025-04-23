@@ -9,6 +9,8 @@ use crate::{
 pub fn fcvt_l_d_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u64> {
     let result: i64;
     let mode = Insn::get_rounding_mode(cpu, rm);
+    #[cfg(target_arch = "aarch64")]
+    {
     cpu.update_hardware_fp_flags();
     unsafe {
         core::arch::asm!("fmov d0, {0}", in(reg) cpu.fload(rs1));
@@ -21,7 +23,7 @@ pub fn fcvt_l_d_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u6
             None => todo!(),
         };
 
-    }
+    }}
     cpu.set_fflags();
     cpu.store(rd, result as u64);
     Ok(cpu.pc + 4)

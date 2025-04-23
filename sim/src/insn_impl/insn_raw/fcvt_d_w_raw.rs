@@ -13,30 +13,32 @@ pub fn fcvt_d_w_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u6
     cpu.update_hardware_fp_flags();
 
     let result: f64;
-    unsafe {
-        // Set the FPCR based on rounding mode
-        let mode_bits = match mode {
-            Some(RoundingMode::RNE) => 0b00,
-            Some(RoundingMode::RUP) => 0b01,
-            Some(RoundingMode::RDN) => 0b10,
-            Some(RoundingMode::RTZ) => 0b11,
-            Some(RoundingMode::RMM) => 0b11, 
-            None => todo!(),
-        };
+    #[cfg(target_arch = "aarch64")]
+    {
+        unsafe {
+            // Set the FPCR based on rounding mode
+            let mode_bits = match mode {
+                Some(RoundingMode::RNE) => 0b00,
+                Some(RoundingMode::RUP) => 0b01,
+                Some(RoundingMode::RDN) => 0b10,
+                Some(RoundingMode::RTZ) => 0b11,
+                Some(RoundingMode::RMM) => 0b11,
+                None => todo!(),
+            };
 
-        let mut fpcr: u64;
-        core::arch::asm!("mrs {0}, fpcr", out(reg) fpcr);
-        fpcr = (fpcr & !(0b11 << 22)) | ((mode_bits as u64) << 22);
-        core::arch::asm!("msr fpcr, {0}", in(reg) fpcr);
+            let mut fpcr: u64;
+            core::arch::asm!("mrs {0}, fpcr", out(reg) fpcr);
+            fpcr = (fpcr & !(0b11 << 22)) | ((mode_bits as u64) << 22);
+            core::arch::asm!("msr fpcr, {0}", in(reg) fpcr);
 
-        core::arch::asm!(
-            "scvtf d0, {input}",
-            "fmov {output}, d0",
-            input = in(reg) input,
-            output = out(reg) result,
-        );
+            core::arch::asm!(
+                "scvtf d0, {input}",
+                "fmov {output}, d0",
+                input = in(reg) input,
+                output = out(reg) result,
+            );
+        }
     }
-
     cpu.set_fflags();
     cpu.fstore(rd, result);
     Ok(cpu.pc + 4)

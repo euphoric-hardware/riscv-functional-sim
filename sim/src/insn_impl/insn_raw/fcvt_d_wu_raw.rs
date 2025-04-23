@@ -10,6 +10,8 @@ pub fn fcvt_d_wu_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u
     cpu.update_hardware_fp_flags();
 
     let result: f64;
+    #[cfg(target_arch = "aarch64")]
+    {
     unsafe {
         // Set the FPCR based on rounding mode
         let mode_bits = match mode {
@@ -33,7 +35,7 @@ pub fn fcvt_d_wu_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u
             output = out(reg) result,
         );
     }
-
+    }
     cpu.set_fflags();
     cpu.fstore(rd, result);
     Ok(cpu.pc + 4)
