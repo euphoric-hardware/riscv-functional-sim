@@ -8,7 +8,7 @@ use crate::{
 };
 
 pub fn fcvt_s_d_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u64> {
-    let result: f32;
+    let mut result: f32 = 0.0;
     let op1 = cpu.fload(rs1);
     let mode = Insn::get_rounding_mode(cpu, rm);
     cpu.update_hardware_fp_flags();

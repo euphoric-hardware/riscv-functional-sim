@@ -10,7 +10,7 @@ pub fn fcvt_s_l_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u6
     let mode = Insn::get_rounding_mode(cpu, rm);
     cpu.update_hardware_fp_flags();
 
-    let result: f32;
+    let mut result: f32 = 0.0;
     #[cfg(target_arch = "aarch64")]
     {
         unsafe {

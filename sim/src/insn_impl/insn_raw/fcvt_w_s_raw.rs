@@ -7,7 +7,7 @@ use crate::{
 };
 
 pub fn fcvt_w_s_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u64> {
-    let mut result: i32;
+    let mut result: i32 = 0;
     let mode = Insn::get_rounding_mode(cpu, rm);
     let op1 = f32::from_bits(cpu.fload(rs1).to_bits() as u32);
 

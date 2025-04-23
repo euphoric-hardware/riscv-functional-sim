@@ -7,7 +7,7 @@ use crate::{
 };
 
 pub fn fcvt_l_d_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u64> {
-    let result: i64;
+    let mut result: i64 = 0;
     let mode = Insn::get_rounding_mode(cpu, rm);
     #[cfg(target_arch = "aarch64")]
     {
