@@ -1,5 +1,3 @@
-use std::{os::macos::raw::stat, ptr};
-
 use simple_soft_float::{FPState, StatusFlags, F64};
 
 use crate::{
