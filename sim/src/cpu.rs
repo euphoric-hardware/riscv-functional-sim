@@ -207,7 +207,7 @@ impl Cpu {
     }
 
     pub fn load(&self, reg: u64) -> u64 {
-        unsafe { *self.regs.get_unchecked(reg as usize) } 
+        unsafe { *self.regs.get_unchecked(reg as usize) }
     }
 
     pub fn store(&mut self, reg: u64, value: u64) {
@@ -215,7 +215,7 @@ impl Cpu {
             unsafe {
                 *self.regs.get_unchecked_mut(reg as usize) = value;
             }
-            
+
             if self.diff {
                 self.commits.reg_write.insert(reg, value);
             }
@@ -223,7 +223,7 @@ impl Cpu {
     }
 
     pub fn fload(&self, reg: u64) -> f64 {
-        unsafe { *self.fregs.get_unchecked(reg as usize) } 
+        unsafe { *self.fregs.get_unchecked(reg as usize) }
     }
 
     pub fn fstore(&mut self, reg: u64, value: f64) {
@@ -277,7 +277,10 @@ impl Cpu {
     }
 
     pub fn update_hardware_fp_flags(&self) {
-        let mask = self.csrs.load(Csrs::FFLAGS).expect("Error reading from FFLAGS!");
+        let mask = self
+            .csrs
+            .load(Csrs::FFLAGS)
+            .expect("Error reading from FFLAGS!");
         #[cfg(target_arch = "aarch64")]
         {
             let nv = (mask >> 4) & 1; // FPSR bit 0
@@ -400,7 +403,10 @@ impl Cpu {
                 if (log) {
                     info!("\n");
                 }
-                self.states.push(state);
+
+                if diff {
+                    self.states.push(state);
+                }
 
                 self.pc = pc;
                 self.csrs.store(0xB00, self.csrs.load_unchecked(0xB00) + 1);
@@ -570,7 +576,6 @@ impl Insn {
             _ => None,
         }
     }
-
 }
 
 // FOR TRACING PURPOSES
