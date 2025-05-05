@@ -133,6 +133,7 @@ pub struct Cpu {
     pub diff: bool,
     pub commits: Commits,
     pub states: Vec<ExecutionState>,
+    pub cache_hits: u64,
 }
 
 #[derive(Debug)]
@@ -206,12 +207,15 @@ impl Cpu {
     }
 
     pub fn load(&self, reg: u64) -> u64 {
-        self.regs[reg as usize]
+        unsafe { *self.regs.get_unchecked(reg as usize) } 
     }
 
     pub fn store(&mut self, reg: u64, value: u64) {
         if reg != 0 {
-            self.regs[reg as usize] = value;
+            unsafe {
+                *self.regs.get_unchecked_mut(reg as usize) = value;
+            }
+            
             if self.diff {
                 self.commits.reg_write.insert(reg, value);
             }
@@ -219,11 +223,13 @@ impl Cpu {
     }
 
     pub fn fload(&self, reg: u64) -> f64 {
-        self.fregs[reg as usize]
+        unsafe { *self.fregs.get_unchecked(reg as usize) } 
     }
 
     pub fn fstore(&mut self, reg: u64, value: f64) {
-        self.fregs[reg as usize] = value;
+        unsafe {
+            *self.fregs.get_unchecked_mut(reg as usize) = value;
+        }
         if self.diff {
             self.commits.freg_write.insert(reg, value);
         }

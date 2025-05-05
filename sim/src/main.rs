@@ -23,6 +23,7 @@ use once_cell::sync::OnceCell;
 use std::env;
 use std::fs::File;
 use std::path::Path;
+use std::time;
 
 use diff::{Diff, ExecutionState};
 use fesvr::frontend::{Frontend, FrontendReturnCode};
@@ -80,8 +81,9 @@ fn main() -> std::io::Result<()> {
     // println!("start pc: {:#16x}", start_pc);
     // println!("end_pc: {:#16x}", end_pc);
     system.cpus[0].load_uop_cache(&mut system.bus, start_pc, end_pc);
-    // println!("{} entries in uop cache", system.cpus[0].uop_cache.len());
+    
     let mut i = 1;
+    let start_time = std::time::Instant::now();
     loop {
         system.tick();
         if *DIFF.get().expect("invalid DIFF global variable") == true {
@@ -112,6 +114,12 @@ fn main() -> std::io::Result<()> {
 
         i += 1;
     }
+    let elapsed_time = start_time.elapsed();
+    println!("\nRunning simulation took {} seconds.", elapsed_time.as_secs());
+    println!("Cache hit rate: {}", (system.cpus[0].cache_hits as f64)/(system.cpus[0]
+    .csrs
+    .load(csrs::Csrs::MINSTRET)
+    .expect("nonexistent csr!")) as f64);
 
     // // diff logs
     // if compare_logs {

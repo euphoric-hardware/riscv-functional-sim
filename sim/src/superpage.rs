@@ -100,7 +100,12 @@ impl Superpage {
     pub fn new(size: usize) -> Result<Self, String> {
         let ptr = alloc_superpage(size)?;
         unsafe {
-            ptr.as_ptr().write_bytes(0, size);
+            let mut p = ptr.as_ptr();
+            let end = p.add(size);
+            while p < end {
+                std::ptr::write_volatile(p, 0);
+                p = p.add(4096); // touch every 4KB page
+            }
         }
         Ok(Self { ptr, size })
     }

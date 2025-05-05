@@ -14,6 +14,7 @@ impl Cpu {
     
     if let Some(cached_insn) = cache_entry {
         // println!("bits: {:#08x}", cached_insn.insn_bits);
+        self.cache_hits += 1;
         let result = cached_insn.execute_cached_insn(self, bus);
         return result;
     } 
