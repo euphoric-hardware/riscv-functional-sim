@@ -4,6 +4,7 @@ use std::{
 
 use crate::{
     ahash::AHashMap,
+    branch_hints::{likely, unlikely},
     bus::{Bus, Device},
     csrs::Csrs,
     diff::ExecutionState,
@@ -208,12 +209,13 @@ impl Cpu {
 
     #[inline(always)]
     pub fn store(&mut self, reg: u64, value: u64) {
-        if reg != 0 {
+        if likely(reg != 0) {
             unsafe {
                 *self.regs.get_unchecked_mut(reg as usize) = value;
             }
-
-            if self.diff {
+            
+            if unlikely(self.diff) {
+                #[cold]
                 self.commits.reg_write.insert(reg, value);
             }
         }

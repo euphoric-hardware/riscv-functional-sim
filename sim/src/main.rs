@@ -17,6 +17,7 @@ mod uop_cache;
 mod superpage;
 
 use ahash;
+use branch_hints;
 use args::FunctionalSimArgs;
 use clap::Parser;
 use once_cell::sync::OnceCell;

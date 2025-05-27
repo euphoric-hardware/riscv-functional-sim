@@ -14,3 +14,7 @@ build/
 *.svg
 profile.json.gz
 uncached_binaries/
+*.riscv
+*.data
+*.data.old
+sim/src/alt_superpage.rs

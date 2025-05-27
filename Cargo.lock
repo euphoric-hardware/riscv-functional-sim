@@ -123,6 +123,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c8214115b7bf84099f1309324e63141d4c5d7cc26862f97a0a857dbefe165bd"
 
 [[package]]
+name = "branch_hints"
+version = "0.4.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "563f5c490d4067ffedc27856627e2c04f3657ef84d7889590e76f544ef96d797"
+
+[[package]]
 name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -743,6 +749,7 @@ name = "sim"
 version = "0.1.0"
 dependencies = [
  "ahash",
+ "branch_hints",
  "clap",
  "csv",
  "env_logger",
