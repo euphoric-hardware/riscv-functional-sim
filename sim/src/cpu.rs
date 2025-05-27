@@ -1,10 +1,5 @@
 use std::{
-    arch::asm,
-    collections::{BTreeMap, HashMap},
-    default,
-    fmt::{write, Display},
-    hash::Hash,
-    u64,
+    arch::asm, collections::{BTreeMap, HashMap}, default, fmt::{write, Display}, hash::Hash
 };
 
 use crate::{
@@ -206,10 +201,12 @@ impl Cpu {
         }
     }
 
+    #[inline(always)]
     pub fn load(&self, reg: u64) -> u64 {
         unsafe { *self.regs.get_unchecked(reg as usize) }
     }
 
+    #[inline(always)]
     pub fn store(&mut self, reg: u64, value: u64) {
         if reg != 0 {
             unsafe {
