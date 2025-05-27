@@ -1,5 +1,9 @@
 use std::{
-    arch::asm, collections::{BTreeMap, HashMap}, default, fmt::{write, Display}, hash::Hash
+    arch::asm,
+    collections::{BTreeMap, HashMap},
+    default,
+    fmt::{write, Display},
+    hash::Hash,
 };
 
 use crate::{
@@ -129,7 +133,6 @@ pub struct Cpu {
     pub diff: bool,
     pub commits: Commits,
     pub states: Vec<ExecutionState>,
-    pub cache_hits: u64,
 }
 
 #[derive(Debug)]
@@ -213,7 +216,7 @@ impl Cpu {
             unsafe {
                 *self.regs.get_unchecked_mut(reg as usize) = value;
             }
-            
+
             if unlikely(self.diff) {
                 #[cold]
                 self.commits.reg_write.insert(reg, value);
@@ -340,75 +343,20 @@ impl Cpu {
     }
 
     pub fn step(&mut self, bus: &mut Bus) {
-        let mut state = <ExecutionState as std::default::Default>::default();
-        let mut insn_bits = 0;
-        if let Some(entry) = self.uop_cache.get(&self.pc) {
-            insn_bits = entry.insn_bits;
-        }
-        match self.execute_insn(bus) {
+    
+        let cache_ptr = self.uop_cache.get(&self.pc).map(|e| e as *const UopCacheEntry);
+        
+        match self.execute_insn(cache_ptr, bus) {
             Ok(pc) => {
-                let log: bool = *LOG.get().expect("invalid DIFF global variable");
-                let diff: bool = *DIFF.get().expect("invalid DIFF global variable");
-                if log == true {
-                    info!(
-                        "core   0: {} 0x{:016x} (0x{:08x})",
-                        self.privilege_mode(),
-                        self.pc,
-                        insn_bits
-                    );
+                let next_pc = self.pc.wrapping_add(4);
+                if likely(next_pc == pc) {
+                    self.pc = next_pc;
+                } else {
+                    self.pc = pc;
                 }
-
-                state.pc = self.pc;
-                state.instruction = insn_bits as u32; // FIXME - figure out how to get instruction
-
-                if self.commits.modified_regs() {
-                    while let Some((reg, val)) = self.commits.reg_write.pop_first() {
-                        if (log) {
-                            info!(" {:<3} 0x{:016x}", REGISTER_NAMES[reg as usize], val);
-                        }
-                        if diff {
-                            state.register_updates.push((reg as u8, val));
-                        }
-                    }
-                }
-                if self.commits.modified_fregs() {
-                    while let Some((reg, val)) = self.commits.freg_write.pop_first() {
-                        if (log) {
-                            info!(" f{:<3} 0x{:016x}", reg as usize, val.to_bits());
-                        }
-                        if diff {
-                            state.fregister_updates.push((reg as u8, val.to_bits()));
-                        }
-                    }
-                }
-                if self.commits.is_load() {
-                    while let Some((addr, _)) = self.commits.mem_read.pop_first() {
-                        if (log) {
-                            info!(" mem 0x{:016x}", addr);
-                        }
-                    }
-                } else if self.commits.is_store() {
-                    while let Some((addr, val)) = self.commits.mem_write.pop_first() {
-                        if (log) {
-                            info!(" mem 0x{:016x} {}", addr, val);
-                        }
-
-                        if diff {
-                            state.memory_writes.push((addr, u64::from(val)));
-                        }
-                    }
-                }
-
-                if (log) {
-                    info!("\n");
-                }
-
-                if diff {
-                    self.states.push(state);
-                }
-
-                self.pc = pc;
                 self.csrs.store(0xB00, self.csrs.load_unchecked(0xB00) + 1);
+
+                
             }
             Err(e) => {
                 self.csrs.store_unchecked(Csrs::MCAUSE, e as u64);

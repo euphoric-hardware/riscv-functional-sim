@@ -1,23 +1,31 @@
 use std::process::exit;
 
+use branch_hints::unlikely;
+
 use crate::{
     bus::{Bus, Device},
     cpu::{self, Cpu, Insn},
     insn_impl,
+    uop_cache::uop_cache::UopCacheEntry,
 };
 
 impl Cpu {
-    pub fn execute_insn(&mut self, bus: &mut Bus) -> cpu::Result<u64> {
-        let cache_index = self.pc;
-        let cache_entry = self.uop_cache.get(&cache_index).cloned();
-        // println!("PC: {:#16x}", self.pc);
+    pub fn execute_insn(
+        &mut self,
+        cache_ptr: Option<*const UopCacheEntry>,
+        bus: &mut Bus,
+    ) -> cpu::Result<u64> {
+        // let cache_index = self.pc;
+        // let cache_entry = self.uop_cache.get(&cache_index).cloned();
+        // // println!("PC: {:#16x}", self.pc);
 
-        if let Some(cached_insn) = cache_entry {
+        if let Some(cached_insn) = cache_ptr {
             // println!("bits: {:#08x}", cached_insn.insn_bits);
-            self.cache_hits += 1;
-            let result = cached_insn.execute_cached_insn(self, bus);
-            return result;
-        } else {
+            unsafe {
+                let result = (*cached_insn).execute_cached_insn(self, bus);
+                return result;
+            }
+        } else if unlikely(true) {
             let mut bytes = [0; std::mem::size_of::<u32>()];
             bus.read(self.pc, &mut bytes).expect("invalid dram address");
             let insn = Insn::from_bytes(&bytes);
@@ -371,6 +379,8 @@ impl Cpu {
             } else {
                 Err(cpu::Exception::IllegalInstruction)
             }
+        } else {
+            panic!();
         }
     }
 }

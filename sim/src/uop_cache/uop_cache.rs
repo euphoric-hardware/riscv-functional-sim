@@ -6,6 +6,7 @@ use crate::{
 
 use super::set_cached_insn;
 
+#[repr(C)]
 #[derive(Debug, Clone)]
 pub struct UopCacheEntry {
     pub insn_bits: u64,
@@ -250,6 +251,7 @@ impl UopCacheEntry {
         return Some(entry);
     }
 
+    #[inline(always)]
     pub fn execute_cached_insn(&self, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
         (self.op)(cpu, bus, self)
     }
