@@ -9,18 +9,17 @@ use crate::{
 };
 
 impl Cpu {
-    pub fn execute_insn(
-        &mut self,
-        cache_ptr: *const UopCacheEntry,
-        bus: &mut Bus,
-    ) -> cpu::Result<u64> {
-        if cache_ptr != null() {
-            // println!("bits: {:#08x}", cached_insn.insn_bits);
+    pub fn execute_insn(&mut self, bus: &mut Bus) -> cpu::Result<u64> {
+        let cache_ptr = self
+            .uop_cache
+            .get(&self.pc)
+            .map(|entry| entry as *const UopCacheEntry);
+
+        if let Some(ptr) = cache_ptr {
             unsafe {
-                let result = (*cache_ptr).execute_cached_insn(self, bus);
-                result
+                (*ptr).execute_cached_insn(self, bus)
             }
-        } else if unlikely(true) {
+        } else {
             let mut bytes = [0; std::mem::size_of::<u32>()];
             bus.read(self.pc, &mut bytes).expect("invalid dram address");
             let insn = Insn::from_bytes(&bytes);
@@ -375,8 +374,6 @@ impl Cpu {
             } else {
                 Err(cpu::Exception::IllegalInstruction)
             }
-        } else {
-            panic!();
         }
     }
 }

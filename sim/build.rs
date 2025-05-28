@@ -286,14 +286,17 @@ fn generate_cpu_execute_arms(out_dir: &Path, config: &IndexMap<String, ParsedIns
 };
 
 impl Cpu {
-    pub fn execute_insn(&mut self, cache_ptr: Option<*const UopCacheEntry>, bus: &mut Bus) -> cpu::Result<u64> {
-        if let Some(cached_insn) = cache_ptr {
-                // println!("bits: {:#08x}", cached_insn.insn_bits);
-                unsafe {
-                    let result = (*cached_insn).execute_cached_insn(self, bus);
-                    return result;
-                }
-        } else if unlikely(true) {
+    pub fn execute_insn(&mut self, bus: &mut Bus) -> cpu::Result<u64> {
+        let cache_ptr = self
+            .uop_cache
+            .get(&self.pc)
+            .map(|entry| entry as *const UopCacheEntry);
+
+        if let Some(ptr) = cache_ptr {
+            unsafe {
+                return (*ptr).execute_cached_insn(self, bus);
+            }
+        } else {
             let mut bytes = [0; std::mem::size_of::<u32>()];
             bus.read(self.pc, &mut bytes).expect("invalid dram address");
             let insn = Insn::from_bytes(&bytes);

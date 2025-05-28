@@ -345,12 +345,7 @@ impl Cpu {
     }
 
     pub fn step(&mut self, bus: &mut Bus) {
-        let cache_ptr = self
-            .uop_cache
-            .get(&self.pc)
-            .map_or(std::ptr::null(), |e| e as *const _);
-
-        match self.execute_insn(cache_ptr, bus) {
+        match self.execute_insn(bus) {
             Ok(pc) => {
                 let next_pc = self.pc.wrapping_add(4);
                 let cond = (next_pc == pc) as u64;
