@@ -85,6 +85,7 @@ pub mod fcvt_wu_s;
 pub mod fdiv_d;
 pub mod fdiv_s;
 pub mod fence;
+pub mod fence_i;
 pub mod feq_d;
 pub mod feq_s;
 pub mod fld;

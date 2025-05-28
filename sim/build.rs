@@ -282,25 +282,22 @@ fn generate_cpu_execute_arms(out_dir: &Path, config: &IndexMap<String, ParsedIns
         .expect("cpu_execute.rs");
 
     let base = r#"use crate::{
-    cpu::{self, Cpu, Insn},
-    bus::{Bus, Device},
-    insn_impl,
+    branch_hints::unlikely, bus::{Bus, Device}, cpu::{self, Cpu, Insn}, insn_impl, uop_cache::uop_cache::UopCacheEntry
 };
 
 impl Cpu {
-    pub fn execute_insn(&mut self, bus: &mut Bus) -> cpu::Result<u64> {
-    let cache_index = (self.pc.clone() - 0x80000000) / 4;
-    let cache_entry = self.uop_cache.get(&cache_index).cloned();
-    if let Some(cached_insn) = cache_entry {
-        let result = cached_insn.execute_cached_insn(self, bus);
-        return result;
-    } 
-
-    else {
-        let mut bytes = [0; std::mem::size_of::<u32>()];
-        bus.read(self.pc, &mut bytes).expect("invalid dram address");
-        let insn = Insn::from_bytes(&bytes);
-        let bits = insn.bits();"#;
+    pub fn execute_insn(&mut self, cache_ptr: Option<*const UopCacheEntry>, bus: &mut Bus) -> cpu::Result<u64> {
+        if let Some(cached_insn) = cache_ptr {
+                // println!("bits: {:#08x}", cached_insn.insn_bits);
+                unsafe {
+                    let result = (*cached_insn).execute_cached_insn(self, bus);
+                    return result;
+                }
+        } else if unlikely(true) {
+            let mut bytes = [0; std::mem::size_of::<u32>()];
+            bus.read(self.pc, &mut bytes).expect("invalid dram address");
+            let insn = Insn::from_bytes(&bytes);
+            let bits = insn.bits();"#;
 
     writeln!(handle, "{}", base).expect("write");
 
@@ -308,9 +305,9 @@ impl Cpu {
         writeln!(
             handle,
             r#"
-        {}if bits & {} == {} {{
-            insn_impl::{insn_name}::{insn_name}(insn, self, bus)
-        }}"#,
+            {}if bits & {} == {} {{
+                insn_impl::{insn_name}::{insn_name}(insn, self, bus)
+            }}"#,
             if idx != 0 { "else " } else { "" },
             insn.mask,
             insn.i_match
@@ -322,7 +319,9 @@ impl Cpu {
             else {
                 Err(cpu::Exception::IllegalInstruction)
             }
-        }
+        } else {
+            panic!();
+        }   
     }
 }
 "#;
@@ -471,7 +470,7 @@ fn main() {
     }
 
     let cmd = Command::new("make")
-        .arg("EXTENSIONS=rv_i rv64_i rv_zicsr rv_system rv_c rv64_c rv_f rv64_f rv_d rv64_d rv_m rv64_m rv_c_d")
+        .arg("EXTENSIONS=rv_i rv64_i rv_zicsr rv_system rv_c rv64_c rv_f rv64_f rv_d rv64_d rv_m rv64_m rv_c_d rv_zifencei")
         .current_dir(&spec_dir)
         .env("PATH", path)
         .output()

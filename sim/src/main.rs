@@ -114,6 +114,8 @@ fn main() -> std::io::Result<()> {
 
         i += 1;
     }
+
+    // println!("instructions retired: {}", system.cpus[0].csrs.load(csrs::Csrs::MINSTRET).expect("invalid csr read"));
     
     // // diff logs
     // if compare_logs {

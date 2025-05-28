@@ -85,6 +85,7 @@ pub mod fcvt_wu_s_raw;
 pub mod fdiv_d_raw;
 pub mod fdiv_s_raw;
 pub mod fence_raw;
+pub mod fence_i_raw;
 pub mod feq_d_raw;
 pub mod feq_s_raw;
 pub mod fld_raw;
