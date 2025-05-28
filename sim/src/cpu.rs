@@ -10,7 +10,7 @@ use crate::{
     ahash::AHashMap,
     branch_hints::{likely, unlikely},
     bus::{Bus, Device},
-    csrs::Csrs,
+    csrs::{self, Csrs},
     diff::ExecutionState,
     uop_cache::uop_cache::UopCacheEntry,
     DIFF, LOG,
@@ -218,7 +218,6 @@ impl Cpu {
             }
 
             if unlikely(self.diff) {
-                #[cold]
                 self.commits.reg_write.insert(reg, value);
             }
         }
@@ -347,10 +346,11 @@ impl Cpu {
     pub fn step(&mut self, bus: &mut Bus) {
         match self.execute_insn(bus) {
             Ok(pc) => {
-                let next_pc = self.pc.wrapping_add(4);
-                let cond = (next_pc == pc) as u64;
-                self.pc = (next_pc & (!0 * cond)) | (pc & (!0 * (1 - cond)));
-                self.csrs.store(0xB00, self.csrs.load_unchecked(0xB00) + 1);
+                self.pc = pc;
+                unsafe {
+                    let ptr = self.csrs.regs.get_unchecked_mut(csrs::Csrs::MCYCLE as usize);
+                    *ptr = ptr.wrapping_add(1);
+                }
             }
             Err(e) => {
                 self.csrs.store_unchecked(Csrs::MCAUSE, e as u64);

@@ -9,6 +9,7 @@ use crate::{
 };
 
 impl Cpu {
+    #[inline(always)]
     pub fn execute_insn(&mut self, bus: &mut Bus) -> cpu::Result<u64> {
         let cache_ptr = self
             .uop_cache

@@ -1,4 +1,7 @@
-use crate::{csrs::Csrs, cpu::{Exception, Result}};
+use crate::{
+    cpu::{Exception, Result},
+    csrs::Csrs,
+};
 
 impl Csrs {
     pub const FFLAGS: u64 = 0x001;
@@ -331,22 +334,16 @@ impl Csrs {
     pub const MCONFIGPTR: u64 = 0xF15;
     pub const MTOPI: u64 = 0xFB0;
 
+    #[inline(always)]
     pub fn load(&self, address: u64) -> Result<u64> {
-        if (address as usize) < self.regs.len() {
-            Ok(self.regs[address as usize])
-        } else {
-            Err(Exception::IllegalInstruction)
-        }
+        Ok(unsafe { *self.regs.get_unchecked(address as usize) })
     }
 
-
+    #[inline(always)]
     pub fn store(&mut self, address: u64, value: u64) -> Result<()> {
-        if (address as usize) < self.regs.len() {
-            self.regs[address as usize] = value;
-            Ok(())
-        } else {
-            Err(Exception::IllegalInstruction)
+        unsafe {
+            *self.regs.get_unchecked_mut(address as usize) = value;
         }
+        Ok(())
     }
-    
 }
