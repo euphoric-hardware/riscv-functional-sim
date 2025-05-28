@@ -377,7 +377,9 @@ impl Cpu {
             } else if bits & 0xe003 == 0xa002 {
                 insn_impl::c_fsdsp::c_fsdsp(insn, self, bus)
             } else {
-                Err(cpu::Exception::IllegalInstruction)
+                // FIXME - figure out a more robust way of skipping unrecognized/unnecessary instructions
+                Ok(self.pc + 4)
+                // Err(cpu::Exception::IllegalInstruction)
             }
         } else {
             panic!();
