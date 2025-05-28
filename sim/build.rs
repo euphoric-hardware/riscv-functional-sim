@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 // use serde::Deserialize;
 use serde::Deserialize;
-use serde_json::{self, value::Index};
+use serde_json::{self};
 use std::{
     collections::BTreeMap,
     env,
@@ -84,7 +84,7 @@ pub fn {insn_name}(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64>
     }
 
     let mod_rs = out_dir.join("src").join("insn_impl").join("mod.rs");
-    let mut mod_decls = config
+    let mod_decls = config
         .keys()
         .map(|i| format!("pub mod {i};"))
         .collect::<Vec<_>>()
@@ -142,7 +142,7 @@ pub fn {insn_name}_raw(cpu: &mut Cpu, {bus_param}todo()) -> cpu::Result<u64> {{
         .join("src")
         .join("insn_impl/insn_raw")
         .join("mod.rs");
-    let mut mod_decls = config
+    let mod_decls = config
         .keys()
         .map(|i| format!("pub mod {i}_raw;"))
         .collect::<Vec<_>>()
@@ -217,7 +217,7 @@ pub fn {insn_name}_cached(cpu: &mut Cpu, bus: &mut Bus, cache_entry: &UopCacheEn
         .join("src")
         .join("insn_impl/insn_cached")
         .join("mod.rs");
-    let mut mod_decls = config
+    let mod_decls = config
         .keys()
         .map(|i| format!("pub mod {i}_cached;"))
         .collect::<Vec<_>>()
@@ -484,12 +484,12 @@ fn main() {
         );
     }
 
-    let mut execute_config: IndexMap<String, ParsedInsn> = serde_json::from_reader(
-        File::open(&spec_dir.join("instr_dict.json")).expect("instr_dict.json not found"),
+    let execute_config: IndexMap<String, ParsedInsn> = serde_json::from_reader(
+        File::open(spec_dir.join("instr_dict.json")).expect("instr_dict.json not found"),
     )
     .expect("json deserialize");
     let mut config: BTreeMap<String, ParsedInsn> = serde_yaml::from_reader(
-        File::open(&spec_dir.join("instr_dict.json")).expect("instr_dict.json not found"),
+        File::open(spec_dir.join("instr_dict.json")).expect("instr_dict.json not found"),
     )
     .expect("json deserialize");
 
@@ -533,13 +533,13 @@ fn main() {
         config.remove(insn.to_owned());
     }
 
-    let mut rdr = csv::ReaderBuilder::new()
+    let rdr = csv::ReaderBuilder::new()
         .has_headers(false)
-        .from_path(&spec_dir.join("arg_lut.csv"))
+        .from_path(spec_dir.join("arg_lut.csv"))
         .expect("arg_lut.csv not found");
-    let mut rdr2 = csv::ReaderBuilder::new()
+    let rdr2 = csv::ReaderBuilder::new()
         .has_headers(false)
-        .from_path(&spec_dir.join("csrs.csv"))
+        .from_path(spec_dir.join("csrs.csv"))
         .expect("csrs.csv not found");
 
     // generate_instruction_files(&out_dir, &config);

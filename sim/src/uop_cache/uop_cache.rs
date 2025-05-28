@@ -171,27 +171,27 @@ impl UopCacheEntry {
         entry.imm_c_sdsp = (insn.c_uimm9sp_s() & 0x7) << 6 | insn.c_uimm9sp_s() & 0x38;
         entry.imm_c_lw =
             (insn.c_uimm7lo() & 0x1) << 6 | insn.c_uimm7hi() << 3 | (insn.c_uimm7lo() & 0x2) << 1;
-        entry.imm_c_ld = (insn.c_uimm8lo() << 6 | insn.c_uimm8hi() << 3);
+        entry.imm_c_ld = insn.c_uimm8lo() << 6 | insn.c_uimm8hi() << 3;
         entry.imm_c_sw =
             (insn.c_uimm7lo() & 0x1) << 6 | insn.c_uimm7hi() << 3 | (insn.c_uimm7lo() & 0x2) << 1;
-        entry.imm_c_sd = (insn.c_uimm8lo() << 6 | insn.c_uimm8hi() << 3);
+        entry.imm_c_sd = insn.c_uimm8lo() << 6 | insn.c_uimm8hi() << 3;
         entry.imm_c_j = Insn::sign_extend(
-            ((insn.c_imm12() & 0x400) << 1
+            (insn.c_imm12() & 0x400) << 1
                 | (insn.c_imm12() & 0x40) << 4
                 | (insn.c_imm12() & 0x180) << 1
                 | (insn.c_imm12() & 0x10) << 3
                 | (insn.c_imm12() & 0x20) << 1
                 | (insn.c_imm12() & 0x200) >> 5
                 | (insn.c_imm12() & 0xe)
-                | (insn.c_imm12() & 0x1) << 5),
+                | (insn.c_imm12() & 0x1) << 5,
             12,
         ) as u64;
         entry.imm_c_b = Insn::sign_extend(
-            ((insn.c_bimm9hi() & 0x4) << 6
+            (insn.c_bimm9hi() & 0x4) << 6
                 | (insn.c_bimm9lo() & 0x18) << 3
                 | (insn.c_bimm9lo() & 0x1) << 5
                 | (insn.c_bimm9hi() & 0x3) << 3
-                | insn.c_bimm9lo() & 0x6),
+                | insn.c_bimm9lo() & 0x6,
             9,
         ) as u64;
         entry.imm_c_li = Insn::sign_extend(insn.c_imm6hi() << 5 | insn.c_imm6lo(), 6) as u64;

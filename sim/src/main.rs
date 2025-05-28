@@ -17,7 +17,7 @@ mod uop_cache;
 mod superpage;
 
 use ahash;
-use branch_hints;
+use branch_hints::{self, unlikely};
 use args::FunctionalSimArgs;
 use clap::Parser;
 use once_cell::sync::OnceCell;
@@ -55,7 +55,7 @@ fn main() -> std::io::Result<()> {
         DIFF.set(false).expect("DIFF already set.")
     }
 
-    if let(log_path) = &args.output_log {
+    if let log_path = &args.output_log {
         LOG.set(true).expect("LOG already set.");
     } 
 
@@ -86,7 +86,7 @@ fn main() -> std::io::Result<()> {
     let mut i = 1;
     loop {
         system.tick();
-        if *DIFF.get().expect("invalid DIFF global variable") == true {
+        if unlikely(*DIFF.get().expect("invalid DIFF global variable")) {
             if !Diff::diff_execution_state(
                 spike_states.get(i - 1),
                 system.cpus[0].states.get(i - 1),

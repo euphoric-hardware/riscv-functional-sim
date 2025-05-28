@@ -187,7 +187,7 @@ impl Cpu {
 
     pub fn load_uop_cache(&mut self, bus: &mut Bus, start_pc: u64, end_pc: u64) {
         let mut i: u64 = start_pc;
-        while (i < end_pc) {
+        while i < end_pc {
             let mut bytes = [0; std::mem::size_of::<u32>()];
             bus.read(i, &mut bytes).expect("invalid dram address");
             let insn = Insn::from_bytes(&bytes);
@@ -224,10 +224,12 @@ impl Cpu {
         }
     }
 
+    #[inline(always)]
     pub fn fload(&self, reg: u64) -> f64 {
         unsafe { *self.fregs.get_unchecked(reg as usize) }
     }
 
+    #[inline(always)]
     pub fn fstore(&mut self, reg: u64, value: f64) {
         unsafe {
             *self.fregs.get_unchecked_mut(reg as usize) = value;
@@ -343,20 +345,17 @@ impl Cpu {
     }
 
     pub fn step(&mut self, bus: &mut Bus) {
-    
-        let cache_ptr = self.uop_cache.get(&self.pc).map(|e| e as *const UopCacheEntry);
-        
+        let cache_ptr = self
+            .uop_cache
+            .get(&self.pc)
+            .map_or(std::ptr::null(), |e| e as *const _);
+
         match self.execute_insn(cache_ptr, bus) {
             Ok(pc) => {
                 let next_pc = self.pc.wrapping_add(4);
-                if likely(next_pc == pc) {
-                    self.pc = next_pc;
-                } else {
-                    self.pc = pc;
-                }
+                let cond = (next_pc == pc) as u64;
+                self.pc = (next_pc & (!0 * cond)) | (pc & (!0 * (1 - cond)));
                 self.csrs.store(0xB00, self.csrs.load_unchecked(0xB00) + 1);
-
-                
             }
             Err(e) => {
                 self.csrs.store_unchecked(Csrs::MCAUSE, e as u64);

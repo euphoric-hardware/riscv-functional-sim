@@ -11,17 +11,17 @@ pub fn fcvt_lu_s_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u
     let mode = Insn::get_rounding_mode(cpu, rm);
     let op1 = f32::from_bits(cpu.fload(rs1).to_bits() as u32);
 
-    if (op1 > u64::MAX as f32) {
+    if op1 > u64::MAX as f32 {
         result = u64::MAX;
         cpu.csrs.store(Csrs::FFLAGS, 16);
-    } else if (op1 < (u64::MIN as f32)) {
+    } else if op1 < (u64::MIN as f32) {
         result = u64::MIN;
-        if (op1 > -1.0) {
+        if op1 > -1.0 {
             cpu.csrs.store(Csrs::FFLAGS, 1);
         } else {
             cpu.csrs.store(Csrs::FFLAGS, 16);
         }
-    } else if (op1.is_nan()) {
+    } else if op1.is_nan() {
         result = u64::MAX;
         cpu.csrs.store(Csrs::FFLAGS, 16);
     } else {

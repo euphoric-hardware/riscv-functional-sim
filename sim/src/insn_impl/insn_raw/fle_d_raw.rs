@@ -24,7 +24,7 @@ pub fn fle_d_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rs2: u64) -> cpu::Result<u64>
         }
     }
 
-    let value = if (op1 <= op2) { 1 } else { 0 };
+    let value = if op1 <= op2 { 1 } else { 0 };
 
     cpu.set_fflags();
     cpu.store(rd, value);
