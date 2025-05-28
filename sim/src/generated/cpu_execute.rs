@@ -23,7 +23,6 @@ impl Cpu {
             let insn = Insn::from_bytes(&bytes);
             let bits = insn.bits();
 
-            // std::process::exit(1);
             if bits & 0x7f == 0x37 {
                 insn_impl::lui::lui(insn, self, bus)
             } else if bits & 0x7f == 0x17 {
@@ -369,7 +368,7 @@ impl Cpu {
             } else if bits & 0xe003 == 0xa002 {
                 insn_impl::c_fsdsp::c_fsdsp(insn, self, bus)
             } else {
-                Err(cpu::Exception::IllegalInstruction)
+                Ok(self.pc + 4)
             }
         }
     }
