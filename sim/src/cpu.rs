@@ -343,20 +343,17 @@ impl Cpu {
             .store(Csrs::FFLAGS, Self::get_hardware_fp_flags() as u64);
     }
 
+    #[inline(always)]
     pub fn step(&mut self, bus: &mut Bus) {
         match self.execute_insn(bus) {
-            Ok(pc) => {
-                self.pc = pc;
+            Ok(new_pc) => {
+                self.pc = new_pc;
                 unsafe {
-                    let ptr = self.csrs.regs.get_unchecked_mut(csrs::Csrs::MCYCLE as usize);
-                    *ptr = ptr.wrapping_add(1);
+                    *self.csrs.regs.get_unchecked_mut(csrs::Csrs::MCYCLE as usize) = 
+                        self.csrs.regs.get_unchecked(csrs::Csrs::MCYCLE as usize).wrapping_add(1);
                 }
             }
-            Err(e) => {
-                self.csrs.store_unchecked(Csrs::MCAUSE, e as u64);
-                self.csrs.store_unchecked(Csrs::MEPC, self.pc);
-                self.pc = self.csrs.load_unchecked(Csrs::MTVEC);
-            }
+            Err(_) => panic!("illegal instruction!")
         }
     }
 }

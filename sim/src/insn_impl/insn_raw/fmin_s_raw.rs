@@ -2,6 +2,7 @@ use simple_soft_float::{F32, F64};
 
 use crate::{bus::Bus, cpu::{self, Cpu, Insn}, csrs::Csrs};
 
+#[inline(always)]
 pub fn fmin_s_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rs2: u64) -> cpu::Result<u64> {
     let op1 = f32::from_bits(cpu.fload(rs1).to_bits() as u32);
     let op2 = f32::from_bits(cpu.fload(rs2).to_bits() as u32);

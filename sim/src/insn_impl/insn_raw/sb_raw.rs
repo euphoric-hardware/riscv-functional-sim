@@ -3,6 +3,7 @@ use crate::{
     cpu::{self, Cpu, Insn}
 };
 
+#[inline(always)]
 pub fn sb_raw(cpu: &mut Cpu, bus: &mut Bus, rs1: u64, rs2: u64, imm_s: u64) -> cpu::Result<u64> {
     let offset: u64 = imm_s;
 

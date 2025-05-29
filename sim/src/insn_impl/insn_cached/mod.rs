@@ -85,6 +85,7 @@ pub mod fcvt_wu_s_cached;
 pub mod fdiv_d_cached;
 pub mod fdiv_s_cached;
 pub mod fence_cached;
+pub mod fence_i_cached;
 pub mod feq_d_cached;
 pub mod feq_s_cached;
 pub mod fld_cached;

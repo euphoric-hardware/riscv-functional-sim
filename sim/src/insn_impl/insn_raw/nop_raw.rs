@@ -3,6 +3,7 @@ use crate::{
     cpu::{self, Cpu, Insn}
 };
 
+#[inline(always)]
 pub fn nop_raw(cpu: &mut Cpu) -> cpu::Result<u64> {
     Ok(cpu.pc + 4)
 }

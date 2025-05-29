@@ -2,6 +2,7 @@ use simple_soft_float::F64;
 
 use crate::{bus::Bus, cpu::{self, Cpu, Insn}, csrs::Csrs};
 
+#[inline(always)]
 pub fn fmax_d_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rs2: u64) -> cpu::Result<u64> {
     let op1 = cpu.fload(rs1);
     let op2 = cpu.fload(rs2);

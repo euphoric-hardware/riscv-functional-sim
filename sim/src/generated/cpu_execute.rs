@@ -4,12 +4,12 @@ use crate::{
     branch_hints::unlikely,
     bus::{Bus, Device},
     cpu::{self, Cpu, Insn},
-    insn_impl,
+    insn_impl::{self, jump_table},
     uop_cache::uop_cache::UopCacheEntry,
 };
 
 impl Cpu {
-    #[inline(always)]
+    #[inline(never)]
     pub fn execute_insn(&mut self, bus: &mut Bus) -> cpu::Result<u64> {
         let cache_ptr = self
             .uop_cache
@@ -18,7 +18,8 @@ impl Cpu {
 
         if let Some(ptr) = cache_ptr {
             unsafe {
-                (*ptr).execute_cached_insn(self, bus)
+                // (*ptr).execute_cached_insn(self, bus)
+                jump_table::JUMP_TABLE[(*ptr).jump_table_index](self, bus, &*ptr)
             }
         } else {
             let mut bytes = [0; std::mem::size_of::<u32>()];

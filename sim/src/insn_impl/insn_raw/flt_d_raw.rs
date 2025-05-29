@@ -4,6 +4,7 @@ use simple_soft_float::{FPState, StatusFlags};
 
 use crate::{cpu::{self, Cpu, Insn}, bus::Bus};
 
+#[inline(always)]
 pub fn flt_d_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rs2: u64) -> cpu::Result<u64> {
     let mut op1 = unsafe { ptr::read_volatile(&cpu.fload(rs1)) };
     let mut op2 = unsafe { ptr::read_volatile(&cpu.fload(rs2)) };

@@ -242,22 +242,24 @@ fn generate_set_cached_insn(out_dir: &Path, config: &IndexMap<String, ParsedInsn
 use super::uop_cache::UopCacheEntry;
 
 impl UopCacheEntry {
-    pub fn set_cached_insn(bits: u64) -> Option<fn(cpu: &mut Cpu, bus: &mut Bus, &UopCacheEntry) -> cpu::Result<u64>> {"#;
+    pub fn set_cached_insn(bits: u64) -> Option<usize> {"#;
 
     writeln!(handle, "{}", base).expect("write");
 
+    let mut i: usize = 0;
     for (idx, (insn_name, insn)) in config.iter().enumerate() {
         writeln!(
             handle,
             r#"
         {}if bits & {} == {} {{
-            Some(insn_cached::{insn_name}_cached::{insn_name}_cached)
+            Some({i})
         }}"#,
             if idx != 0 { "else " } else { "" },
             insn.mask,
             insn.i_match
         )
         .expect("write");
+        i += 1;
     }
 
     let end = r#"
@@ -330,6 +332,40 @@ impl Cpu {
 "#;
     writeln!(handle, "{}", end).expect("write");
 }
+
+fn generate_insn_jump_table(out_dir: &Path, config: &IndexMap<String, ParsedInsn>) {
+    let jump_table = out_dir.join("src").join("insn_impl").join("jump_table.rs");
+    if fs::exists(&jump_table).unwrap_or(true) {
+        fs::remove_file(&jump_table).expect("remove jump_table");
+    }
+    let mut handle = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(&jump_table)
+        .expect("jump_table.rs");
+
+    let num_insns = config.iter().len();
+    let base: String = format!("use crate::{{
+    bus::{{Bus, Device}}, cpu::{{self, Cpu, Insn}}, insn_impl::{{self, insn_cached}}, uop_cache::uop_cache::UopCacheEntry
+}};
+type CachedInsn = fn(cpu: &mut Cpu, bus: &mut Bus, cache_entry: &UopCacheEntry) -> cpu::Result<u64>;
+pub const JUMP_TABLE: [CachedInsn; {}] = [", num_insns);
+
+    writeln!(handle, "{}", base).expect("write");
+
+    for (idx, (insn_name, insn)) in config.iter().enumerate() {
+        writeln!(
+            handle,
+            r#"    insn_cached::{insn_name}_cached::{insn_name}_cached,"#,
+        )
+        .expect("write");
+    }
+
+    let end:&'static str = r#"];"#;
+    writeln!(handle, "{}", end).expect("write");
+
+}
+
 
 fn generate_insn_arg_luts<T: io::Read>(out_dir: &Path, csv_reader: &mut csv::Reader<T>) {
     let insn_arg_luts = out_dir
@@ -452,6 +488,7 @@ impl Csrs {"#;
     .expect("write");
 }
 
+
 fn main() {
     let out_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let out_dir = Path::new(&out_dir);
@@ -552,4 +589,5 @@ fn main() {
     // generate_cpu_execute_arms(&out_dir, &execute_config);
     // generate_insn_arg_luts(&out_dir, &mut rdr);
     // generate_csr_load_store(&out_dir, &mut rdr2);
+    // generate_insn_jump_table(&out_dir, &execute_config);
 }

@@ -7,6 +7,7 @@ use crate::{
     cpu::{self, Cpu, Insn, RoundingMode},
 };
 
+#[inline(always)]
 pub fn fcvt_s_d_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u64> {
     let mut result: f32 = 0.0;
     let op1 = cpu.fload(rs1);

@@ -86,18 +86,18 @@ fn main() -> std::io::Result<()> {
     let mut i = 1;
     loop {
         system.tick();
-        if unlikely(*DIFF.get().expect("invalid DIFF global variable")) {
-            if !Diff::diff_execution_state(
-                spike_states.get(i - 1),
-                system.cpus[0].states.get(i - 1),
-            ) && i <= spike_states.len()
-            {
-                println!("mismatch, exeuction ended!");
-                break;
-            }
-        }
+        // if unlikely(*DIFF.get().expect("invalid DIFF global variable")) {
+        //     if !Diff::diff_execution_state(
+        //         spike_states.get(i - 1),
+        //         system.cpus[0].states.get(i - 1),
+        //     ) && i <= spike_states.len()
+        //     {
+        //         println!("mismatch, exeuction ended!");
+        //         break;
+        //     }
+        // }
 
-        if i % 5000 == 0 {
+        if unlikely(i % 5000 == 0) {
             if frontend.process(&mut system).expect("htif") == FrontendReturnCode::Exit {
                 println!("\nTarget program finished");
                 break;

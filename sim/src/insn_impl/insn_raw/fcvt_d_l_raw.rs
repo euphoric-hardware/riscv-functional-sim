@@ -5,6 +5,7 @@ use crate::{
     cpu::{self, Cpu, Insn, RoundingMode},
 };
 
+#[inline(always)]
 pub fn fcvt_d_l_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u64> {
     let input: i64 = cpu.load(rs1) as i64;
     let mode = Insn::get_rounding_mode(cpu, rm);

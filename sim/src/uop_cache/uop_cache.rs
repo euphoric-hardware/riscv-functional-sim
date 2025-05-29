@@ -1,12 +1,12 @@
 use crate::{
     bus::Bus,
     cpu::{self, Cpu, Insn, Result},
-    insn_impl::insn_cached,
+    insn_impl::{insn_cached, jump_table}
 };
 
 use super::set_cached_insn;
 
-#[repr(C)]
+#[repr(C, packed)]
 #[derive(Debug, Clone)]
 pub struct UopCacheEntry {
     pub insn_bits: u64,
@@ -69,6 +69,7 @@ pub struct UopCacheEntry {
     pub csr: u64,
     pub zimm: u64,
 
+    pub jump_table_index: usize,
     pub op: fn(cpu: &mut Cpu, bus: &mut Bus, &UopCacheEntry) -> cpu::Result<u64>,
 }
 
@@ -131,6 +132,7 @@ impl UopCacheEntry {
             csr: 0,
             zimm: 0,
 
+            jump_table_index: 0,
             op: (insn_cached::nop_cached::nop_cached),
         };
 
@@ -240,9 +242,10 @@ impl UopCacheEntry {
 
         // select operation here
         let bits = insn.bits();
-        let operation: Option<fn(cpu: &mut Cpu, bus: &mut Bus, &UopCacheEntry) -> cpu::Result<u64>> = UopCacheEntry::set_cached_insn(insn.bits());
-        if let Some(cached_operation) = operation {
-            entry.op = cached_operation;
+        let jump_table_index: Option<usize> = UopCacheEntry::set_cached_insn(insn.bits());
+        if let Some(index) = jump_table_index {
+            entry.jump_table_index = index;
+            entry.op = jump_table::JUMP_TABLE[index]
         }
         else {
             return None;

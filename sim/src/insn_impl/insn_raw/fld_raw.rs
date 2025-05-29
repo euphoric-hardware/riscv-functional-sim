@@ -2,6 +2,7 @@ use simple_soft_float::F64;
 
 use crate::{bus::{Bus, Device}, cpu::{self, Cpu, Insn}};
 
+#[inline(always)]
 pub fn fld_raw(cpu: &mut Cpu, bus: &mut Bus, rd: u64, rs1: u64, imm_i: u64) -> cpu::Result<u64> {
     let imm = Insn::sign_extend(imm_i as u64, 12);
     let address = (cpu.load(rs1) as u64).wrapping_add(imm as u64);

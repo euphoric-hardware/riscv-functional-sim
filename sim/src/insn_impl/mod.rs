@@ -1,3 +1,4 @@
+pub mod jump_table;
 pub mod add;
 pub mod addi;
 pub mod addiw;

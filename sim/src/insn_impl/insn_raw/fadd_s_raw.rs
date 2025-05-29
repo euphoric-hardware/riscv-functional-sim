@@ -4,6 +4,7 @@ use simple_soft_float::{FPState, StatusFlags, F32, F64};
 
 use crate::{cpu::{self, Cpu, Insn}, bus::Bus};
 
+#[inline(always)]
 pub fn fadd_s_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rs2: u64, rm: u64) -> cpu::Result<u64> {
     let op1 = unsafe { ptr::read_volatile(&f32::from_bits(cpu.fload(rs1) as u32)) };
     let op2 = unsafe { ptr::read_volatile(&f32::from_bits(cpu.fload(rs2) as u32)) };

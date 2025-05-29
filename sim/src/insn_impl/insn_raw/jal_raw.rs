@@ -3,6 +3,7 @@ use crate::{
     cpu::{self, Cpu, Insn}
 };
 
+#[inline(always)]
 pub fn jal_raw(cpu: &mut Cpu, rd: u64, imm_j: u64) -> cpu::Result<u64> {
     let offset = imm_j;
 

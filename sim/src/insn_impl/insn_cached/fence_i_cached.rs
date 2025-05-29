@@ -1,0 +1,6 @@
+use crate::{bus::Bus, cpu::{self, Cpu, Insn}, insn_impl::insn_raw, uop_cache::uop_cache::UopCacheEntry};
+
+#[inline(always)]
+pub fn fence_i_cached(cpu: &mut Cpu, bus: &mut Bus, cache_entry: &UopCacheEntry) -> cpu::Result<u64> {
+    insn_raw::fence_i_raw::fence_i_raw(cpu, 0, 0, 0)
+}
