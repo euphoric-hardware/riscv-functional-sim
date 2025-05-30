@@ -7,7 +7,6 @@ use std::{
 };
 
 use crate::{
-    ahash::AHashMap,
     branch_hints::{likely, unlikely},
     bus::{Bus, Device},
     csrs::{self, Csrs},
@@ -19,7 +18,7 @@ use crate::{
 use ::simple_soft_float;
 use log::info;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum MemData {
     DoubleWord(u64),
     Word(u32),
@@ -129,10 +128,12 @@ pub struct Cpu {
     pub fregs: [f64; 32],
     pub pc: u64,
     pub csrs: Csrs,
-    pub uop_cache: AHashMap<u64, UopCacheEntry>,
-    pub diff: bool,
+    pub uop_cache: Vec<Option<UopCacheEntry>>,
+    pub uop_base: u64,   // start_pc
+    pub uop_stride: u64, // 2
     pub commits: Commits,
     pub states: Vec<ExecutionState>,
+    pub cache_hits: u64,
 }
 
 #[derive(Debug)]
@@ -180,29 +181,38 @@ pub type Result<T> = std::result::Result<T, Exception>;
 
 impl Cpu {
     pub fn new() -> Cpu {
-        let mut cpu: Cpu = Default::default();
-        cpu.diff = *(DIFF.get().expect("invalid DIFF global variable"));
+        let cpu: Cpu = Default::default();
         cpu
     }
 
     pub fn load_uop_cache(&mut self, bus: &mut Bus, start_pc: u64, end_pc: u64) {
+        self.uop_base = start_pc;
+        self.uop_stride = 2;
+        let size = ((end_pc - start_pc) / self.uop_stride) as usize + 1;
+        self.uop_cache = vec![None; size];
+
         let mut i: u64 = start_pc;
         while i < end_pc {
             let mut bytes = [0; std::mem::size_of::<u32>()];
             bus.read(i, &mut bytes).expect("invalid dram address");
             let insn = Insn::from_bytes(&bytes);
-            let cache_index = i;
-            i += 2;
-
             let entry = UopCacheEntry::new(insn);
             if let Some(entry) = entry {
-                self.uop_cache.insert(cache_index, entry);
+                let index = ((i - self.uop_base) / self.uop_stride) as usize;
+                self.uop_cache[index] = Some(entry);
             }
 
+            i += 2;
             if insn.bits() & 0b11 == 0b11 {
-                i += 2; // regular length instructions
+                i += 2;
             }
         }
+    }
+
+    #[inline(always)]
+    pub fn get_uop(&self, addr: u64) -> Option<&UopCacheEntry> {
+        let index = ((addr - self.uop_base) / self.uop_stride) as usize;
+        self.uop_cache.get(index).and_then(|e| e.as_ref())
     }
 
     #[inline(always)]
@@ -216,8 +226,8 @@ impl Cpu {
             unsafe {
                 *self.regs.get_unchecked_mut(reg as usize) = value;
             }
-
-            if unlikely(self.diff) {
+            #[cfg(debug_assertions)]
+            if unlikely(*DIFF.get().unwrap()) {
                 self.commits.reg_write.insert(reg, value);
             }
         }
@@ -233,7 +243,8 @@ impl Cpu {
         unsafe {
             *self.fregs.get_unchecked_mut(reg as usize) = value;
         }
-        if self.diff {
+        #[cfg(debug_assertions)]
+        if unlikely(*DIFF.get().unwrap()) {
             self.commits.freg_write.insert(reg, value);
         }
     }
@@ -345,15 +356,108 @@ impl Cpu {
 
     #[inline(always)]
     pub fn step(&mut self, bus: &mut Bus) {
+        #[cfg(debug_assertions)]
+        let log = *LOG.get().expect("invalid LOG global variable");
+
+        #[cfg(debug_assertions)]
+        let mut state = {
+            if *DIFF.get().unwrap() {
+                ExecutionState {
+                    pc: self.pc,
+                    ..Default::default()
+                }
+            } else {
+                Default::default()
+            }
+        };
+
+        let insn_bits = self.get_uop(self.pc).map_or(0, |entry| entry.insn_bits);
+
         match self.execute_insn(bus) {
             Ok(new_pc) => {
+                // diffing and logging
+                #[cfg(debug_assertions)]
+                {
+                    if log {
+                        info!(
+                            "core   0: {} 0x{:016x} (0x{:08x})",
+                            self.privilege_mode(),
+                            self.pc,
+                            insn_bits
+                        );
+                    }
+
+                    if self.commits.modified_regs() {
+                        for (reg, val) in self.commits.reg_write.iter() {
+                            if log {
+                                info!(" {:<3} 0x{:016x}", REGISTER_NAMES[*reg as usize], *val);
+                            }
+                            if *DIFF.get().unwrap() {
+                                state.register_updates.push((*reg as u8, *val));
+                            }
+                        }
+                        self.commits.reg_write.clear();
+                    }
+
+                    if self.commits.modified_fregs() {
+                        for (reg, val) in self.commits.freg_write.iter() {
+                            if log {
+                                info!(" f{:<3} 0x{:016x}", *reg as usize, val.to_bits());
+                            }
+                            if *DIFF.get().unwrap() {
+                                state.fregister_updates.push((*reg as u8, val.to_bits()));
+                            }
+                        }
+                        self.commits.freg_write.clear();
+                    }
+
+                    if self.commits.is_load() {
+                        for (addr, _) in self.commits.mem_read.iter() {
+                            if log {
+                                info!(" mem 0x{:016x}", *addr);
+                            }
+                        }
+                        self.commits.mem_read.clear();
+                    } else if self.commits.is_store() {
+                        for (addr, val) in self.commits.mem_write.iter() {
+                            if log {
+                                info!(" mem 0x{:016x} {}", *addr, val);
+                            }
+
+                            if *DIFF.get().unwrap() {
+                                state.memory_writes.push((*addr, u64::from(val.clone())));
+                            }
+                        }
+                        self.commits.mem_write.clear();
+                    }
+
+                    if log {
+                        info!("\n");
+                    }
+
+                    if *DIFF.get().unwrap() {
+                        state.instruction = insn_bits as u32;
+                        self.states.push(state);
+                    }
+                }
+
                 self.pc = new_pc;
                 unsafe {
-                    *self.csrs.regs.get_unchecked_mut(csrs::Csrs::MCYCLE as usize) = 
-                        self.csrs.regs.get_unchecked(csrs::Csrs::MCYCLE as usize).wrapping_add(1);
+                    *self
+                        .csrs
+                        .regs
+                        .get_unchecked_mut(csrs::Csrs::MCYCLE as usize) = self
+                        .csrs
+                        .regs
+                        .get_unchecked(csrs::Csrs::MCYCLE as usize)
+                        .wrapping_add(1);
                 }
             }
-            Err(_) => panic!("illegal instruction!")
+            Err(e) => unsafe {
+                self.csrs.store_unchecked(Csrs::MCAUSE, e as u64);
+                self.csrs.store_unchecked(Csrs::MEPC, self.pc);
+                self.pc = self.csrs.load_unchecked(Csrs::MTVEC);
+            },
         }
     }
 }

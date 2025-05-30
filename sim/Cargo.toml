@@ -21,6 +21,7 @@ once_cell = "1.21.3"
 memmap2 = "0.9.5"
 libc = "0.2.172"
 branch_hints = "0.4.11"
+goblin = "0.10.0"
 
 [build-dependencies]
 csv = "1.3.0"

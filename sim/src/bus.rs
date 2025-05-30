@@ -89,6 +89,7 @@ impl<'b> Bus<'b> {
 }
 
 impl Device for Bus<'_> {
+    #[inline(always)]
     fn read(&mut self, ptr: u64, buf: &mut [u8]) -> Result<()> {
         match self.get_device(ptr, buf.len() as u64) {
             Ok((memory_range, device)) => {

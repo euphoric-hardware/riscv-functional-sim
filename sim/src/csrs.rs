@@ -23,11 +23,13 @@ impl std::fmt::Debug for Csrs {
 impl Csrs {
     // SAFETY: caller must ensure valid CSR adderss
     pub fn load_unchecked(&self, address: u64) -> u64 {
-        self.regs[address as usize]
+        unsafe { *self.regs.get_unchecked(address as usize) }
     }
 
     // SAFETY: caller must ensure valid CSR adderss
     pub fn store_unchecked(&mut self, address: u64, value: u64) {
-        self.regs[address as usize] = value;
+        unsafe {
+            *self.regs.get_unchecked_mut(address as usize) = value;
+        }
     }
 }

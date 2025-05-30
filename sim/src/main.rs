@@ -12,13 +12,12 @@ mod insn_impl;
 mod logger;
 mod mmu;
 mod plic;
+mod superpage;
 mod system;
 mod uop_cache;
-mod superpage;
 
-use ahash;
-use branch_hints::{self, unlikely};
 use args::FunctionalSimArgs;
+use branch_hints::{self, unlikely};
 use clap::Parser;
 use once_cell::sync::OnceCell;
 use std::env;
@@ -38,32 +37,31 @@ fn main() -> std::io::Result<()> {
 
     logger::init_logger(true, &args.output_log.to_str().unwrap());
 
-    let differ: Diff;
-    let mut spike_states: Vec<ExecutionState> = Vec::new();
-
-    if let Some(spike_log_path) = &args.spike_log {
-        if let Some(file_name) = spike_log_path.file_name().and_then(|f| f.to_str()) {
-            DIFF.set(true).expect("DIFF already set.");
-            differ = diff::Diff {};
-            spike_states = differ.parse_spike_log(file_name).unwrap();
-            spike_states.drain(0..5);
+    #[cfg(debug_assertions)]
+    let mut spike_states: Vec<ExecutionState> = {
+        let mut states = Vec::new();
+        if let Some(spike_log_path) = &args.spike_log {
+            if let Some(file_name) = spike_log_path.file_name().and_then(|f| f.to_str()) {
+                DIFF.set(true).expect("DIFF already set.");
+                let differ = diff::Diff {};
+                states = differ.parse_spike_log(file_name).unwrap();
+                states.drain(0..5);
+            } else {
+                DIFF.set(false).expect("DIFF already set.");
+            }
         } else {
             DIFF.set(false).expect("DIFF already set.");
         }
-    } 
-    else {
-        DIFF.set(false).expect("DIFF already set.")
-    }
 
-    if let log_path = &args.output_log {
         LOG.set(true).expect("LOG already set.");
-    } 
-
+        states
+    };
 
     let binary = &args.bin;
     println!("Testing... {:?}\n", binary.file_name().unwrap());
 
     let mut system = system::System::new();
+
     system.cpus[0]
         .csrs
         .store_unchecked(csrs::Csrs::MSTATUS, 0b00000000000000000001100000000000);
@@ -79,23 +77,22 @@ fn main() -> std::io::Result<()> {
     let start_pc = frontend.start_of_text();
     let end_pc = frontend.end_of_text();
 
-    // println!("start pc: {:#16x}", start_pc);
-    // println!("end_pc: {:#16x}", end_pc);
     system.cpus[0].load_uop_cache(&mut system.bus, start_pc, end_pc);
-    
     let mut i = 1;
     loop {
         system.tick();
-        // if unlikely(*DIFF.get().expect("invalid DIFF global variable")) {
-        //     if !Diff::diff_execution_state(
-        //         spike_states.get(i - 1),
-        //         system.cpus[0].states.get(i - 1),
-        //     ) && i <= spike_states.len()
-        //     {
-        //         println!("mismatch, exeuction ended!");
-        //         break;
-        //     }
-        // }
+
+        #[cfg(debug_assertions)]
+        if unlikely(*DIFF.get().expect("invalid DIFF global variable")) {
+            if !Diff::diff_execution_state(
+                spike_states.get(i - 1),
+                system.cpus[0].states.get(i - 1),
+            ) && i <= spike_states.len()
+            {
+                println!("mismatch, exeuction ended!");
+                break;
+            }
+        }
 
         if unlikely(i % 5000 == 0) {
             if frontend.process(&mut system).expect("htif") == FrontendReturnCode::Exit {
@@ -115,13 +112,14 @@ fn main() -> std::io::Result<()> {
         i += 1;
     }
 
-    println!("instructions retired: {}", system.cpus[0].csrs.load(csrs::Csrs::MINSTRET).expect("invalid csr read"));
-    
-    // // diff logs
-    // if compare_logs {
-    //     Diff::diff_execution_states(&spike_states, &system.cpus[0].states);
-    //     println!("Diff complete!");
-    // }
+    // println!(
+    //     "instructions retired: {}",
+    //     system.cpus[0]
+    //         .csrs
+    //         .load(csrs::Csrs::MINSTRET)
+    //         .expect("invalid csr read") as f64
+    // );
+    // println!("uop cache hits: {}", system.cpus[0].cache_hits);
 
     Ok(())
 }

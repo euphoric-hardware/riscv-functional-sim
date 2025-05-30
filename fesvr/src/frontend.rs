@@ -10,11 +10,6 @@ use std::{
 
 #[cfg(unix)]
 use std::os::unix::io::{FromRawFd, RawFd as _};
-#[cfg(windows)]
-use std::os::windows::io::{FromRawHandle, RawHandle};
-#[cfg(windows)]
-use std::os::windows::raw::HANDLE;
-
 pub trait Htif {
     /// Chunk up read transactions based on the address alignment scheme that the target expects
     /// - verbatim from memif.cc in spike
@@ -156,10 +151,10 @@ impl Frontend {
     }
 
     pub fn start_of_text(&self) -> u64 {
-        self.elf.extract_start_of_text()
+        self.elf.extract_min_address()
     }
     pub fn end_of_text(&self) -> u64 {
-        self.elf.extract_end_of_text()
+        self.elf.extract_max_address()
     }
     pub fn reset<H: Htif>(&self, htif: &mut H) -> Result<()> {
         htif.write(Self::MSIP_BASE, &[1])?;
@@ -178,7 +173,7 @@ impl Frontend {
                 let mut addr = section.sh_addr(e) as u64;
                 for chunk in data_chunks {
                     htif.write(addr, &chunk)?;
-                    addr += chunk.len() as u64;
+                    addr += chunk.len() as u64;   
                 }
             }
         }

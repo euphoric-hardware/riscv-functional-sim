@@ -1,7 +1,7 @@
 use object::{
     elf::FileHeader64,
     read::elf::{FileHeader, SectionHeader, SectionTable},
-    Endianness, Object, ObjectSymbol,
+    Endianness, Object, ObjectSection, ObjectSymbol, SectionFlags, SectionKind,
 };
 
 // wrapper for object's elf, which is quite annoying
@@ -86,45 +86,37 @@ impl RiscvElf {
         return u64::from_le_bytes(bytes);
     }
 
-    pub fn extract_start_of_text(&self) -> u64 {
+    pub fn extract_min_address(&self) -> u64 {
         let obj = object::File::parse(&*self.data).expect("data error");
         let mut start_addr: u64 = 0x80000000;
         for symbol in obj.symbols() {
             let name = symbol.name().expect("no symbol name");
             match name {
-                "start" => {
+                "_start" => {
                     start_addr = symbol.address();
                 }
 
                 _ => {}
             }
         }
-
         start_addr
     }
 
-    pub fn extract_end_of_text(&self) -> u64 {
-        let obj = object::File::parse(&*self.data).expect("data error");
-        let mut end_addr: u64 = 0x80000000;
-        for symbol in obj.symbols() {
-            let name = symbol.name().expect("no symbol name");
-            match name {
-                "_end" => {
-                    end_addr = symbol.address()
+    pub fn extract_max_address(&self) -> u64 {
+        const PF_X: u32 = 0x1;
+        let elf = goblin::elf::Elf::parse(&self.data).expect("Failed to parse ELF");
+
+        let mut max_addr = 0;
+        for ph in elf.program_headers.iter() {
+            if ph.p_type == goblin::elf::program_header::PT_LOAD && (ph.p_flags & PF_X) != 0 {
+                let end = ph.p_vaddr + ph.p_memsz;
+                if end > max_addr {
+                    max_addr = end;
                 }
-                // "_exit" => {
-                //     end_addr = symbol.address();
-                // }
-
-                // "exit" => {
-                //     end_addr = symbol.address();
-                // }
-
-                _ => {}
             }
         }
-
-        end_addr
+        
+        max_addr
     }
 }
 
