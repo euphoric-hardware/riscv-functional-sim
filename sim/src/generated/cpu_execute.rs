@@ -11,7 +11,7 @@ use crate::{
 impl Cpu {
     #[inline(never)]
     pub fn execute_insn(&mut self, bus: &mut Bus) -> cpu::Result<u64> {
-        let index = ((self.pc - self.uop_base) / self.uop_stride) as usize;
+        let index = ((self.pc - self.uop_base) >> 1) as usize;
 
         if let Some(Some(entry)) = self.uop_cache.get(index) {
             let entry_ptr = entry as *const UopCacheEntry;

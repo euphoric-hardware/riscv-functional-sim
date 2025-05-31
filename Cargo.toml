@@ -3,9 +3,7 @@
 members = ["fesvr", "sim"]
 resolver = "2"
 
-[profile.trace_diff]
-inherits = "release"
-
-[profile.trace_diff.package.sim]
-debug = true
-debug-assertions = true
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = "fat"

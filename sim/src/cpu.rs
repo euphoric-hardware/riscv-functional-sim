@@ -371,6 +371,7 @@ impl Cpu {
             }
         };
 
+        #[cfg(debug_assertions)]
         let insn_bits = self.get_uop(self.pc).map_or(0, |entry| entry.insn_bits);
 
         match self.execute_insn(bus) {
