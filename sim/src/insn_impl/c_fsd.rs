@@ -6,8 +6,8 @@ pub fn c_fsd(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let c_uimm8lo = insn.c_uimm8lo();
     let c_uimm8hi = insn.c_uimm8hi();
 
-    let imm = c_uimm8hi << 3 | c_uimm8lo << 6;
-    let address = (cpu.load(rs1_p) as u64).wrapping_add(imm as u64);
+    let imm = (c_uimm8hi << 3) | (c_uimm8lo << 6);
+    let address = cpu.load(rs1_p).wrapping_add(imm);
     let result = cpu.fload(rs2_p);
 
     bus.write(address, &result.to_le_bytes());

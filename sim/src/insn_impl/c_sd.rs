@@ -9,7 +9,7 @@ pub fn c_sd(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let c_uimm8hi = insn.c_uimm8hi();
     let c_uimm8lo = insn.c_uimm8lo();
 
-    let imm = c_uimm8lo << 6 | c_uimm8hi << 3;
+    let imm = (c_uimm8lo << 6) | (c_uimm8hi << 3);
 
     let address = cpu.load(rs1_p).wrapping_add(imm);
     bus.write(address, &cpu.load(rs2_p).to_le_bytes())?;

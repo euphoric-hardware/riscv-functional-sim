@@ -13,7 +13,7 @@ impl Cpu {
     pub fn execute_insn(&mut self, bus: &mut Bus) -> cpu::Result<u64> {
         let index = ((self.pc - self.uop_base) >> 1) as usize;
 
-        if let Some(Some(entry)) = self.uop_cache.get(index) {
+        if let Some(entry) = self.uop_cache.get(index).filter(|e| e.valid) {
             let entry_ptr = entry as *const UopCacheEntry;
             self.cache_hits += 1;
             unsafe {
@@ -25,11 +25,11 @@ impl Cpu {
             let insn = Insn::from_bytes(&bytes);
 
             let entry = UopCacheEntry::new(insn);
-            if let Some(entry) = entry {
+            if entry.valid {
                 if index >= self.uop_cache.len() {
-                    self.uop_cache.resize(index + 1, None);
+                    self.uop_cache.resize(index + 1, UopCacheEntry::default());
                 }
-                self.uop_cache[index] = Some(entry);
+                self.uop_cache[index] = entry;
                 self.execute_insn(bus)
             } else {
                 Err(cpu::Exception::IllegalInstruction)

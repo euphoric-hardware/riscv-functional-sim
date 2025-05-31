@@ -9,7 +9,7 @@ pub struct System<'b> {
     pub bus: Bus<'b>,
 }
 
-impl<'b> System<'b> {
+impl System<'_> {
     // testver
     pub fn new() -> Self {
         let mut bus = Bus::new();

@@ -44,6 +44,6 @@ pub fn fcvt_lu_s_raw(cpu: &mut Cpu, rd: u64, rs1: u64, rm: u64) -> cpu::Result<u
         cpu.set_fflags();
     }
     println!("converted {op1} to {:16x}", result);
-    cpu.store(rd, result as u64);
+    cpu.store(rd, result);
     Ok(cpu.pc + 4)
 }

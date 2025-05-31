@@ -35,7 +35,7 @@ fn main() -> std::io::Result<()> {
     let args = FunctionalSimArgs::parse();
     File::create(&args.output_log)?;
 
-    logger::init_logger(true, &args.output_log.to_str().unwrap());
+    logger::init_logger(true, args.output_log.to_str().unwrap());
 
     #[cfg(debug_assertions)]
     let mut spike_states: Vec<ExecutionState> = {
@@ -94,11 +94,9 @@ fn main() -> std::io::Result<()> {
             }
         }
 
-        if unlikely(i % 5000 == 0) {
-            if frontend.process(&mut system).expect("htif") == FrontendReturnCode::Exit {
-                println!("\nTarget program finished");
-                break;
-            }
+        if unlikely(i % 5000 == 0) && frontend.process(&mut system).expect("htif") == FrontendReturnCode::Exit {
+            println!("\nTarget program finished");
+            break;
         }
 
         let minstret = system.cpus[0]

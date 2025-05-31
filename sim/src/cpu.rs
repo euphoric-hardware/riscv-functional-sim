@@ -128,7 +128,7 @@ pub struct Cpu {
     pub fregs: [f64; 32],
     pub pc: u64,
     pub csrs: Csrs,
-    pub uop_cache: Vec<Option<UopCacheEntry>>,
+    pub uop_cache: Vec<UopCacheEntry>,
     pub uop_base: u64,   // start_pc
     pub uop_stride: u64, // 2
     pub commits: Commits,
@@ -189,17 +189,17 @@ impl Cpu {
         self.uop_base = start_pc;
         self.uop_stride = 2;
         let size = ((end_pc - start_pc) / self.uop_stride) as usize + 1;
-        self.uop_cache = vec![None; size];
+        self.uop_cache = vec![UopCacheEntry::default(); size];
 
         let mut i: u64 = start_pc;
         while i < end_pc {
             let mut bytes = [0; std::mem::size_of::<u32>()];
             bus.read(i, &mut bytes).expect("invalid dram address");
             let insn = Insn::from_bytes(&bytes);
+            let index = ((i - self.uop_base) / self.uop_stride) as usize;
             let entry = UopCacheEntry::new(insn);
-            if let Some(entry) = entry {
-                let index = ((i - self.uop_base) / self.uop_stride) as usize;
-                self.uop_cache[index] = Some(entry);
+            if entry.valid {
+                self.uop_cache[index] = entry;
             }
 
             i += 2;
@@ -212,7 +212,7 @@ impl Cpu {
     #[inline(always)]
     pub fn get_uop(&self, addr: u64) -> Option<&UopCacheEntry> {
         let index = ((addr - self.uop_base) / self.uop_stride) as usize;
-        self.uop_cache.get(index).and_then(|e| e.as_ref())
+        self.uop_cache.get(index).filter(|e| e.valid)
     }
 
     #[inline(always)]
@@ -273,14 +273,14 @@ impl Cpu {
             }
 
             // Extract the relevant bits and reorder
-            let nv = (fpsr >> 0) & 1;
+            let nv = fpsr & 1;
             let dz = (fpsr >> 1) & 1;
             let of = (fpsr >> 2) & 1;
             let uf = (fpsr >> 3) & 1;
             let nx = (fpsr >> 4) & 1;
 
             // Reassemble into desired order: nv (4), dz (3), of (2), uf (1), nx (0)
-            ((nv << 4) | (dz << 3) | (of << 2) | (uf << 1) | nx) as u32
+            (nv << 4) | (dz << 3) | (of << 2) | (uf << 1) | nx
         }
 
         // fallback or unsupported arch
@@ -301,7 +301,7 @@ impl Cpu {
             let dz = (mask >> 3) & 1; // FPSR bit 1
             let of = (mask >> 2) & 1; // FPSR bit 2
             let uf = (mask >> 1) & 1; // FPSR bit 3
-            let nx = (mask >> 0) & 1; // FPSR bit 4
+            let nx = mask & 1; // FPSR bit 4
 
             let fpsr_val: u32 = ((nx << 4) | (uf << 3) | (of << 2) | (dz << 1) | nv) as u32;
 
@@ -325,7 +325,7 @@ impl Cpu {
         }
 
         let flags = [
-            ("IOC (Invalid Operation)", (fpsr >> 0) & 1),
+            ("IOC (Invalid Operation)", fpsr & 1),
             ("DZC (Divide by Zero)", (fpsr >> 1) & 1),
             ("OFC (Overflow)", (fpsr >> 2) & 1),
             ("UFC (Underflow)", (fpsr >> 3) & 1),

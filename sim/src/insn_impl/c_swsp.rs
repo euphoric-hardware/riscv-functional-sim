@@ -7,9 +7,9 @@ pub fn c_swsp(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let c_rs2 = insn.c_rs2();
     let c_uimm8sp_s = insn.c_uimm8sp_s();
 
-    let offset = (c_uimm8sp_s & 0x3) << 6 | c_uimm8sp_s & 0x3c;
+    let offset = ((c_uimm8sp_s & 0x3) << 6) | c_uimm8sp_s & 0x3c;
 
-    let address = cpu.load(2).wrapping_add(offset as u64);
+    let address = cpu.load(2).wrapping_add(offset);
     bus.write(address, &(cpu.load(c_rs2) as u32).to_le_bytes())?;
     Ok(cpu.pc + 2)
 }

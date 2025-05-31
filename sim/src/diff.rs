@@ -63,7 +63,7 @@ impl Diff {
         let instr_str = instr_str.trim_start_matches("0x");
 
         // Ensure instruction string is a valid hexadecimal value
-        if !instr_str.chars().all(|c| c.is_digit(16)) {
+        if !instr_str.chars().all(|c| c.is_ascii_hexdigit()) {
             // println!("Instruction string is not valid hex: '{}'", instr_str);
             return None;
         }
@@ -276,7 +276,7 @@ impl Diff {
             info!("No spike state!\n");
             return false;
         }
-        return true;
+        true
     }
 
     pub fn diff_execution_states(spike_log: &[ExecutionState], sim_log: &[ExecutionState]) -> bool {
@@ -285,7 +285,7 @@ impl Diff {
         for i in 0..min_len {
             let spike_state = &spike_log[i];
             let sim_state = &sim_log[i];
-            if Diff::diff_execution_state(Some(spike_state), Some(sim_state)) == false {
+            if !Diff::diff_execution_state(Some(spike_state), Some(sim_state)) {
                 return false;
             }
         }
@@ -298,6 +298,6 @@ impl Diff {
             );
             return false;
         }
-        return true;
+        true
     }
 }

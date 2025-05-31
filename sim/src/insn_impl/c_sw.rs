@@ -9,7 +9,7 @@ pub fn c_sw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let c_uimm7lo = insn.c_uimm7lo();
     let c_uimm7hi = insn.c_uimm7hi();
 
-    let imm = (c_uimm7lo & 0x1) << 6 | c_uimm7hi << 3 | (c_uimm7lo & 0x2) << 1;
+    let imm = ((c_uimm7lo & 0x1) << 6) | (c_uimm7hi << 3) | ((c_uimm7lo & 0x2) << 1);
 
     let address = cpu.load(rs1_p).wrapping_add(imm);
     bus.write(address, &(cpu.load(rs2_p) as u32).to_le_bytes())?;

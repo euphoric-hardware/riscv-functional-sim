@@ -11,9 +11,9 @@ pub fn c_ld(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let c_uimm8lo = insn.c_uimm8lo();
     let c_uimm8hi = insn.c_uimm8hi();
 
-    let imm = c_uimm8lo << 6 | c_uimm8hi << 3;
+    let imm = (c_uimm8lo << 6) | (c_uimm8hi << 3);
 
-    let address = (cpu.load(rs1_p) as u64).wrapping_add(imm);
+    let address = cpu.load(rs1_p).wrapping_add(imm);
     let mut raw = [0; size_of::<u64>()];
     bus.read(address, &mut raw)?;
     cpu.store(rd_p, u64::from_le_bytes(raw));

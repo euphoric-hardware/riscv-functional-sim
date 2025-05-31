@@ -98,7 +98,7 @@ impl Device for Bus<'_> {
             }
             Err(e) => {
                 // println!("get_device failed: {:?} at address {:#016x}", e, ptr);
-                return Err(e); // Or handle it in another way
+                Err(e)// Or handle it in another way
             }
         }
         // device.read(ptr - memory_range.base_address, buf)
@@ -130,8 +130,8 @@ impl Ram {
 impl Ram {
     pub fn new(base_address: u64, size: u64) -> Self {
         Ram {
-            base_address: base_address,
-            size: size,
+            base_address,
+            size,
             ptr: superpage::Superpage::new(size as usize).expect("unable to allocate superpage")
         }
     }

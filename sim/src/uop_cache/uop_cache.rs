@@ -1,7 +1,7 @@
 use crate::{
     bus::Bus,
     cpu::{self, Cpu, Insn, Result},
-    insn_impl::{insn_cached, jump_table}
+    insn_impl::{insn_cached, jump_table},
 };
 
 use super::set_cached_insn;
@@ -9,6 +9,7 @@ use super::set_cached_insn;
 #[repr(C, packed)]
 #[derive(Debug, Clone)]
 pub struct UopCacheEntry {
+    pub valid: bool,
     pub insn_bits: u64,
 
     /* regular registers */
@@ -74,8 +75,64 @@ pub struct UopCacheEntry {
 }
 
 impl UopCacheEntry {
-    pub fn new(insn: Insn) -> Option<Self> {
+    pub fn default() -> Self {
+        UopCacheEntry {
+            valid: false,
+            insn_bits: 0,
+            rs1: 0,
+            rs2: 0,
+            rd: 0,
+            imm_i: 0,
+            imm_s: 0,
+            imm_b: 0,
+            imm_u: 0,
+            imm_j: 0,
+            shamtd: 0,
+            shamtw: 0,
+            imm_c_lwsp: 0,
+            imm_c_ldsp: 0,
+            imm_c_swsp: 0,
+            imm_c_sdsp: 0,
+            imm_c_lw: 0,
+            imm_c_ld: 0,
+            imm_c_sw: 0,
+            imm_c_sd: 0,
+            imm_c_j: 0,
+            imm_c_b: 0,
+            imm_c_li: 0,
+            imm_c_lui: 0,
+            imm_c_addi: 0,
+            imm_c_addi16sp: 0,
+            imm_c_addi4spn: 0,
+            imm_c_shamt: 0,
+            imm_c_andi: 0,
+            rs1_p: 0,
+            rs2_p: 0,
+            rd_p: 0,
+            rd_rs1_n0: 0,
+            rd_rs1_p: 0,
+            rd_rs1: 0,
+            rd_n2: 0,
+            rd_n0: 0,
+            rs1_n0: 0,
+            c_rs2_n0: 0,
+            c_rs1_n0: 0,
+            c_rs2: 0,
+            c_sreg1: 0,
+            c_sreg2: 0,
+            c_rlist: 0,
+            rs3: 0,
+            rm: 0,
+            csr: 0,
+            zimm: 0,
+            jump_table_index: 0,
+            op: insn_cached::nop_cached::nop_cached, // default safe op
+        }
+    }
+
+    pub fn new(insn: Insn) -> Self {
         let mut entry = UopCacheEntry {
+            valid: false,
             insn_bits: 0,
             rs1: 0,
             rs2: 0,
@@ -145,7 +202,7 @@ impl UopCacheEntry {
 
         /* base immediates */
         entry.imm_i = insn.imm12();
-        entry.imm_s = Insn::sign_extend(insn.imm12hi() << 5 | insn.imm12lo(), 12) as u64;
+        entry.imm_s = Insn::sign_extend((insn.imm12hi() << 5) | insn.imm12lo(), 12) as u64;
         entry.imm_b = Insn::sign_extend(
             ((insn.bimm12hi() & 0x40) << 6)
                 | ((insn.bimm12lo() & 0x01) << 11)
@@ -155,10 +212,9 @@ impl UopCacheEntry {
         ) as u64;
         entry.imm_u = Insn::sign_extend(insn.imm20() << 12, 32) as u64;
         entry.imm_j = Insn::sign_extend(
-            ((insn.jimm20() & 0x80000) << 1
-                | ((insn.jimm20() & 0xff) << 12)
+            ((insn.jimm20() & 0x80000) << 1) | ((insn.jimm20() & 0xff) << 12)
                 | ((insn.jimm20() & 0x7fe00) >> 9 << 1)
-                | ((insn.jimm20() & 0x100) >> 8 << 11)) as u64,
+                | ((insn.jimm20() & 0x100) >> 8 << 11),
             20,
         ) as u64;
         entry.shamtd = insn.shamtd();
@@ -166,54 +222,41 @@ impl UopCacheEntry {
 
         /* c immediates */
         entry.imm_c_lwsp =
-            (insn.c_uimm8sphi() << 5) | (insn.c_uimm8splo() & 0x3) << 6 | insn.c_uimm8splo() & 0x1c;
+            (insn.c_uimm8sphi() << 5) | ((insn.c_uimm8splo() & 0x3) << 6) | insn.c_uimm8splo() & 0x1c;
         entry.imm_c_ldsp =
-            (insn.c_uimm9splo() & 0x7) << 6 | insn.c_uimm9sphi() << 5 | (insn.c_uimm9splo() & 0x18);
-        entry.imm_c_swsp = (insn.c_uimm8sp_s() & 0x3) << 6 | insn.c_uimm8sp_s() & 0x3c;
-        entry.imm_c_sdsp = (insn.c_uimm9sp_s() & 0x7) << 6 | insn.c_uimm9sp_s() & 0x38;
+            ((insn.c_uimm9splo() & 0x7) << 6) | (insn.c_uimm9sphi() << 5) | (insn.c_uimm9splo() & 0x18);
+        entry.imm_c_swsp = ((insn.c_uimm8sp_s() & 0x3) << 6) | insn.c_uimm8sp_s() & 0x3c;
+        entry.imm_c_sdsp = ((insn.c_uimm9sp_s() & 0x7) << 6) | insn.c_uimm9sp_s() & 0x38;
         entry.imm_c_lw =
-            (insn.c_uimm7lo() & 0x1) << 6 | insn.c_uimm7hi() << 3 | (insn.c_uimm7lo() & 0x2) << 1;
-        entry.imm_c_ld = insn.c_uimm8lo() << 6 | insn.c_uimm8hi() << 3;
+            ((insn.c_uimm7lo() & 0x1) << 6) | (insn.c_uimm7hi() << 3) | ((insn.c_uimm7lo() & 0x2) << 1);
+        entry.imm_c_ld = (insn.c_uimm8lo() << 6) | (insn.c_uimm8hi() << 3);
         entry.imm_c_sw =
-            (insn.c_uimm7lo() & 0x1) << 6 | insn.c_uimm7hi() << 3 | (insn.c_uimm7lo() & 0x2) << 1;
-        entry.imm_c_sd = insn.c_uimm8lo() << 6 | insn.c_uimm8hi() << 3;
+            ((insn.c_uimm7lo() & 0x1) << 6) | (insn.c_uimm7hi() << 3) | ((insn.c_uimm7lo() & 0x2) << 1);
+        entry.imm_c_sd = (insn.c_uimm8lo() << 6) | (insn.c_uimm8hi() << 3);
         entry.imm_c_j = Insn::sign_extend(
-            (insn.c_imm12() & 0x400) << 1
-                | (insn.c_imm12() & 0x40) << 4
-                | (insn.c_imm12() & 0x180) << 1
-                | (insn.c_imm12() & 0x10) << 3
-                | (insn.c_imm12() & 0x20) << 1
+            ((insn.c_imm12() & 0x400) << 1) | ((insn.c_imm12() & 0x40) << 4) | ((insn.c_imm12() & 0x180) << 1) | ((insn.c_imm12() & 0x10) << 3) | ((insn.c_imm12() & 0x20) << 1)
                 | (insn.c_imm12() & 0x200) >> 5
                 | (insn.c_imm12() & 0xe)
                 | (insn.c_imm12() & 0x1) << 5,
             12,
         ) as u64;
         entry.imm_c_b = Insn::sign_extend(
-            (insn.c_bimm9hi() & 0x4) << 6
-                | (insn.c_bimm9lo() & 0x18) << 3
-                | (insn.c_bimm9lo() & 0x1) << 5
-                | (insn.c_bimm9hi() & 0x3) << 3
+            ((insn.c_bimm9hi() & 0x4) << 6) | ((insn.c_bimm9lo() & 0x18) << 3) | ((insn.c_bimm9lo() & 0x1) << 5) | ((insn.c_bimm9hi() & 0x3) << 3)
                 | insn.c_bimm9lo() & 0x6,
             9,
         ) as u64;
-        entry.imm_c_li = Insn::sign_extend(insn.c_imm6hi() << 5 | insn.c_imm6lo(), 6) as u64;
+        entry.imm_c_li = Insn::sign_extend((insn.c_imm6hi() << 5) | insn.c_imm6lo(), 6) as u64;
         entry.imm_c_lui =
-            Insn::sign_extend(insn.c_nzimm18hi() << 17 | insn.c_nzimm18lo() << 12, 18) as u64;
-        entry.imm_c_addi = Insn::sign_extend(insn.c_nzimm6hi() << 5 | insn.c_nzimm6lo(), 6) as u64;
+            Insn::sign_extend((insn.c_nzimm18hi() << 17) | (insn.c_nzimm18lo() << 12), 18) as u64;
+        entry.imm_c_addi = Insn::sign_extend((insn.c_nzimm6hi() << 5) | insn.c_nzimm6lo(), 6) as u64;
         entry.imm_c_addi16sp = Insn::sign_extend(
-            insn.c_nzimm10hi() << 9
-                | (insn.c_nzimm10lo() & 0x6) << 6
-                | (insn.c_nzimm10lo() & 0x8) << 3
-                | (insn.c_nzimm10lo() & 0x1) << 5
+            (insn.c_nzimm10hi() << 9) | ((insn.c_nzimm10lo() & 0x6) << 6) | ((insn.c_nzimm10lo() & 0x8) << 3) | ((insn.c_nzimm10lo() & 0x1) << 5)
                 | (insn.c_nzimm10lo()) & 0x10,
             10,
         ) as u64;
-        entry.imm_c_addi4spn = (insn.c_nzuimm10() & 0xc0) >> 2
-            | (insn.c_nzuimm10() & 0x3c) << 4
-            | (insn.c_nzuimm10() & 0x02) << 1
-            | (insn.c_nzuimm10() & 0x01) << 3;
-        entry.imm_c_shamt = insn.c_nzuimm6hi() << 5 | insn.c_nzuimm6lo();
-        entry.imm_c_andi = Insn::sign_extend(insn.c_imm6hi() << 5 | insn.c_imm6lo(), 6) as u64;
+        entry.imm_c_addi4spn = ((insn.c_nzuimm10() & 0xc0) >> 2) | ((insn.c_nzuimm10() & 0x3c) << 4) | ((insn.c_nzuimm10() & 0x02) << 1) | ((insn.c_nzuimm10() & 0x01) << 3);
+        entry.imm_c_shamt = (insn.c_nzuimm6hi() << 5) | insn.c_nzuimm6lo();
+        entry.imm_c_andi = Insn::sign_extend((insn.c_imm6hi() << 5) | insn.c_imm6lo(), 6) as u64;
 
         /* c registers */
         entry.rs1_p = insn.rs1_p();
@@ -245,13 +288,10 @@ impl UopCacheEntry {
         let jump_table_index: Option<usize> = UopCacheEntry::set_cached_insn(insn.bits());
         if let Some(index) = jump_table_index {
             entry.jump_table_index = index;
-            entry.op = jump_table::JUMP_TABLE[index]
+            entry.op = jump_table::JUMP_TABLE[index];
+            entry.valid = true;
         }
-        else {
-            return None;
-        }
-
-        return Some(entry);
+        entry
     }
 
     #[inline(always)]

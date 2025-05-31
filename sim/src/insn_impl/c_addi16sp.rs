@@ -8,10 +8,7 @@ pub fn c_addi16sp(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> 
     let c_nzimm10lo = insn.c_nzimm10lo();
 
     let imm = Insn::sign_extend(
-        c_nzimm10hi << 9
-            | (c_nzimm10lo & 0x6) << 6
-            | (c_nzimm10lo & 0x8) << 3
-            | (c_nzimm10lo & 0x1) << 5
+        (c_nzimm10hi << 9) | ((c_nzimm10lo & 0x6) << 6) | ((c_nzimm10lo & 0x8) << 3) | ((c_nzimm10lo & 0x1) << 5)
             | (c_nzimm10lo) & 0x10,
         10,
     );

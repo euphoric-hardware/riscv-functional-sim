@@ -11,9 +11,9 @@ pub fn c_lw(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let c_uimm7lo = insn.c_uimm7lo();
     let c_uimm7hi = insn.c_uimm7hi();
 
-    let imm = (c_uimm7lo & 0x1) << 6 | c_uimm7hi << 3 | (c_uimm7lo & 0x2) << 1;
+    let imm = ((c_uimm7lo & 0x1) << 6) | (c_uimm7hi << 3) | ((c_uimm7lo & 0x2) << 1);
 
-    let address = (cpu.load(rs1_p) as u64).wrapping_add(imm);
+    let address = cpu.load(rs1_p).wrapping_add(imm);
     let mut raw = [0; size_of::<i32>()];
     bus.read(address, &mut raw)?;
     cpu.store(rd_p, i32::from_le_bytes(raw) as u64); // check sign extension

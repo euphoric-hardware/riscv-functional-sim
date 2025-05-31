@@ -10,10 +10,7 @@ pub fn c_bnez(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {
     let c_bimm9lo = insn.c_bimm9lo();
     let c_bimm9hi = insn.c_bimm9hi();
 
-    let imm = (c_bimm9hi & 0x4) << 6
-        | (c_bimm9lo & 0x18) << 3
-        | (c_bimm9lo & 0x1) << 5
-        | (c_bimm9hi & 0x3) << 3
+    let imm = ((c_bimm9hi & 0x4) << 6) | ((c_bimm9lo & 0x18) << 3) | ((c_bimm9lo & 0x1) << 5) | ((c_bimm9hi & 0x3) << 3)
         | c_bimm9lo & 0x6;
 
     let mut new_pc = cpu.pc + 2;
