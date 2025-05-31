@@ -88,34 +88,31 @@ impl RiscvElf {
 
     pub fn extract_min_address(&self) -> u64 {
         let obj = object::File::parse(&*self.data).expect("data error");
-        let mut start_addr: u64 = 0x80000000;
+        let mut min_addr: u64 = 0x80000000;
         for symbol in obj.symbols() {
             let name = symbol.name().expect("no symbol name");
             match name {
                 "_start" => {
-                    start_addr = symbol.address();
+                    min_addr = symbol.address();
                 }
 
                 _ => {}
             }
         }
-        start_addr
+        println!("min addr: {:#16x}", min_addr);
+        min_addr
     }
 
     pub fn extract_max_address(&self) -> u64 {
-        const PF_X: u32 = 0x1;
-        let elf = goblin::elf::Elf::parse(&self.data).expect("Failed to parse ELF");
-
-        let mut max_addr = 0;
-        for ph in elf.program_headers.iter() {
-            if ph.p_type == goblin::elf::program_header::PT_LOAD && (ph.p_flags & PF_X) != 0 {
-                let end = ph.p_vaddr + ph.p_memsz;
-                if end > max_addr {
-                    max_addr = end;
-                }
+        let e = self.endianness();
+        let mut max_addr: u64 = 0x80000000;
+        for section in self.sections().expect("invalid section").iter() {
+            let next_addr = section.sh_addr(e) + section.sh_size(e);
+            if next_addr > max_addr {
+                max_addr = next_addr
             }
         }
-        
+        println!("max address: {:#16x}", max_addr);
         max_addr
     }
 }
