@@ -15,7 +15,6 @@ use crate::{
     DIFF, LOG,
 };
 
-use ::simple_soft_float;
 use log::info;
 
 #[derive(Debug, Default, Clone)]

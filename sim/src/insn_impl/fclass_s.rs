@@ -1,4 +1,4 @@
-use simple_soft_float::{F32};
+
 use crate::{cpu::{self, Cpu, Insn}, bus::Bus};
 
 use super::insn_raw;

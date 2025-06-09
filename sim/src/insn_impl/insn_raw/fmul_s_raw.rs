@@ -1,6 +1,6 @@
 use std::ptr;
 
-use simple_soft_float::{FPState, StatusFlags, F32, F64};
+
 
 use crate::{cpu::{self, Cpu, Insn}, bus::Bus};
 

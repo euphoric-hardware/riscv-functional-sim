@@ -1,6 +1,6 @@
 use std::arch::asm;
 
-use simple_soft_float::F64;
+
 
 use crate::{bus::Bus, cpu::{self, Cpu, Insn, RoundingMode}};
 

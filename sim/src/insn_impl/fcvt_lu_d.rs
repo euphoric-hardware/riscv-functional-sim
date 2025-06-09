@@ -1,6 +1,6 @@
 use std::u64;
 
-use simple_soft_float::{FPState, StatusFlags};
+
 
 use crate::{
     bus::Bus,
