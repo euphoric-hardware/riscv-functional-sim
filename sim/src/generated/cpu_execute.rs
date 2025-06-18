@@ -18,7 +18,7 @@ impl Cpu {
         let index = ((self.pc - self.uop_base) >> 1) as usize;
 
         match self.uop_cache.get(index) {
-            Some(entry) if core::hint::likely(entry.valid) => {
+            Some(entry) => {
                 let entry_ptr = entry as *const UopCacheEntry;
                 unsafe { (*entry_ptr).execute_cached_insn(self, bus) }
             }

@@ -41,8 +41,8 @@ mod os {
 #[cfg(target_os = "linux")]
 mod os {
     use libc::{
-        madvise, mmap, munmap, MAP_ANONYMOUS, MAP_FAILED, MAP_HUGETLB, MAP_PRIVATE, PROT_READ,
-        PROT_WRITE, MADV_HUGEPAGE,
+        madvise, mmap, munmap, MADV_HUGEPAGE, MAP_ANONYMOUS, MAP_FAILED, MAP_HUGETLB, MAP_PRIVATE,
+        PROT_READ, PROT_WRITE,
     };
     use std::ptr::NonNull;
 
@@ -124,15 +124,45 @@ impl Superpage {
 
     pub fn write_from_buffer(&mut self, index: usize, buffer: &[u8]) {
         unsafe {
-            let target_ptr = self.ptr.as_ptr().add(index);
-            std::ptr::copy_nonoverlapping(buffer.as_ptr(), target_ptr, buffer.len());
+            let dst = self.ptr.as_ptr().add(index) as *mut u8;
+            match buffer.len() {
+                1 => *dst = buffer[0],
+                2 => {
+                    let val = u16::from_ne_bytes(buffer.try_into().unwrap());
+                    (dst as *mut u16).write_unaligned(val);
+                }
+                4 => {
+                    let val = u32::from_ne_bytes(buffer.try_into().unwrap());
+                    (dst as *mut u32).write_unaligned(val);
+                }
+                8 => {
+                    let val = u64::from_ne_bytes(buffer.try_into().unwrap());
+                    (dst as *mut u64).write_unaligned(val);
+                }
+                _ => std::ptr::copy_nonoverlapping(buffer.as_ptr(), dst, buffer.len()),
+            }
         }
     }
 
     pub fn read_to_buffer(&self, index: usize, buffer: &mut [u8]) {
         unsafe {
-            let target_ptr = self.ptr.as_ptr().add(index);
-            std::ptr::copy_nonoverlapping(target_ptr, buffer.as_mut_ptr(), buffer.len());
+            let src = self.ptr.as_ptr().add(index);
+            match buffer.len() {
+                1 => buffer[0] = *src,
+                2 => {
+                    let val = (src as *const u16).read_unaligned();
+                    buffer.copy_from_slice(&val.to_ne_bytes());
+                }
+                4 => {
+                    let val = (src as *const u32).read_unaligned();
+                    buffer.copy_from_slice(&val.to_ne_bytes());
+                }
+                8 => {
+                    let val = (src as *const u64).read_unaligned();
+                    buffer.copy_from_slice(&val.to_ne_bytes());
+                }
+                _ => std::ptr::copy_nonoverlapping(src, buffer.as_mut_ptr(), buffer.len()),
+            }
         }
     }
 }

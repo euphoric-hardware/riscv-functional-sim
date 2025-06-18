@@ -6,7 +6,7 @@ use crate::{
 
 use super::set_cached_insn;
 
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Debug, Clone)]
 pub struct UopCacheEntry {
     pub valid: bool,
