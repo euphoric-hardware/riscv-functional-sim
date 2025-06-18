@@ -221,7 +221,7 @@ impl Cpu {
 
     #[inline(always)]
     pub fn store(&mut self, reg: u64, value: u64) {
-        if likely(reg != 0) {
+        if core::hint::likely(reg != 0) {
             unsafe {
                 *self.regs.get_unchecked_mut(reg as usize) = value;
             }
@@ -373,91 +373,91 @@ impl Cpu {
         #[cfg(debug_assertions)]
         let insn_bits = self.get_uop(self.pc).map_or(0, |entry| entry.insn_bits);
 
-        match self.execute_insn(bus) {
-            Ok(new_pc) => {
-                // diffing and logging
-                #[cfg(debug_assertions)]
-                {
-                    if log {
-                        info!(
-                            "core   0: {} 0x{:016x} (0x{:08x})",
-                            self.privilege_mode(),
-                            self.pc,
-                            insn_bits
-                        );
-                    }
+        let result = self.execute_insn(bus);
 
-                    if self.commits.modified_regs() {
-                        for (reg, val) in self.commits.reg_write.iter() {
-                            if log {
-                                info!(" {:<3} 0x{:016x}", REGISTER_NAMES[*reg as usize], *val);
-                            }
-                            if *DIFF.get().unwrap() {
-                                state.register_updates.push((*reg as u8, *val));
-                            }
-                        }
-                        self.commits.reg_write.clear();
-                    }
-
-                    if self.commits.modified_fregs() {
-                        for (reg, val) in self.commits.freg_write.iter() {
-                            if log {
-                                info!(" f{:<3} 0x{:016x}", *reg as usize, val.to_bits());
-                            }
-                            if *DIFF.get().unwrap() {
-                                state.fregister_updates.push((*reg as u8, val.to_bits()));
-                            }
-                        }
-                        self.commits.freg_write.clear();
-                    }
-
-                    if self.commits.is_load() {
-                        for (addr, _) in self.commits.mem_read.iter() {
-                            if log {
-                                info!(" mem 0x{:016x}", *addr);
-                            }
-                        }
-                        self.commits.mem_read.clear();
-                    } else if self.commits.is_store() {
-                        for (addr, val) in self.commits.mem_write.iter() {
-                            if log {
-                                info!(" mem 0x{:016x} {}", *addr, val);
-                            }
-
-                            if *DIFF.get().unwrap() {
-                                state.memory_writes.push((*addr, u64::from(val.clone())));
-                            }
-                        }
-                        self.commits.mem_write.clear();
-                    }
-
-                    if log {
-                        info!("\n");
-                    }
-
-                    if *DIFF.get().unwrap() {
-                        state.instruction = insn_bits as u32;
-                        self.states.push(state);
-                    }
+        if core::hint::likely(result.is_ok()) {
+            #[cfg(debug_assertions)]
+            {
+                if log {
+                    info!(
+                        "core   0: {} 0x{:016x} (0x{:08x})",
+                        self.privilege_mode(),
+                        self.pc,
+                        insn_bits
+                    );
                 }
 
-                self.pc = new_pc;
-                unsafe {
-                    *self
-                        .csrs
-                        .regs
-                        .get_unchecked_mut(csrs::Csrs::MCYCLE as usize) = self
-                        .csrs
-                        .regs
-                        .get_unchecked(csrs::Csrs::MCYCLE as usize)
-                        .wrapping_add(1);
+                if self.commits.modified_regs() {
+                    for (reg, val) in self.commits.reg_write.iter() {
+                        if log {
+                            info!(" {:<3} 0x{:016x}", REGISTER_NAMES[*reg as usize], *val);
+                        }
+                        if *DIFF.get().unwrap() {
+                            state.register_updates.push((*reg as u8, *val));
+                        }
+                    }
+                    self.commits.reg_write.clear();
                 }
+
+                if self.commits.modified_fregs() {
+                    for (reg, val) in self.commits.freg_write.iter() {
+                        if log {
+                            info!(" f{:<3} 0x{:016x}", *reg as usize, val.to_bits());
+                        }
+                        if *DIFF.get().unwrap() {
+                            state.fregister_updates.push((*reg as u8, val.to_bits()));
+                        }
+                    }
+                    self.commits.freg_write.clear();
+                }
+
+                if self.commits.is_load() {
+                    for (addr, _) in self.commits.mem_read.iter() {
+                        if log {
+                            info!(" mem 0x{:016x}", *addr);
+                        }
+                    }
+                    self.commits.mem_read.clear();
+                } else if self.commits.is_store() {
+                    for (addr, val) in self.commits.mem_write.iter() {
+                        if log {
+                            info!(" mem 0x{:016x} {}", *addr, val);
+                        }
+
+                        if *DIFF.get().unwrap() {
+                            state.memory_writes.push((*addr, u64::from(val.clone())));
+                        }
+                    }
+                    self.commits.mem_write.clear();
+                }
+
+                if log {
+                    info!("\n");
+                }
+
+                if *DIFF.get().unwrap() {
+                    state.instruction = insn_bits as u32;
+                    self.states.push(state);
+                }
+            } 
+            self.pc = result.unwrap();
+            unsafe {
+                *self
+                    .csrs
+                    .regs
+                    .get_unchecked_mut(csrs::Csrs::MCYCLE as usize) = self
+                    .csrs
+                    .regs
+                    .get_unchecked(csrs::Csrs::MCYCLE as usize)
+                    .wrapping_add(1);
             }
-            Err(e) => unsafe {
+        } else {
+            let e = result.unwrap_err();
+            unsafe {
                 self.csrs.store_unchecked(Csrs::MCAUSE, e as u64);
                 self.csrs.store_unchecked(Csrs::MEPC, self.pc);
                 self.pc = self.csrs.load_unchecked(Csrs::MTVEC);
-            },
+            }
         }
     }
 }

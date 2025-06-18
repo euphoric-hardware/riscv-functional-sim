@@ -21,3 +21,4 @@ sim/src/alt_superpage.rs
 .bsp/
 .metals/
 .scala-build/
+block_cache/

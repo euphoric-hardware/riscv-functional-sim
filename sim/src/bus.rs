@@ -1,13 +1,17 @@
 use ahash::AHashMap;
 use log::info;
 
-use crate::{cpu::{Exception, Result}, superpage::{self, Superpage}};
+use crate::{
+    cpu::{Exception, Result},
+    superpage::{self, Superpage},
+};
 use lazy_static::lazy_static;
 use std::{
     cmp::{self, Ordering},
     collections::{BTreeMap, HashMap},
     fmt::Debug,
-    fs, ptr::NonNull,
+    fs,
+    ptr::NonNull,
 };
 
 #[derive(Clone, Copy, Default, Debug)]
@@ -50,6 +54,7 @@ pub trait Device: Debug {
 #[derive(Debug)]
 pub struct Bus<'b> {
     devices: Vec<(MemoryRange, Box<dyn Device + 'b>)>,
+    
 }
 
 impl<'b> Bus<'b> {
@@ -89,19 +94,14 @@ impl<'b> Bus<'b> {
 }
 
 impl Device for Bus<'_> {
-    #[inline(always)]
     fn read(&mut self, ptr: u64, buf: &mut [u8]) -> Result<()> {
-        match self.get_device(ptr, buf.len() as u64) {
-            Ok((memory_range, device)) => {
-                // Proceed normally
-                device.read(ptr - memory_range.base_address, buf)
-            }
-            Err(e) => {
-                // println!("get_device failed: {:?} at address {:#016x}", e, ptr);
-                Err(e)// Or handle it in another way
-            }
+        let result = self.get_device(ptr, buf.len() as u64);
+        if core::hint::likely(result.is_ok()) {
+            let (memory_range, device) = result.unwrap();
+            device.read(ptr - memory_range.base_address, buf)
+        } else {
+            Err(result.unwrap_err())
         }
-        // device.read(ptr - memory_range.base_address, buf)
     }
 
     fn write(&mut self, ptr: u64, buf: &[u8]) -> Result<()> {
@@ -118,7 +118,7 @@ pub struct Ram {
     // Vec size: 4096
     base_address: u64,
     size: u64,
-    ptr: Superpage
+    ptr: Superpage,
 }
 
 impl Ram {
@@ -132,7 +132,7 @@ impl Ram {
         Ram {
             base_address,
             size,
-            ptr: superpage::Superpage::new(size as usize).expect("unable to allocate superpage")
+            ptr: superpage::Superpage::new(size as usize).expect("unable to allocate superpage"),
         }
     }
 }

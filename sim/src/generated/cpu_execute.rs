@@ -1,3 +1,4 @@
+use core::hint;
 use std::ptr::null;
 
 use crate::{
@@ -16,34 +17,40 @@ impl Cpu {
     pub fn execute_insn(&mut self, bus: &mut Bus) -> cpu::Result<u64> {
         let index = ((self.pc - self.uop_base) >> 1) as usize;
 
-        if let Some(entry) = self.uop_cache.get(index).filter(|e| e.valid) {
-            let entry_ptr = entry as *const UopCacheEntry;
-            self.cache_hits += 1;
-            unsafe { jump_table::JUMP_TABLE[(*entry_ptr).jump_table_index](self, bus, &*entry_ptr) }
-        } else {
-            let mut bytes = [0; std::mem::size_of::<u32>()];
-            bus.read(self.pc, &mut bytes)?;
-            let insn = Insn::from_bytes(&bytes);
+        match self.uop_cache.get(index) {
+            Some(entry) if core::hint::likely(entry.valid) => {
+                let entry_ptr = entry as *const UopCacheEntry;
+                unsafe { (*entry_ptr).execute_cached_insn(self, bus) }
+            }
 
-            let entry = UopCacheEntry::new(insn);
-            if entry.valid {
-                if index >= self.uop_cache.len() {
-                    let new_len = index + 1;
-                    let additional = new_len - self.uop_cache.len();
+            _ => {
+                core::hint::cold_path();
+                let mut bytes = [0; std::mem::size_of::<u32>()];
+                bus.read(self.pc, &mut bytes)?;
+                let insn = Insn::from_bytes(&bytes);
 
-                    if self.uop_cache.try_reserve(additional).is_err() {
-                        return jump_table::JUMP_TABLE[entry.jump_table_index](self, bus, &entry);
+                let entry = UopCacheEntry::new(insn);
+                
+                if core::hint::likely(entry.valid) {
+                    if index >= self.uop_cache.len() {
+                        let new_len = index + 1;
+                        let additional = new_len - self.uop_cache.len();
+
+                        if core::hint::unlikely(self.uop_cache.try_reserve(additional).is_err()) {
+                            return entry.execute_cached_insn(self, bus);
+                        }
+
+                        // Safe to unwrap here because we just reserved space
+                        self.uop_cache.extend(
+                            std::iter::repeat_with(UopCacheEntry::default).take(additional),
+                        );
                     }
 
-                    // Safe to unwrap here because we just reserved space
-                    self.uop_cache
-                        .extend(std::iter::repeat_with(UopCacheEntry::default).take(additional));
+                    self.uop_cache[index] = entry;
+                    self.execute_insn(bus)
+                } else {
+                    Err(cpu::Exception::IllegalInstruction)
                 }
-
-                self.uop_cache[index] = entry;
-                self.execute_insn(bus)
-            } else {
-                Err(cpu::Exception::IllegalInstruction)
             }
         }
     }

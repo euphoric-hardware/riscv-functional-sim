@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 #![allow(unused_variables)]
+#![feature(cold_path)]
+#![feature(likely_unlikely)]
 
 mod args;
 mod bus;
@@ -83,7 +85,7 @@ fn main() -> std::io::Result<()> {
         system.tick();
 
         #[cfg(debug_assertions)]
-        if unlikely(*DIFF.get().expect("invalid DIFF global variable")) {
+        if core::hint::unlikely(*DIFF.get().expect("invalid DIFF global variable")) {
             if !Diff::diff_execution_state(
                 spike_states.get(i - 1),
                 system.cpus[0].states.get(i - 1),
@@ -94,7 +96,7 @@ fn main() -> std::io::Result<()> {
             }
         }
 
-        if unlikely(i % 5000 == 0) && frontend.process(&mut system).expect("htif") == FrontendReturnCode::Exit {
+        if core::hint::unlikely(i % 5000 == 0) && frontend.process(&mut system).expect("htif") == FrontendReturnCode::Exit {
             println!("\nTarget program finished");
             break;
         }
