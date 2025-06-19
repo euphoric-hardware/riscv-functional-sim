@@ -210,8 +210,8 @@ impl Cpu {
 
     #[inline(always)]
     pub fn get_uop(&self, addr: u64) -> Option<&UopCacheEntry> {
-        let index = ((addr - self.uop_base) / self.uop_stride) as usize;
-        self.uop_cache.get(index).filter(|e| e.valid)
+        let index = ((addr - self.uop_base) >> 1) as usize;
+        self.uop_cache.get(index)
     }
 
     #[inline(always)]
