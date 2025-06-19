@@ -5,10 +5,7 @@ use crate::{
     branch_hints::unlikely,
     bus::{Bus, Device},
     cpu::{self, Cpu, Exception, Insn},
-    insn_impl::{
-        self,
-        jump_table::{self, JUMP_TABLE},
-    },
+    insn_impl::{self},
     uop_cache::{self, uop_cache::UopCacheEntry},
 };
 

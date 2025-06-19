@@ -1,5 +1,5 @@
 use crate::{
-    bus::{Bus, Device}, cpu::{self, Cpu, Insn}, insn_impl::{add, insn_raw}, uop_cache::uop_cache::UopCacheEntry
+    bus::{Bus, Device}, cpu::{self, Cpu, Insn}, insn_impl::insn_raw, uop_cache::uop_cache::UopCacheEntry
 };
 
 #[inline(always)]
