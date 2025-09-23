@@ -136,6 +136,7 @@ Since we're using Rust, it would be great to use the Cranelift IR and JIT!
   - [Some notes](https://docs.pydrofoil.org/en/latest/background_optimizations.html) on pydrofoil's optimizations
   - [Talk: Pydrofoil: A fast RISC-V emulator generated from the Sail model, using PyPy's JIT](https://www.youtube.com/watch?v=dUHWhUdXFJg)
   - The complexity of this project [is insanely high](https://github.com/pydrofoil/pydrofoil/blob/main/pydrofoil/ir.py) since they are parsing and interpreting the Sail language itself in Python and then doing codegen on top of that
+  - [arXiv: Pydrofoil: accelerating Sail-based instruction set simulators](https://arxiv.org/abs/2503.04389)
 - [RVVM](https://github.com/LekKit/RVVM/wiki#library-api) + [libriscv](https://github.com/libriscv/libriscv)
   - "RVVM is a virtual machine / emulator for RISC-V guests"
   - "Emulation performance is higher than that of QEMU TCG, thanks to a tracing RVJIT with better designed IR and less guest instructions splitting, and usage of hardware floating-point unit."
