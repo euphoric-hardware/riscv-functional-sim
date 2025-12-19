@@ -21,78 +21,6 @@ struct ParsedInsn {
     mask: String,
 }
 
-fn generate_instruction_files(out_dir: &Path, config: &BTreeMap<String, ParsedInsn>) {
-    for (insn_name, insn) in config.iter() {
-        let trace_args = insn
-            .variable_fields
-            .iter()
-            .map(|field| format!("{field} = insn.{field}()"))
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        let field_bindings = insn
-            .variable_fields
-            .iter()
-            .map(|field| format!("let {field} = insn.{field}();"))
-            .collect::<Vec<_>>()
-            .join("\n    ");
-
-        let field_bindings_raw_insn_params = insn
-            .variable_fields
-            .iter()
-            .enumerate()
-            .map(|(i, field)| {
-                let comma = if i + 1 < insn.variable_fields.len() {
-                    ","
-                } else {
-                    ""
-                };
-                format!("{field}{comma}")
-            })
-            .collect::<Vec<_>>()
-            .join("");
-
-        let mut bus_param: &str = "";
-        if [
-            "lb", "lh", "lw", "lbu", "lhu", "sb", "sh", "sw", "ld", "sd", "lwu", "flw", "fsw",
-            "fld", "fsd", "c_lw", "c_sw", "c_ld", "c_sd", "c_lwsp", "c_swsp", "c_ldsp", "c_sdsp",
-            "c_flw", "c_fsw", "c_fld", "c_fsd", "c_flwsp", "c_fswsp", "c_fldsp", "c_fsdsp",
-        ]
-        .iter()
-        .any(|&s| s == insn_name)
-        {
-            bus_param = "bus,";
-        }
-
-        let raw = format!(
-            r#"use crate::{{cpu::{{self, Cpu, Insn}}, bus::Bus}};
-use super::insn_raw;
-
-pub fn {insn_name}(insn: Insn, cpu: &mut Cpu, bus: &mut Bus) -> cpu::Result<u64> {{
-    {field_bindings}
-    insn_raw::{insn_name}_raw::{insn_name}_raw(cpu, {bus_param}{field_bindings_raw_insn_params})
-}}"#
-        );
-
-        let f = out_dir
-            .join("src")
-            .join("insn_impl")
-            .join(format!("{}.rs", insn_name));
-        if !fs::exists(&f).unwrap_or_default() {
-            fs::write(&f, raw).expect("insn_impl write");
-        }
-    }
-
-    let mod_rs = out_dir.join("src").join("insn_impl").join("mod.rs");
-    let mod_decls = config
-        .keys()
-        .map(|i| format!("pub mod {i};"))
-        .collect::<Vec<_>>()
-        .join("\n")
-        + "\npub mod insn_cached;\npub mod insn_raw;";
-    fs::write(&mod_rs, mod_decls).expect("mod.rs");
-}
-
 fn generate_raw_instruction_files(out_dir: &Path, config: &BTreeMap<String, ParsedInsn>) {
     for (insn_name, insn) in config.iter() {
         let field_bindings = insn
@@ -266,67 +194,6 @@ impl UopCacheEntry {
         else {
             None
         }
-    }
-}
-"#;
-    writeln!(handle, "{}", end).expect("write");
-}
-
-fn generate_cpu_execute_arms(out_dir: &Path, config: &IndexMap<String, ParsedInsn>) {
-    let cpu_execute = out_dir.join("src").join("generated").join("cpu_execute.rs");
-    if fs::exists(&cpu_execute).unwrap_or(true) {
-        fs::remove_file(&cpu_execute).expect("remove cpu_execute");
-    }
-    let mut handle = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .open(&cpu_execute)
-        .expect("cpu_execute.rs");
-
-    let base = r#"use crate::{
-    branch_hints::unlikely, bus::{Bus, Device}, cpu::{self, Cpu, Insn}, insn_impl, uop_cache::uop_cache::UopCacheEntry
-};
-
-impl Cpu {
-    pub fn execute_insn(&mut self, bus: &mut Bus) -> cpu::Result<u64> {
-        let cache_ptr = self
-            .uop_cache
-            .get(&self.pc)
-            .map(|entry| entry as *const UopCacheEntry);
-
-        if let Some(ptr) = cache_ptr {
-            unsafe {
-                return (*ptr).execute_cached_insn(self, bus);
-            }
-        } else {
-            let mut bytes = [0; std::mem::size_of::<u32>()];
-            bus.read(self.pc, &mut bytes).expect("invalid dram address");
-            let insn = Insn::from_bytes(&bytes);
-            let bits = insn.bits();"#;
-
-    writeln!(handle, "{}", base).expect("write");
-
-    for (idx, (insn_name, insn)) in config.iter().enumerate() {
-        writeln!(
-            handle,
-            r#"
-            {}if bits & {} == {} {{
-                insn_impl::{insn_name}::{insn_name}(insn, self, bus)
-            }}"#,
-            if idx != 0 { "else " } else { "" },
-            insn.mask,
-            insn.i_match
-        )
-        .expect("write");
-    }
-
-    let end = r#"
-            else {
-                Err(cpu::Exception::IllegalInstruction)
-            }
-        } else {
-            panic!();
-        }   
     }
 }
 "#;
@@ -511,6 +378,7 @@ fn main() {
 
     let cmd = Command::new("make")
         .arg("EXTENSIONS=rv_i rv64_i rv_zicsr rv_system rv_c rv64_c rv_f rv64_f rv_d rv64_d rv_m rv64_m rv_c_d rv_zifencei")
+// .arg("EXTENSIONS=rv_i rv64_i")
         .current_dir(&spec_dir)
         .env("PATH", path)
         .output()
@@ -573,21 +441,19 @@ fn main() {
         config.remove(insn.to_owned());
     }
 
-    let rdr = csv::ReaderBuilder::new()
+    let mut rdr = csv::ReaderBuilder::new()
         .has_headers(false)
         .from_path(spec_dir.join("arg_lut.csv"))
         .expect("arg_lut.csv not found");
-    let rdr2 = csv::ReaderBuilder::new()
+    let mut rdr2 = csv::ReaderBuilder::new()
         .has_headers(false)
         .from_path(spec_dir.join("csrs.csv"))
         .expect("csrs.csv not found");
 
-    // generate_instruction_files(&out_dir, &config);
-    // generate_set_cached_insn(&out_dir, &execute_config);
-    // generate_raw_instruction_files(&out_dir, &config);
-    // generate_cached_instruction_files(&out_dir, &config);
-    // generate_cpu_execute_arms(&out_dir, &execute_config);
-    // generate_insn_arg_luts(&out_dir, &mut rdr);
-    // generate_csr_load_store(&out_dir, &mut rdr2);
-    // generate_insn_jump_table(&out_dir, &execute_config);
+    generate_set_cached_insn(&out_dir, &execute_config);
+    generate_raw_instruction_files(&out_dir, &config);
+    generate_cached_instruction_files(&out_dir, &config);
+    generate_insn_arg_luts(&out_dir, &mut rdr);
+    generate_csr_load_store(&out_dir, &mut rdr2);
+    generate_insn_jump_table(&out_dir, &execute_config);
 }
