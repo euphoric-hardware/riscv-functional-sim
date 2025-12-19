@@ -439,7 +439,7 @@ impl Cpu {
                     state.instruction = insn_bits as u32;
                     self.states.push(state);
                 }
-            } 
+            }
             self.pc = result.unwrap();
             unsafe {
                 *self
