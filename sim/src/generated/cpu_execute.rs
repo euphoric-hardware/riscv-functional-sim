@@ -12,6 +12,15 @@ use crate::{
 impl Cpu {
     #[inline(never)]
     pub fn execute_insn(&mut self, bus: &mut Bus) -> cpu::Result<u64> {
+        if self.uop_cache.is_empty() {
+            self.uop_base = self.pc;
+            self.uop_stride = 4;
+        } else if self.pc < self.uop_base {
+            self.uop_cache.clear();
+            self.uop_base = self.pc;
+            self.uop_stride = 4;
+        }
+
         let index = ((self.pc - self.uop_base) >> 1) as usize;
 
         match self.uop_cache.get(index) {
@@ -27,7 +36,6 @@ impl Cpu {
                 let insn = Insn::from_bytes(&bytes);
 
                 let entry = UopCacheEntry::new(insn);
-                
                 if core::hint::likely(entry.valid) {
                     if index >= self.uop_cache.len() {
                         let new_len = index + 1;
