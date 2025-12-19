@@ -377,8 +377,8 @@ fn main() {
     }
 
     let cmd = Command::new("make")
-        .arg("EXTENSIONS=rv_i rv64_i rv_zicsr rv_system rv_c rv64_c rv_f rv64_f rv_d rv64_d rv_m rv64_m rv_c_d rv_zifencei")
-// .arg("EXTENSIONS=rv_i rv64_i")
+// .arg("EXTENSIONS=rv_i rv64_i rv_zicsr rv_system rv_c rv64_c rv_f rv64_f rv_d rv64_d rv_m rv64_m rv_c_d rv_zifencei")
+        .arg("EXTENSIONS=rv_i rv64_i")
         .current_dir(&spec_dir)
         .env("PATH", path)
         .output()
