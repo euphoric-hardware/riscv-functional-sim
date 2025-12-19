@@ -497,7 +497,7 @@ fn main() {
     println!(
         "cargo::rerun-if-changed={}",
         out_dir
-            .join("../.git/modules/riscv-opcodes/refs/heads/master")
+            .join("../riscv-opcodes")
             .canonicalize()
             .unwrap()
             .to_string_lossy()
