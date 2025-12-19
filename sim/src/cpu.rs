@@ -225,7 +225,6 @@ impl Cpu {
             unsafe {
                 *self.regs.get_unchecked_mut(reg as usize) = value;
             }
-            #[cfg(debug_assertions)]
             if unlikely(*DIFF.get().unwrap()) {
                 self.commits.reg_write.insert(reg, value);
             }
@@ -242,7 +241,6 @@ impl Cpu {
         unsafe {
             *self.fregs.get_unchecked_mut(reg as usize) = value;
         }
-        #[cfg(debug_assertions)]
         if unlikely(*DIFF.get().unwrap()) {
             self.commits.freg_write.insert(reg, value);
         }
@@ -396,7 +394,6 @@ impl Cpu {
                             state.register_updates.push((*reg as u8, *val));
                         }
                     }
-                    self.commits.reg_write.clear();
                 }
 
                 if self.commits.modified_fregs() {
