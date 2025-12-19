@@ -1,7 +1,6 @@
 use fesvr::Htif;
 
 use crate::bus::{Bus, Device, Ram};
-use crate::Frontend;
 use crate::cpu::Cpu;
 
 pub struct System<'b> {
@@ -19,7 +18,7 @@ impl System<'_> {
 
         let mut cpu = Cpu::new();
         cpu.pc = 0x80000000;
-        
+
         Self {
             bus,
             cpus: vec![cpu],

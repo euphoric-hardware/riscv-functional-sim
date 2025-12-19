@@ -1,7 +1,15 @@
 [package]
-name = "sim"
+name = "riscv-sim"
 version = "0.1.0"
 edition = "2021"
+
+[lib]
+name = "riscv_sim"
+path = "src/lib.rs"
+
+[[bin]]
+name = "riscv-sim"
+path = "src/main.rs"
 
 [dependencies]
 env_logger = "0.11.5"

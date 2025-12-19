@@ -5,23 +5,12 @@
 #![feature(likely_unlikely)]
 
 mod args;
-mod bus;
-mod cpu;
-mod csrs;
-mod diff;
-mod generated;
-mod insn_impl;
 mod logger;
-mod mmu;
-mod plic;
-mod superpage;
-mod system;
-mod uop_cache;
 
+use riscv_sim::{bus, cpu, csrs, diff, system, DIFF, LOG};
 use args::FunctionalSimArgs;
 use branch_hints::{self, unlikely};
 use clap::Parser;
-use once_cell::sync::OnceCell;
 use std::env;
 use std::fs::File;
 use std::path::Path;
@@ -29,10 +18,6 @@ use std::time;
 
 use diff::{Diff, ExecutionState};
 use fesvr::frontend::{Frontend, FrontendReturnCode};
-use generated::cpu_execute as _;
-
-pub static DIFF: OnceCell<bool> = OnceCell::new();
-pub static LOG: OnceCell<bool> = OnceCell::new();
 fn main() -> std::io::Result<()> {
     let args = FunctionalSimArgs::parse();
     File::create(&args.output_log)?;
