@@ -90,7 +90,7 @@ impl<'a> RefCore<'a> {
     }
 
     pub fn set_reg(&mut self, idx: u64, val: u64) {
-        self.cpu.store(idx, val);
+        self.cpu.regs[idx as usize] = val;
     }
 
     pub fn dump_state(&self) {
