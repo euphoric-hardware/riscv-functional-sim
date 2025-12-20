@@ -92,6 +92,25 @@ impl<'a> RefCore<'a> {
     pub fn set_reg(&mut self, idx: u64, val: u64) {
         self.cpu.store(idx, val);
     }
+
+    pub fn dump_state(&self) {
+        println!("PC:  0x{:016x}", self.cpu.pc);
+        println!("Registers:");
+        for i in 0..32 {
+            let val = self.cpu.regs[i];
+            if i % 4 == 0 {
+                print!("  ");
+            }
+            print!("x{:<2}: 0x{:016x}  ", i, val);
+            if i % 4 == 3 {
+                println!();
+            }
+        }
+    }
+
+    pub fn get_regs(&self) -> [u64; 32] {
+        self.cpu.regs
+    }
 }
 
 #[derive(Debug, Clone)]
