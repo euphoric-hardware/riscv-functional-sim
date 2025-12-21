@@ -41,6 +41,10 @@ impl<'a> RefCore<'a> {
         let ram = Ram::new(base_addr, size);
         bus.register(Box::new(ram), base_addr, size);
 
+        let sign_extended_base = base_addr | 0xffffffff00000000;
+        let ram_sign_ext = Ram::new(sign_extended_base, size);
+        bus.register(Box::new(ram_sign_ext), sign_extended_base, size);
+
         let mut cpu = cpu::Cpu::new();
         cpu.pc = base_addr;
 

@@ -54,7 +54,6 @@ pub trait Device: Debug {
 #[derive(Debug)]
 pub struct Bus<'b> {
     devices: Vec<(MemoryRange, Box<dyn Device + 'b>)>,
-    
 }
 
 impl<'b> Bus<'b> {
