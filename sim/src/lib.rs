@@ -72,12 +72,16 @@ impl<'a> RefCore<'a> {
             (0, 0)
         };
 
+        let (mem_read_addr, mem_write_addr, mem_write_data) = bus::get_last_data_access();
         StepResult {
             pc: old_pc,
             next_pc: self.cpu.pc,
             wb_valid,
             wb_rd,
             wb_data,
+            mem_read_addr,
+            mem_write_addr,
+            mem_write_data,
         }
     }
 
@@ -124,4 +128,7 @@ pub struct StepResult {
     pub wb_valid: bool,
     pub wb_rd: u64,
     pub wb_data: u64,
+    pub mem_read_addr: Option<u64>,
+    pub mem_write_addr: Option<u64>,
+    pub mem_write_data: Option<u64>,
 }

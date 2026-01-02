@@ -7,12 +7,37 @@ use crate::{
 };
 use lazy_static::lazy_static;
 use std::{
+    cell::Cell,
     cmp::{self, Ordering},
     collections::{BTreeMap, HashMap},
     fmt::Debug,
     fs,
     ptr::NonNull,
 };
+
+thread_local! {
+    static RECORD_DATA_ACCESS: Cell<bool> = Cell::new(false);
+    static LAST_DATA_READ_ADDR: Cell<Option<u64>> = Cell::new(None);
+    static LAST_DATA_WRITE_ADDR: Cell<Option<u64>> = Cell::new(None);
+    static LAST_DATA_WRITE_DATA: Cell<Option<u64>> = Cell::new(None);
+}
+
+pub fn set_record_data_access(enabled: bool) {
+    RECORD_DATA_ACCESS.with(|flag| flag.set(enabled));
+}
+
+pub fn clear_last_data_access() {
+    LAST_DATA_READ_ADDR.with(|addr| addr.set(None));
+    LAST_DATA_WRITE_ADDR.with(|addr| addr.set(None));
+    LAST_DATA_WRITE_DATA.with(|data| data.set(None));
+}
+
+pub fn get_last_data_access() -> (Option<u64>, Option<u64>, Option<u64>) {
+    let read = LAST_DATA_READ_ADDR.with(|addr| addr.get());
+    let write = LAST_DATA_WRITE_ADDR.with(|addr| addr.get());
+    let write_data = LAST_DATA_WRITE_DATA.with(|data| data.get());
+    (read, write, write_data)
+}
 
 #[derive(Clone, Copy, Default, Debug)]
 struct MemoryRange {
@@ -94,6 +119,9 @@ impl<'b> Bus<'b> {
 
 impl Device for Bus<'_> {
     fn read(&mut self, ptr: u64, buf: &mut [u8]) -> Result<()> {
+        if RECORD_DATA_ACCESS.with(|flag| flag.get()) {
+            LAST_DATA_READ_ADDR.with(|addr| addr.set(Some(ptr)));
+        }
         let result = self.get_device(ptr, buf.len() as u64);
         if core::hint::likely(result.is_ok()) {
             let (memory_range, device) = result.unwrap();
@@ -104,6 +132,17 @@ impl Device for Bus<'_> {
     }
 
     fn write(&mut self, ptr: u64, buf: &[u8]) -> Result<()> {
+        if RECORD_DATA_ACCESS.with(|flag| flag.get()) {
+            LAST_DATA_WRITE_ADDR.with(|addr| addr.set(Some(ptr)));
+            let data = match buf.len() {
+                1 => buf[0] as u64,
+                2 => u16::from_le_bytes([buf[0], buf[1]]) as u64,
+                4 => u32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]]) as u64,
+                8 => u64::from_le_bytes([buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]]),
+                _ => 0,
+            };
+            LAST_DATA_WRITE_DATA.with(|d| d.set(Some(data)));
+        }
         let (memory_range, device) = self
             .get_device(ptr, buf.len() as u64)
             .expect("device does not exist");

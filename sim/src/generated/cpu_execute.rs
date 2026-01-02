@@ -26,7 +26,11 @@ impl Cpu {
         match self.uop_cache.get(index) {
             Some(entry) if entry.valid => {
                 let entry_ptr = entry as *const UopCacheEntry;
-                unsafe { (*entry_ptr).execute_cached_insn(self, bus) }
+                crate::bus::clear_last_data_access();
+                crate::bus::set_record_data_access(true);
+                let result = unsafe { (*entry_ptr).execute_cached_insn(self, bus) };
+                crate::bus::set_record_data_access(false);
+                result
             }
 
             _ => {
