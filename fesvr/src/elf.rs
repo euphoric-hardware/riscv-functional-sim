@@ -1,5 +1,5 @@
 use object::{
-    elf::FileHeader64,
+    elf::{FileHeader64, SHT_PROGBITS},
     read::elf::{FileHeader, SectionHeader, SectionTable},
     Endianness, Object, ObjectSection, ObjectSymbol, SectionFlags, SectionKind,
 };
@@ -107,6 +107,10 @@ impl RiscvElf {
         let e = self.endianness();
         let mut max_addr: u64 = 0x80000000;
         for section in self.sections().expect("invalid section").iter() {
+            // Only consider PROGBITS sections (actual code/data, not stack/bss)
+            if section.sh_type(e) != SHT_PROGBITS {
+                continue;
+            }
             let next_addr = section.sh_addr(e) + section.sh_size(e);
             if next_addr > max_addr {
                 max_addr = next_addr

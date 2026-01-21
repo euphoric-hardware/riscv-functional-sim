@@ -2,7 +2,6 @@ use crate::{
     bus::{Bus, Device}, cpu::{self, Cpu, Insn}, insn_impl::{self, insn_cached}, uop_cache::uop_cache::UopCacheEntry
 };
 type CachedInsn = fn(cpu: &mut Cpu, bus: &mut Bus, cache_entry: &UopCacheEntry) -> cpu::Result<u64>;
-
 pub const JUMP_TABLE: [CachedInsn; 173] = [
     insn_cached::lui_cached::lui_cached,
     insn_cached::auipc_cached::auipc_cached,
