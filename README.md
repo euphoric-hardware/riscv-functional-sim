@@ -388,3 +388,401 @@ case class Add(rs1: UInt, rs2: UInt, rd: UInt, op: (UInt, UInt) => UInt) derives
     - When it receives a request with an invalid address, return a response indicating that the request had a invalid address
 - Possible devices includes: cores, DRAM, CLINT, PLIC, NIC, block device, uart, bootrom ...
 - Future work: I would also like this "bus" struct to be able to defer certain transactions until there is a hint from the top level. This can be useful for ganged simulation
+
+
+---
+
+
+# OS Boot
+
+
+## Overview
+
+To boot a proper operating system (Linux) on the RISC-V functional simulator, we need to implement several critical features that are currently missing or incomplete. The boot process involves:
+
+1. **OpenSBI** (or BBL) runs in M-mode, providing SBI services
+2. **Linux kernel** runs in S-mode, using virtual memory and handling interrupts
+3. **User applications** run in U-mode with memory protection
+
+Missing features:
+
+- A extension
+- Privilege modes: CSR updates
+- Virtual memory
+- CLINT
+- PLIC
+- UART (for IO)
+
+---
+
+## Atomic Instructions (A Extension)
+
+- Atomic memory operations read, modify, and write memory locations atomically (indivisibly), preventing other harts or devices from observing an intermediate state.
+- Atomics are used for:
+    - **Spinlocks and mutexes**: Kernel synchronization primitives use atomic compare-and-swap
+    - **Reference counting**: Shared resource management in the kernel
+    - **Lock-free data structures**: Wait-free queues, concurrent hash tables
+    - **Memory ordering**: Ensuring visibility of writes across harts
+
+
+### Testing
+
+- [riscv-tests](https://github.com/riscv-software-src/riscv-tests) contains atomic instruction tests (search for `amo`)
+
+---
+
+## Privilege Mode Infrastructure
+
+- RISC-V defines up to four privilege levels:
+    - **M-mode (Machine)**: Highest privilege, full hardware access. OpenSBI runs here. Example operations are inter-processor interrupts, setting the next timer interrupt, etc
+    - **S-mode (Supervisor)**: OS kernel runs here
+    - **U-mode (User)**: Applications run here
+    - **H-mode (Hypervisor)**: Optional, for virtualization. **We don't really care about this**
+- The privilege infrastructure includes trap handling (exceptions and interrupts), CSR access control, and mode transitions.
+
+### Trap Handling Basics
+
+**Trap Entry (to M-mode):**
+```
+1. mepc ← pc of trapped instruction (or next instruction for ECALL)
+2. mcause ← exception/interrupt code
+3. mtval ← additional info (faulting address, instruction bits, etc.)
+4. mstatus.MPP ← previous privilege mode
+5. mstatus.MPIE ← mstatus.MIE
+6. mstatus.MIE ← 0 (disable interrupts)
+7. pc ← mtvec (trap vector)
+```
+
+**Trap Entry (to S-mode, when delegated):**
+```
+Same pattern with sepc, scause, stval, sstatus fields
+```
+
+**MRET Instruction:**
+```
+1. pc ← mepc
+2. privilege_mode ← mstatus.MPP
+3. mstatus.MIE ← mstatus.MPIE
+4. mstatus.MPIE ← 1
+5. mstatus.MPP ← U (or M if U-mode not supported)
+6. If mstatus.MPP != M, then mstatus.MPRV ← 0
+```
+
+**SRET Instruction:**
+```
+1. pc ← sepc
+2. privilege_mode ← sstatus.SPP
+3. sstatus.SIE ← sstatus.SPIE
+4. sstatus.SPIE ← 1
+5. sstatus.SPP ← U
+```
+
+### Interrupts
+
+- External interrupts (MEI, SEI)
+    - Handle device interrupts. E.g. IO
+- Timer interrupts (MTI, STI)
+    - Interrupts set by timer. STI can be used by the OS for scheduling ticks
+- Software interrupts (MSI, SSI)
+    - Inter-processor interrupts, TLB shootdowns, rescheduling requets from OS
+
+- Can check pending interrupts by reading MIP/MIE CSR registers
+- Look at RISC-V Privileged Specification for additional info
+
+### Testing
+
+- [riscv-tests](https://github.com/riscv-software-src/riscv-tests) contains tests for
+   - `rv64mi-p-csr` - CSR access tests
+   - `rv64mi-p-mcsr` - M-mode CSR tests
+   - `rv64mi-p-illegal` - Illegal instruction handling
+   - `rv64mi-p-scall` - System call handling
+   - `rv64mi-p-sbreak` - Breakpoint handling
+   - `rv64si-p-csr` - S-mode CSR tests
+   - `rv64si-p-scall` - S-mode ECALL
+   - `rv64si-p-wfi` - WFI instruction
+
+---
+
+## Virtual Memory
+
+- **Sv32**: 2-level page tables, 32-bit virtual addresses (RV32 only)
+- **Sv39**: 3-level page tables, 39-bit virtual addresses (512 GB)
+- **Sv48**: 4-level page tables, 48-bit virtual addresses (256 TB)
+- **Sv57**: 5-level page tables, 57-bit virtual addresses (128 PB)
+
+For Linux on RV64, **Sv39** is the most common choice.
+
+- SATP CSR holds the ASID, and the root PPN of the page table 
+- sfence instruction: flushes TLB
+
+### Testing
+
+- [riscv-tests](https://github.com/riscv-software-src/riscv-tests) contains some tests:
+   - `rv64si-p-ma_fetch` - Misaligned fetch
+   - `rv64si-p-sbreak` - Breakpoint with S-mode
+   - `rv64si-p-scall` - ECALL with S-mode
+
+---
+
+## CLINT
+
+- The CLINT (Core-Local Interruptor) provides per-hart timer and software interrupt functionality.
+    - Timer interrupts are generated for scheduling
+    - Software interrupts enable inter-processor communication
+- Use cases:
+    - **Scheduler timer**: Linux needs periodic timer interrupts (tick) to preempt processes
+    - **Time tracking**: The `time` CSR is shadowed from `mtime`
+    - **IPI (Inter-Processor Interrupt)**: Software interrupts for multi-hart communication
+    - **OpenSBI timer service**: SBI `set_timer()` call requires CLINT
+
+### Testing
+
+- Bare-metal timer test:
+
+```c
+#define CLINT_BASE 0x02000000
+#define MTIME     (*(volatile uint64_t*)(CLINT_BASE + 0xBFF8))
+#define MTIMECMP  (*(volatile uint64_t*)(CLINT_BASE + 0x4000))
+
+void timer_handler() {
+    // Clear interrupt by setting mtimecmp to far future
+    MTIMECMP = MTIME + 1000000;
+    printf("Timer interrupt!\n");
+}
+
+void main() {
+    // Set up timer interrupt handler
+    set_mtvec(timer_handler);
+
+    // Enable timer interrupt
+    set_mie(MIE_MTIE);
+
+    // Set timer to fire soon
+    MTIMECMP = MTIME + 1000;
+
+    // Enable global interrupts
+    set_mstatus_mie(1);
+
+    // Wait for interrupt
+    while(1) { wfi(); }
+}
+```
+
+---
+
+## PLIC Implementation
+
+The PLIC (Platform-Level Interrupt Controller) manages external interrupts from peripherals and routes them to harts.
+- Interrupt prioritization
+- Per-hart interrupt enable/disable
+- Interrupt claim/complete mechanism
+- Use cases:
+    - **Device interrupts**: UART, disk, network, etc. signal via PLIC
+    - **Interrupt routing**: Direct interrupts to specific harts
+    - **Priority arbitration**: Higher priority interrupts preempt lower
+    - **OpenSBI external interrupt**: SBI uses PLIC for external interrupt management
+
+### Testing
+
+- Bare-metal PLIC test
+
+```c
+#define PLIC_BASE     0x0C000000
+#define PLIC_PRIORITY(n)  (*(volatile uint32_t*)(PLIC_BASE + 4*(n)))
+#define PLIC_PENDING      (*(volatile uint32_t*)(PLIC_BASE + 0x1000))
+#define PLIC_ENABLE(ctx)  (*(volatile uint32_t*)(PLIC_BASE + 0x2000 + 0x80*(ctx)))
+#define PLIC_THRESHOLD(ctx) (*(volatile uint32_t*)(PLIC_BASE + 0x200000 + 0x1000*(ctx)))
+#define PLIC_CLAIM(ctx)   (*(volatile uint32_t*)(PLIC_BASE + 0x200004 + 0x1000*(ctx)))
+
+void external_interrupt_handler() {
+    uint32_t source = PLIC_CLAIM(1);  // S-mode context
+    printf("External interrupt from source %d\n", source);
+    // Handle interrupt...
+    PLIC_CLAIM(1) = source;  // Complete
+}
+
+void main() {
+    // Enable UART interrupt (assume source 10)
+    PLIC_PRIORITY(10) = 1;
+    PLIC_ENABLE(1) |= (1 << 10);  // S-mode context
+    PLIC_THRESHOLD(1) = 0;
+
+    // Enable external interrupts
+    set_sie(SIE_SEIE);
+    set_sstatus_sie(1);
+
+    // ... UART will now generate interrupts
+}
+```
+
+---
+
+## UART (NS16550) Implementation
+
+The NS16550 UART (Universal Asynchronous Receiver/Transmitter) is a standard serial communication interface.
+- Use cases:
+    - **Console output**: Boot messages, kernel logs, shell
+    - **Console input**: Keyboard input for shell
+    - **Debugging**: `printf`-style debugging
+    - **OpenSBI console**: SBI `console_putchar()` uses UART
+
+---
+
+## System Integration & Device Tree
+
+### What It Is
+
+System integration brings all components together:
+- Memory map configuration
+- Device tree blob (DTB) generation
+- Boot protocol setup
+- Interrupt routing
+
+The device tree describes hardware to the OS in a standardized format.
+
+- Use cases:
+    - **Hardware discovery**: Linux uses DTB to find devices
+    - **Boot protocol**: OpenSBI expects specific register setup
+    - **Memory layout**: OS needs to know RAM size and location
+    - **Interrupt mapping**: DTB describes interrupt routing
+
+### Device Tree Example:
+
+```dts
+/dts-v1/;
+
+/ {
+    #address-cells = <2>;
+    #size-cells = <2>;
+    compatible = "riscv-sim";
+    model = "RISC-V Functional Simulator";
+
+    chosen {
+        bootargs = "console=ttyS0 earlycon=sbi";
+        stdout-path = "/soc/serial@10000000";
+    };
+
+    cpus {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        timebase-frequency = <10000000>;  // 10 MHz
+
+        cpu@0 {
+            device_type = "cpu";
+            reg = <0>;
+            compatible = "riscv";
+            riscv,isa = "rv64imafdc";
+            mmu-type = "riscv,sv39";
+
+            interrupt-controller {
+                #interrupt-cells = <1>;
+                interrupt-controller;
+                compatible = "riscv,cpu-intc";
+            };
+        };
+    };
+
+    memory@80000000 {
+        device_type = "memory";
+        reg = <0x0 0x80000000 0x0 0x08000000>;  // 128 MB at 0x80000000
+    };
+
+    soc {
+        #address-cells = <2>;
+        #size-cells = <2>;
+        compatible = "simple-bus";
+        ranges;
+
+        clint@2000000 {
+            compatible = "riscv,clint0";
+            reg = <0x0 0x2000000 0x0 0x10000>;
+            interrupts-extended = <&cpu0_intc 3>, <&cpu0_intc 7>;
+        };
+
+        plic@c000000 {
+            compatible = "sifive,plic-1.0.0";
+            #interrupt-cells = <1>;
+            interrupt-controller;
+            reg = <0x0 0xc000000 0x0 0x4000000>;
+            riscv,ndev = <31>;
+            interrupts-extended = <&cpu0_intc 11>, <&cpu0_intc 9>;
+        };
+
+        serial@10000000 {
+            compatible = "ns16550a";
+            reg = <0x0 0x10000000 0x0 0x100>;
+            clock-frequency = <3686400>;
+            interrupt-parent = <&plic>;
+            interrupts = <10>;
+        };
+    };
+};
+```
+
+### Boot Protocol
+
+**OpenSBI Boot Setup:**
+```
+Registers at entry to OpenSBI:
+  a0 = hartid (0 for single-hart)
+  a1 = DTB address (physical)
+
+Memory layout:
+  0x80000000: OpenSBI (fw_jump or fw_payload)
+  0x80200000: Linux kernel (typical jump address)
+  DTB: Placed after kernel or at fixed address
+```
+
+### DTB Generation
+
+You can either:
+1. Use a pre-compiled DTB file
+2. Generate DTB programmatically using a library
+3. Compile from DTS using `dtc`
+
+**Using dtc:**
+```bash
+# Compile DTS to DTB
+dtc -I dts -O dtb -o system.dtb system.dts
+
+# Decompile DTB to verify
+dtc -I dtb -O dts system.dtb
+```
+
+---
+
+
+## Specification References
+
+### Official RISC-V Specifications
+
+- [RISCV specification](https://riscv.org/specifications/ratified/)
+
+| Specification | URL |
+|--------------|-----|
+| Unprivileged ISA v20191213 | https://riscv.org/wp-content/uploads/2019/12/riscv-spec-20191213.pdf |
+| Privileged ISA v1.12 (HTML) | https://five-embeddev.com/riscv-priv-isa-manual/Priv-v1.12/ |
+| Privileged ISA v1.12 (PDF) | https://www.scs.stanford.edu/~zyedidia/docs/riscv/riscv-privileged.pdf |
+| SBI Specification | https://github.com/riscv-non-isa/riscv-sbi-doc |
+| ACLINT Specification | https://github.com/riscv/riscv-aclint |
+| PLIC Specification | https://github.com/riscv/riscv-plic-spec |
+
+### Implementation References
+
+| Resource | URL |
+|----------|-----|
+| Spike (Reference Simulator) | https://github.com/riscv-software-src/riscv-isa-sim |
+| OpenSBI | https://github.com/riscv-software-src/opensbi |
+| riscv-tests | https://github.com/riscv-software-src/riscv-tests |
+| QEMU virt Platform | https://qemu.readthedocs.io/en/master/system/riscv/virt.html |
+| Linux RISC-V Boot | https://www.kernel.org/doc/html/latest/riscv/boot.html |
+
+### Tutorial References
+
+| Resource | URL |
+|----------|-----|
+| Virtual Memory (Stephen Marz) | https://osblog.stephenmarz.com/ch3.2.html |
+| PLIC (OSDev Wiki) | https://wiki.osdev.org/PLIC |
+| CLINT (Chromite Docs) | https://chromitem-soc.readthedocs.io/en/latest/clint.html |
+| SiFive Interrupt Cookbook | https://starfivetech.com/uploads/sifive-interrupt-cookbook-v1p2.pdf |
+| Spike SDK (Linux Boot) | https://github.com/sycuricon/riscv-spike-sdk |
